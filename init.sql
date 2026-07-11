@@ -10,6 +10,7 @@ CREATE TABLE users (
     phone VARCHAR(10) UNIQUE,
     role VARCHAR(50) DEFAULT 'customer',
     account_status VARCHAR(50) DEFAULT 'active',
+    profile_image VARCHAR(555),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -157,4 +158,15 @@ CREATE TABLE cart_items (
     cart_id UUID REFERENCES carts(id) ON DELETE CASCADE,
     variant_id INTEGER REFERENCES product_variants(id),
     quantity INTEGER NOT NULL DEFAULT 1
+);
+
+-- 13. ตารางวิธีชำระเงินที่บันทึกไว้ (Saved Payment Methods - PromptPay)
+CREATE TABLE IF NOT EXISTS payment_methods (
+    id SERIAL PRIMARY KEY,
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    type VARCHAR(20) NOT NULL DEFAULT 'promptpay',   -- ประเภท: promptpay
+    label VARCHAR(100) DEFAULT 'PromptPay',           -- ชื่อที่แสดง เช่น "PromptPay ธนาคารไทย"
+    promptpay_number VARCHAR(20),                      -- เบอร์มือถือหรือเลขบัตรประชาชน
+    is_default BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
