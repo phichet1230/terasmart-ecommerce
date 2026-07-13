@@ -6,6 +6,14 @@ const fs = require('fs');
 exports.generateQR = async (req, res) => {
   const user_id = req.user.id;
   const { orderId } = req.params;
+  const promptpayId = process.env.PROMPTPAY_ID;
+
+  if (!promptpayId) {
+    return res.status(503).json({
+      status: 'error',
+      message: 'ยังไม่ได้ตั้งค่าบัญชี PromptPay ของบริษัท กรุณาตั้งค่า PROMPTPAY_ID ใน .env'
+    });
+  }
 
   try {
     // ดึงรายละเอียดออเดอร์เพื่อเช็กยอดเงินและเจ้าของ
@@ -24,9 +32,17 @@ exports.generateQR = async (req, res) => {
     const expiresAt = new Date();
     expiresAt.setMinutes(expiresAt.getMinutes() + 5);
 
-    // จำลองข้อความสำหรับเอาไปทำ QR Code (PromptPay Payload)
-    // ในโปรเจกต์จริงสามารถนำยอดเงินไปคำนวณตามมาตรฐาน EMVCo PromptPay QR Code
-    const qrCodeData = `00020101021229370016A000000677010111021308999999995802TH5407${order.total_price.toString().replace('.', '')}53037646304`;
+    // สร้าง QR Code จริงด้วยไลบรารี
+    const generatePayload = require('promptpay-qr');
+    const qrcode = require('qrcode');
+
+    const parsedAmount = parseFloat(order.total_price);
+    const payload = generatePayload(promptpayId, { amount: parsedAmount });
+    const qrDataUrl = await qrcode.toDataURL(payload, {
+      width: 250,
+      margin: 2,
+      color: { dark: '#1a1a2e', light: '#ffffff' }
+    });
 
     // อัปเดตช่องทางการชำระเงินใน payments
     await pool.query(
@@ -38,8 +54,8 @@ exports.generateQR = async (req, res) => {
       status: 'success',
       data: {
         order_id: order.id,
-        amount: parseFloat(order.total_price),
-        qr_code_data: qrCodeData,
+        amount: parsedAmount,
+        qr_image: qrDataUrl,
         expires_at: expiresAt.toISOString(),
       }
     });
@@ -60,9 +76,12 @@ exports.uploadSlip = async (req, res) => {
       return res.status(400).json({ status: 'error', message: 'กรุณาอัปโหลดไฟล์สลิปชำระเงิน' });
     }
 
-    // ค้นหาออเดอร์
+    // ค้นหาออเดอร์และดึงข้อมูลอีเมลผู้ใช้
     const orderResult = await pool.query(
-      'SELECT id, total_price, status FROM orders WHERE id = $1 AND user_id = $2',
+      `SELECT o.id, o.total_price, o.status, u.email 
+       FROM orders o 
+       JOIN users u ON o.user_id = u.id 
+       WHERE o.id = $1 AND o.user_id = $2`,
       [orderId, user_id]
     );
 
@@ -73,6 +92,25 @@ exports.uploadSlip = async (req, res) => {
     }
 
     const order = orderResult.rows[0];
+
+    // 1. คำนวณค่า MD5 Hash ของภาพสลิปเพื่อระบุรหัสธุรกรรมเฉพาะ (Transaction Reference)
+    const crypto = require('crypto');
+    const fileBuffer = fs.readFileSync(req.file.path);
+    const fileHash = crypto.createHash('md5').update(fileBuffer).digest('hex');
+
+    // 2. ตรวจสอบการอัปโหลดสลิปซ้ำ (Duplicate Slip Detection)
+    const duplicateCheck = await pool.query(
+      "SELECT order_id FROM payments WHERE transaction_ref = $1 AND payment_status = 'completed'",
+      [fileHash]
+    );
+
+    if (duplicateCheck.rows.length > 0) {
+      fs.unlinkSync(req.file.path); // ลบไฟล์สลิปที่ซ้ำออก
+      return res.status(400).json({ 
+        status: 'error', 
+        message: 'สลิปนี้เคยใช้ชำระเงินในระบบไปแล้ว (ตรวจพบรหัสธุรกรรมซ้ำในระบบ)' 
+      });
+    }
 
     // จำลอง URL ของไฟล์ที่อัปโหลด
     const slipUrl = `/uploads/${req.file.filename}`;
@@ -90,9 +128,10 @@ exports.uploadSlip = async (req, res) => {
            ai_verified_datetime = $3, 
            is_ai_verified = true, 
            payment_status = 'completed',
-           paid_at = $4
-       WHERE order_id = $5`,
-      [slipUrl, verifiedAmount, verifiedDatetime, verifiedDatetime, orderId]
+           paid_at = $4,
+           transaction_ref = $5
+       WHERE order_id = $6`,
+      [slipUrl, verifiedAmount, verifiedDatetime, verifiedDatetime, fileHash, orderId]
     );
 
     // อัปเดตสถานะของออเดอร์จาก pending เป็น paid
@@ -100,6 +139,14 @@ exports.uploadSlip = async (req, res) => {
       `UPDATE orders SET status = 'paid' WHERE id = $1`,
       [orderId]
     );
+
+    // ส่งอีเมลยืนยันการสั่งซื้อ
+    try {
+      const mailer = require('../utils/mailer');
+      await mailer.sendOrderConfirmationEmail(order.email, order);
+    } catch (mailErr) {
+      console.error('Failed to send order confirmation email:', mailErr);
+    }
 
     res.json({
       status: 'success',
@@ -127,8 +174,14 @@ exports.paymentsWebhook = async (req, res) => {
   const { order_id, amount } = req.body;
 
   try {
-    // ค้นหาคำสั่งซื้อหลัก
-    const orderResult = await pool.query('SELECT total_price, status FROM orders WHERE id = $1', [order_id]);
+    // ค้นหาคำสั่งซื้อหลักและอีเมลผู้ซื้อ
+    const orderResult = await pool.query(
+      `SELECT o.total_price, o.status, u.email 
+       FROM orders o 
+       JOIN users u ON o.user_id = u.id 
+       WHERE o.id = $1`,
+      [order_id]
+    );
     if (orderResult.rows.length === 0) {
       return res.status(404).json({ status: 'error', message: 'ไม่พบคำสั่งซื้อนี้' });
     }
@@ -161,6 +214,14 @@ exports.paymentsWebhook = async (req, res) => {
       [order_id]
     );
 
+    // ส่งอีเมลยืนยันการสั่งซื้อ
+    try {
+      const mailer = require('../utils/mailer');
+      await mailer.sendOrderConfirmationEmail(orderResult.rows[0].email, { id: order_id, total_price: order.total_price });
+    } catch (mailErr) {
+      console.error('Failed to send order confirmation email:', mailErr);
+    }
+
     console.log(`💰 Automated Webhook: Order ${order_id} successfully confirmed with payment amount: ${amount} ฿`);
 
     res.json({
@@ -179,7 +240,13 @@ exports.simulateWebhook = async (req, res) => {
   const { orderId } = req.params;
 
   try {
-    const orderResult = await pool.query('SELECT total_price FROM orders WHERE id = $1', [orderId]);
+    const orderResult = await pool.query(
+      `SELECT o.total_price, u.email 
+       FROM orders o 
+       JOIN users u ON o.user_id = u.id 
+       WHERE o.id = $1`, 
+      [orderId]
+    );
     if (orderResult.rows.length === 0) {
       return res.status(404).json({ status: 'error', message: 'ไม่พบคำสั่งซื้อนี้' });
     }
@@ -204,6 +271,14 @@ exports.simulateWebhook = async (req, res) => {
       `UPDATE orders SET status = 'paid' WHERE id = $1`,
       [orderId]
     );
+
+    // ส่งอีเมลยืนยันการสั่งซื้อ
+    try {
+      const mailer = require('../utils/mailer');
+      await mailer.sendOrderConfirmationEmail(orderResult.rows[0].email, { id: orderId, total_price: order.total_price });
+    } catch (mailErr) {
+      console.error('Failed to send order confirmation email:', mailErr);
+    }
 
     res.json({
       status: 'success',

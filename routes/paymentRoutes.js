@@ -26,11 +26,10 @@ const storage = multer.diskStorage({
 const upload = multer({
   storage: storage,
   fileFilter: (req, file, cb) => {
-    const filetypes = /jpeg|jpg|png|webp/;
-    const mimetype = filetypes.test(file.mimetype);
+    const filetypes = /jpeg|jpg|png|webp/i;
     const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
     
-    if (mimetype && extname) {
+    if (extname) {
       return cb(null, true);
     }
     cb(new Error('รองรับเฉพาะไฟล์รูปภาพเท่านั้น (jpg, jpeg, png, webp)'));
@@ -44,7 +43,14 @@ router.post('/webhook', paymentController.paymentsWebhook);
 router.use(protect);
 
 router.post('/:orderId/qr', paymentController.generateQR);
-router.post('/:orderId/upload', upload.single('slip'), paymentController.uploadSlip);
+router.post('/:orderId/upload', (req, res, next) => {
+  upload.single('slip')(req, res, (err) => {
+    if (err) {
+      return res.status(400).json({ status: 'error', message: err.message });
+    }
+    next();
+  });
+}, paymentController.uploadSlip);
 router.post('/:orderId/simulate-webhook', paymentController.simulateWebhook);
 
 module.exports = router;
