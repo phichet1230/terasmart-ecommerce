@@ -53,10 +53,33 @@ exports.createOrder = async (req, res) => {
     }
 
     let discount_amount = 0.00;
-    // (หากมีระบบคูปอง ก็สามารถคำนวณส่วนลดเพิ่มเติมได้ตรงนี้)
+    
+    // 4.1 ตรวจสอบและคำนวณส่วนลดจากคูปอง
+    if (coupon_id) {
+      const couponCheck = await client.query('SELECT * FROM coupons WHERE id = $1', [coupon_id]);
+      if (couponCheck.rows.length > 0) {
+        const coupon = couponCheck.rows[0];
+        
+        // ตรวจสอบความถูกต้องของวันหมดอายุ ขีดจำกัดการใช้งาน และยอดซื้อขั้นต่ำ
+        const isNotExpired = !coupon.expiry_date || new Date(coupon.expiry_date) > new Date();
+        const isNotOverLimit = !coupon.usage_limit || coupon.used_count < coupon.usage_limit;
+        const meetsMinAmount = subtotal >= parseFloat(coupon.min_order_amount || 0);
+        
+        if (isNotExpired && isNotOverLimit && meetsMinAmount) {
+          if (coupon.discount_type === 'percentage') {
+            discount_amount = parseFloat((subtotal * (parseFloat(coupon.discount_value) / 100)).toFixed(2));
+          } else if (coupon.discount_type === 'fixed') {
+            discount_amount = parseFloat(parseFloat(coupon.discount_value).toFixed(2));
+          }
+          
+          // บันทึกการใช้งานคูปองเพิ่ม 1 สิทธิ์
+          await client.query('UPDATE coupons SET used_count = used_count + 1 WHERE id = $1', [coupon_id]);
+        }
+      }
+    }
 
     const tax_amount = parseFloat((subtotal * 0.07).toFixed(2)); // ภาษี 7%
-    const total_price = subtotal + tax_amount - discount_amount;
+    const total_price = Math.max(0.00, subtotal + tax_amount - discount_amount);
 
     // 5. บันทึกลงตาราง orders
     const orderInsert = await client.query(

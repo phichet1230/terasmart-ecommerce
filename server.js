@@ -43,3 +43,6 @@ app.use('/api/v1/payments', paymentRoutes);
 
 const adminRoutes = require('./routes/adminRoutes');
 app.use('/api/v1/admin', adminRoutes);
+
+const couponRoutes = require('./routes/couponRoutes');
+app.use('/api/v1/coupons', couponRoutes);

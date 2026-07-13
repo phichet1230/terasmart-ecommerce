@@ -29,6 +29,7 @@ class TeraSmartApp {
     this.currentOrder = null;
     this.slipFile = null;
     this.countdownTimer = null;
+    this.selectedCoupon = null;
   }
 
   init() {
@@ -38,6 +39,10 @@ class TeraSmartApp {
     this.updateAuthHeader();
     
     if (this.token) {
+      if (this.user && ['admin', 'stock', 'accounting'].includes(this.user.role)) {
+        window.location.href = '/admin.html';
+        return;
+      }
       this.loadCart();
       this.loadAddresses();
     }
@@ -166,7 +171,12 @@ class TeraSmartApp {
     } else if (tabName === 'profile') {
       this.renderProfile();
     } else if (tabName === 'checkout') {
-      this.loadAddresses().then(() => this.renderCheckout());
+      this.selectedCoupon = null;
+      const msgEl = document.getElementById('checkout-promo-message');
+      if (msgEl) msgEl.classList.add('hidden');
+      const promoInput = document.getElementById('checkout-promo-input');
+      if (promoInput) promoInput.value = '';
+      Promise.all([this.loadCart(), this.loadAddresses()]).then(() => this.renderCheckout());
     }
     
     // scroll to top
@@ -221,8 +231,8 @@ class TeraSmartApp {
             <h3>เข้าสู่ระบบผู้ใช้งาน</h3>
             <form onsubmit="app.handleLogin(event)">
               <div class="form-group form-group-margin">
-                <label for="login-email">อีเมล</label>
-                <input type="email" id="login-email" placeholder="email@terasmart.com" required>
+                <label for="login-email">อีเมล หรือ เบอร์โทรศัพท์</label>
+                <input type="text" id="login-email" placeholder="เช่น email@terasmart.com หรือ 08XXXXXXXX" required>
               </div>
               <div class="form-group form-group-margin">
                 <label for="login-password">รหัสผ่าน</label>
@@ -233,9 +243,12 @@ class TeraSmartApp {
               </div>
               <button type="submit" class="btn btn-primary auth-btn">เข้าสู่ระบบ</button>
             </form>
-            <div style="margin-top: 15px; text-align: center; font-size: 0.8rem; color: var(--text-muted)">
-              บัญชีทดสอบ ลูกค้า: customer@terasmart.com / customer1234<br>
-              บัญชีทดสอบ แอดมิน: admin@terasmart.com / admin1234
+            <div style="margin-top: 15px; text-align: center; font-size: 0.75rem; color: var(--text-muted); line-height: 1.5; border-top: 1px dashed var(--border-color); padding-top: 12px;">
+              <strong>🔑 ข้อมูลบัญชีทดสอบการเชื่อมโยงแผนกงาน (Test Accounts):</strong><br>
+              • แผนกคลังสินค้า: <strong>stock@terasmart.com</strong> (หรือ <strong>0822222222</strong>) / รหัส: <strong>password123</strong><br>
+              • แผนกบัญชีการเงิน: <strong>accounting@terasmart.com</strong> (หรือ <strong>0833333333</strong>) / รหัส: <strong>password123</strong><br>
+              • ผู้ดูแลระบบหลัก: <strong>admin@terasmart.com</strong> (หรือ <strong>0811111111</strong>) / รหัส: <strong>password123</strong><br>
+              • ลูกค้าทดลอง: <strong>customer@terasmart.com</strong> / รหัส: <strong>customer1234</strong>
             </div>
           </div>
           
@@ -265,17 +278,33 @@ class TeraSmartApp {
             </form>
           </div>
 
-          <!-- FORGOT PASSWORD FORM (Email only) -->
+          <!-- FORGOT PASSWORD FORM (Email & SMS) -->
           <div id="auth-form-forgot" class="auth-form">
             <h3>กู้คืนบัญชีผู้ใช้งาน</h3>
-            <p class="upload-guide" style="color:var(--text-muted); font-size:0.8rem; margin-bottom:15px;">ระบบจะส่งรหัส PIN 6 หลักไปยังอีเมลของคุณ</p>
+            <p class="upload-guide" style="color:var(--text-muted); font-size:0.8rem; margin-bottom:15px;">ระบบจะส่งรหัส PIN 6 หลักไปให้คุณตามช่องทางที่เลือก</p>
+            
+            <div style="display:flex; gap:10px; margin-bottom:15px; width:100%;">
+              <button type="button" id="recovery-type-email-btn" class="btn" style="flex:1; padding:8px; font-size:0.85rem;" onclick="app.setRecoveryType('email')">กู้คืนทางอีเมล</button>
+              <button type="button" id="recovery-type-phone-btn" class="btn" style="flex:1; padding:8px; font-size:0.85rem;" onclick="app.setRecoveryType('phone')">กู้คืนทางเบอร์โทร</button>
+            </div>
+
             <form onsubmit="app.handleForgotPassword(event)">
-              <div class="form-group form-group-margin">
+              <!-- Email Group -->
+              <div class="form-group form-group-margin" id="recovery-email-group">
                 <label for="forgot-email">อีเมลผู้ใช้ของคุณ</label>
-                <input type="email" id="forgot-email" placeholder="email@terasmart.com" required>
+                <input type="email" id="forgot-email" placeholder="email@terasmart.com">
               </div>
-              <button type="submit" class="btn btn-primary auth-btn" style="margin-top:15px;">ส่งรหัสกู้คืนทางอีเมล</button>
-              <button type="button" class="btn btn-secondary auth-btn" style="margin-top: 10px;" onclick="app.switchAuthForm('login')">ยกเลิก</button>
+
+              <!-- Phone Group -->
+              <div class="form-group form-group-margin hidden" id="recovery-phone-group">
+                <label for="forgot-phone">เบอร์โทรศัพท์ของคุณ</label>
+                <input type="text" id="forgot-phone" placeholder="เช่น 0820761709" maxLength="10">
+              </div>
+
+              <div style="display:flex; gap:10px; margin-top:20px; width:100%;">
+                <button type="submit" class="btn btn-primary" style="flex:1;">ส่งรหัสกู้คืน</button>
+                <button type="button" class="btn btn-secondary" style="flex:1;" onclick="app.switchAuthForm('login')">ยกเลิก</button>
+              </div>
             </form>
           </div>
 
@@ -312,9 +341,9 @@ class TeraSmartApp {
             <div id="crop-image-wrapper" style="max-height:380px; overflow:hidden; border-radius:8px; background:#000;">
               <img id="crop-image-el" style="max-width:100%; display:block;">
             </div>
-            <div style="display:flex; gap:10px;">
+            <div style="display:flex; gap:10px; width:100%;">
               <button class="btn btn-primary" style="flex:1;" onclick="app.confirmCrop()">ยืนยันและอัปโหลด</button>
-              <button class="btn btn-secondary" onclick="app.cancelCrop()">ยกเลิก</button>
+              <button class="btn btn-secondary" style="flex:1;" onclick="app.cancelCrop()">ยกเลิก</button>
             </div>
           </div>
         </div>
@@ -389,7 +418,7 @@ class TeraSmartApp {
                     <label>จำนวนเงิน (บาท)</label>
                     <input type="number" id="qr-amount-input" placeholder="เช่น 1500.00" min="1" step="0.01" style="margin-top:6px;">
                   </div>
-                  <button class="btn btn-primary" onclick="app.generatePromptPayQR()">สร้าง QR</button>
+                  <button class="btn btn-primary" onclick="app.generateProfilePromptPayQR()">สร้าง QR</button>
                 </div>
               </div>
               <div id="qr-result-panel" style="display:none; text-align:center;">
@@ -411,9 +440,18 @@ class TeraSmartApp {
     document.querySelectorAll('.auth-tab').forEach(el => el.classList.remove('active'));
     document.querySelectorAll('.auth-form').forEach(el => el.classList.remove('active'));
     
+    // Clear all inputs in auth forms when switching to prevent old data from sticking around
+    document.querySelectorAll('.auth-form input').forEach(input => {
+      if (input.type === 'checkbox') {
+        input.checked = false;
+      } else {
+        input.value = '';
+      }
+    });
+    
     const tabContainer = document.getElementById('auth-tabs-container');
     if (formType === 'login' || formType === 'register') {
-      if (tabContainer) tabContainer.style.display = 'flex';
+      if (tabContainer) tabContainer.style.display = 'grid';
       const tabEl = document.getElementById(`auth-tab-${formType}`);
       if (tabEl) tabEl.classList.add('active');
 
@@ -422,16 +460,6 @@ class TeraSmartApp {
       if (devBox) devBox.classList.add('hidden');
     } else {
       if (tabContainer) tabContainer.style.display = 'none';
-    }
-
-    // ล้างค่าฟิลด์ฟอร์มกู้รหัสเพื่อเคลียร์ Autofill จากเบราว์เซอร์
-    if (formType === 'reset') {
-      const resetToken = document.getElementById('reset-token');
-      const resetNew = document.getElementById('reset-new-password');
-      const resetConf = document.getElementById('reset-confirm-password');
-      if (resetToken) resetToken.value = '';
-      if (resetNew) resetNew.value = '';
-      if (resetConf) resetConf.value = '';
     }
     
     const formEl = document.getElementById(`auth-form-${formType}`);
@@ -483,6 +511,13 @@ class TeraSmartApp {
       localStorage.setItem('tera_token', this.token);
       localStorage.setItem('tera_user', JSON.stringify(this.user));
       
+      if (['admin', 'stock', 'accounting'].includes(this.user.role)) {
+        this.showToast('เข้าสู่ระบบสิทธิ์เจ้าหน้าที่สำเร็จ กำลังพาไปยังระบบหลังบ้าน...', 'success');
+        setTimeout(() => {
+          window.location.href = '/admin.html';
+        }, 1200);
+        return;
+      }
       this.showToast('เข้าสู่ระบบสำเร็จ ยินดีต้อนรับครับ', 'success');
       this.updateAuthHeader();
       this.loadCart();
@@ -1048,11 +1083,59 @@ class TeraSmartApp {
     }).join('');
 
     const taxAmount = subtotal * 0.07;
-    const totalAmount = subtotal + taxAmount;
+    
+    // Calculate Promo Discount
+    let discountAmount = 0.00;
+    if (this.selectedCoupon) {
+      if (this.selectedCoupon.discount_type === 'percentage') {
+        discountAmount = parseFloat((subtotal * (this.selectedCoupon.discount_value / 100)).toFixed(2));
+      } else if (this.selectedCoupon.discount_type === 'fixed') {
+        discountAmount = parseFloat(this.selectedCoupon.discount_value.toFixed(2));
+      }
+    }
+    
+    const totalAmount = Math.max(0.00, subtotal + taxAmount - discountAmount);
 
     document.getElementById('checkout-subtotal').innerText = `${subtotal.toFixed(2)} ฿`;
     document.getElementById('checkout-tax').innerText = `${taxAmount.toFixed(2)} ฿`;
+    document.getElementById('checkout-discount').innerText = `-${discountAmount.toFixed(2)} ฿`;
     document.getElementById('checkout-total').innerText = `${totalAmount.toFixed(2)} ฿`;
+  }
+
+  async applyPromoCode() {
+    const input = document.getElementById('checkout-promo-input');
+    const msgEl = document.getElementById('checkout-promo-message');
+    const code = input ? input.value.trim() : '';
+
+    if (!code) {
+      this.showToast('กรุณาระบุรหัสส่วนลด', 'error');
+      return;
+    }
+
+    // Calculate subtotal of current cart items
+    let subtotal = 0;
+    this.cartItems.forEach(item => {
+      subtotal += parseFloat(item.price) * item.quantity;
+    });
+
+    try {
+      const res = await this.apiRequest('/api/v1/coupons/validate', 'POST', { code, order_amount: subtotal });
+      this.selectedCoupon = res.data;
+      
+      msgEl.innerText = `ประยุกต์ใช้โค้ดส่วนลด "${this.selectedCoupon.code}" สำเร็จ! ลดทันที ${this.selectedCoupon.discount_type === 'percentage' ? this.selectedCoupon.discount_value + '%' : this.selectedCoupon.discount_value + ' ฿'}`;
+      msgEl.classList.remove('hidden');
+      msgEl.style.color = 'var(--success-color)';
+      
+      this.showToast('ประยุกต์ใช้โค้ดส่วนลดสำเร็จ', 'success');
+      this.renderCheckout();
+    } catch (err) {
+      this.selectedCoupon = null;
+      msgEl.innerText = err.message || 'คูปองไม่สามารถใช้งานได้';
+      msgEl.classList.remove('hidden');
+      msgEl.style.color = 'var(--error-color)';
+      this.showToast(err.message || 'ไม่สามารถใช้งานคูปองได้', 'error');
+      this.renderCheckout();
+    }
   }
 
   selectAddress(addressId) {
@@ -1135,9 +1218,11 @@ class TeraSmartApp {
 
     try {
       const res = await this.apiRequest('/api/v1/orders', 'POST', {
-        address_id: this.selectedAddressId
+        address_id: this.selectedAddressId,
+        coupon_id: this.selectedCoupon ? this.selectedCoupon.id : null
       });
       
+      this.selectedCoupon = null; // Clear coupon after order placement
       this.currentOrder = res.data; // { id, total_price, ... }
       this.showToast('สร้างคำสั่งซื้อเรียบร้อย! กรุณาดำเนินการชำระเงิน', 'success');
       
@@ -1214,31 +1299,10 @@ class TeraSmartApp {
       // Display total
       document.getElementById('qr-total-amount').innerText = parseFloat(payload.amount).toFixed(2);
       
-      // Generate QR Code simulation (simple canvas image)
+      // Generate QR Code image (renders real PromptPay Base64 DataURL from API)
       const qrCanvas = document.getElementById('qr-code-canvas');
-      // Set to a standard simulated visual PromptPay QR Code
       qrCanvas.innerHTML = `
-        <div style="width: 150px; height: 150px; background-color: #0b0c10; display: flex; flex-direction: column; justify-content: center; align-items: center; border: 4px solid #007bc3; padding: 5px;">
-          <div style="background-color: #fff; width: 100%; height: 100%; display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px; padding: 2px;">
-            <!-- Dummy grid simulating QR blocks -->
-            <div style="background-color:#000; grid-column:span 2; grid-row:span 2;"></div>
-            <div style="background-color:#fff;"></div>
-            <div style="background-color:#000;"></div>
-            <div style="background-color:#fff;"></div>
-            <div style="background-color:#000;"></div>
-            <div style="background-color:#fff;"></div>
-            <div style="background-color:#000; grid-column:span 2; grid-row:span 2;"></div>
-            <div style="background-color:#000;"></div>
-            <div style="background-color:#fff;"></div>
-            <div style="background-color:#000;"></div>
-            <div style="background-color:#fff;"></div>
-            <div style="background-color:#000;"></div>
-            <div style="background-color:#fff;"></div>
-            <div style="background-color:#000;"></div>
-            <div style="background-color:#fff;"></div>
-            <div style="background-color:#000;"></div>
-          </div>
-        </div>
+        <img src="${payload.qr_image}" style="width: 160px; height: 160px; object-fit: contain; border-radius: 8px; background: #fff; padding: 4px; border: 1px solid var(--border-color);" alt="PromptPay QR">
       `;
 
       // Start countdown of 5 minutes (300 seconds)
@@ -1263,8 +1327,20 @@ class TeraSmartApp {
         clearInterval(this.countdownTimer);
         display.innerText = 'EXPIRED';
         display.style.color = 'var(--error-color)';
-        this.showToast('QR Code หมดอายุแล้ว กรุณายกเลิกและสั่งซื้อใหม่', 'error');
-        document.getElementById('submit-slip-btn').disabled = true;
+        
+        // Stop current polling loop
+        if (this.paymentPollingInterval) {
+          clearInterval(this.paymentPollingInterval);
+          this.paymentPollingInterval = null;
+        }
+        
+        // Alert user that transaction expired, then auto-regenerate new payment QR code
+        this.showToast('หมดเวลาชำระเงิน ระบบกำลังสร้าง QR Code ใหม่เพื่อชำระเงินรายการนี้อีกครั้ง...', 'error');
+        
+        setTimeout(() => {
+          this.generatePromptPayQR();
+          this.startPaymentPolling(this.currentOrder.id);
+        }, 1500);
         return;
       }
       
@@ -2078,9 +2154,9 @@ class TeraSmartApp {
         <label style="display:flex; align-items:center; gap:8px; margin-bottom:16px; cursor:pointer; font-size:0.9rem;">
           <input type="checkbox" id="am-default" ${addr && addr.is_default ? 'checked' : ''}> ตั้งเป็นที่อยู่เริ่มต้น
         </label>
-        <div style="display:flex; gap:10px;">
+        <div style="display:flex; gap:10px; width:100%;">
           <button class="btn btn-primary" style="flex:1;" onclick="app.submitAddressModal(${addressId || 'null'})">บันทึก</button>
-          <button class="btn btn-secondary" onclick="document.getElementById('address-edit-modal').remove()">ยกเลิก</button>
+          <button class="btn btn-secondary" style="flex:1;" onclick="document.getElementById('address-edit-modal').remove()">ยกเลิก</button>
         </div>
       </div>
     `;
@@ -2145,7 +2221,7 @@ class TeraSmartApp {
   }
 
   // --- PROMPTPAY QR GENERATOR ---
-  async generatePromptPayQR() {
+  async generateProfilePromptPayQR() {
     const amountInput = document.getElementById('qr-amount-input');
     const amount = parseFloat(amountInput ? amountInput.value : '');
     if (!amount || amount <= 0) {
