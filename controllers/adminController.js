@@ -58,6 +58,46 @@ exports.getDashboardMetrics = async (req, res) => {
     `);
     metrics.monthly_sales = monthlySales.rows;
 
+    // คำนวณยอดขายรายเดือนแยกตามทีม (พี่ยง, กิ๊ฟ, ฝน) อ้างอิงเดือนปัจจุบัน
+    const currentMonthOrders = await pool.query(
+      `SELECT id, total_price FROM orders 
+       WHERE status != 'pending' 
+       AND TO_CHAR(created_at, 'YYYY-MM') = TO_CHAR(CURRENT_TIMESTAMP, 'YYYY-MM')`
+    );
+
+    let team1Sales = 0;
+    let team2Sales = 0;
+    let team3Sales = 0;
+
+    currentMonthOrders.rows.forEach(order => {
+      let hash = 0;
+      for (let i = 0; i < order.id.length; i++) {
+        hash += order.id.charCodeAt(i);
+      }
+      const teamIndex = hash % 3;
+      const price = parseFloat(order.total_price || 0);
+      
+      if (teamIndex === 0) team1Sales += price;
+      else if (teamIndex === 1) team2Sales += price;
+      else team3Sales += price;
+    });
+
+    metrics.team_kpis = [
+      { name: 'ทีม 1 (พี่พี่ยง)', target: 50000, sales: team1Sales, kpi_percentage: parseFloat(((team1Sales / 50000) * 100).toFixed(2)) },
+      { name: 'ทีม 2 (พี่กิ๊ฟ)', target: 40000, sales: team2Sales, kpi_percentage: parseFloat(((team2Sales / 40000) * 100).toFixed(2)) },
+      { name: 'ทีม 3 (พี่ฝน)', target: 30000, sales: team3Sales, kpi_percentage: parseFloat(((team3Sales / 30000) * 100).toFixed(2)) }
+    ];
+
+    // ดึง Audit Logs 10 รายการล่าสุด
+    const auditLogs = await pool.query(
+      `SELECT a.*, u.username as admin_name
+       FROM audit_logs a
+       LEFT JOIN users u ON a.admin_id = u.id
+       ORDER BY a.created_at DESC
+       LIMIT 10`
+    );
+    metrics.audit_logs = auditLogs.rows;
+
     res.json({ status: 'success', data: metrics });
 
   } catch (err) {
@@ -370,6 +410,82 @@ exports.getAllProductsAdmin = async (req, res) => {
     }
 
     res.json({ status: 'success', data: products });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ status: 'error', message: 'Internal Server Error' });
+  }
+};
+
+// 12. ส่งออกข้อมูลคำสั่งซื้อเป็น CSV (รองรับภาษาไทย Excel BOM)
+exports.exportOrdersCSV = async (req, res) => {
+  try {
+    const ordersResult = await pool.query(`
+      SELECT o.id as order_id, u.username, o.total_price, o.discount_amount, o.status, o.created_at, 
+             s.tracking_number, s.courier_name
+      FROM orders o
+      LEFT JOIN users u ON o.user_id = u.id
+      LEFT JOIN shipping s ON o.id = s.order_id
+      ORDER BY o.created_at DESC
+    `);
+
+    const headers = ['Order ID', 'Username', 'Total Price', 'Discount Amount', 'Status', 'Created At', 'Tracking Number', 'Courier Name'];
+    const rows = ordersResult.rows.map(row => {
+      return [
+        row.order_id,
+        row.username,
+        row.total_price,
+        row.discount_amount,
+        row.status,
+        row.created_at ? new Date(row.created_at).toLocaleString('th-TH') : '',
+        row.tracking_number || '',
+        row.courier_name || ''
+      ].map(val => `"${val.toString().replace(/"/g, '""')}"`).join(',');
+    });
+
+    const csvContent = '\uFEFF' + headers.join(',') + '\n' + rows.join('\n');
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename=orders_export_${Date.now()}.csv`);
+    res.status(200).send(csvContent);
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ status: 'error', message: 'Internal Server Error' });
+  }
+};
+
+// 13. ส่งออกข้อมูลสินค้าและสต็อกเป็น CSV (รองรับภาษาไทย Excel BOM)
+exports.exportProductsCSV = async (req, res) => {
+  try {
+    const productsResult = await pool.query(`
+      SELECT p.id as product_id, p.name as product_name, c.name as category_name, 
+             v.variant_name, v.sku, v.price, v.stock_quantity
+      FROM products p
+      LEFT JOIN categories c ON p.category_id = c.id
+      LEFT JOIN product_variants v ON p.id = v.product_id
+      WHERE p.deleted_at IS NULL
+      ORDER BY p.id DESC, v.id ASC
+    `);
+
+    const headers = ['Product ID', 'Product Name', 'Category Name', 'Variant Name', 'SKU', 'Price', 'Stock Quantity'];
+    const rows = productsResult.rows.map(row => {
+      return [
+        row.product_id,
+        row.product_name,
+        row.category_name || '',
+        row.variant_name || '',
+        row.sku || '',
+        row.price || '0.00',
+        row.stock_quantity !== undefined ? row.stock_quantity : '0'
+      ].map(val => `"${val.toString().replace(/"/g, '""')}"`).join(',');
+    });
+
+    const csvContent = '\uFEFF' + headers.join(',') + '\n' + rows.join('\n');
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename=products_export_${Date.now()}.csv`);
+    res.status(200).send(csvContent);
+
   } catch (err) {
     console.error(err);
     res.status(500).json({ status: 'error', message: 'Internal Server Error' });

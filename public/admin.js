@@ -19,23 +19,61 @@ class TeraSmartAdmin {
     // Chart instances
     this.dailyChartInstance = null;
     this.monthlyChartInstance = null;
+
+    // Real-time auto-reload interval for active tab (every 4 seconds)
+    setInterval(() => {
+      if (this.token && this.user) {
+        this.refreshActiveTab();
+      }
+    }, 4000);
   }
 
   init() {
     // 1. RBAC (Role-Based Access Control) Security Check
-    if (!this.token || !this.user || this.user.role !== 'admin') {
-      alert('เข้าถึงไม่ได้: พื้นที่นี้สงวนสิทธิ์สำหรับผู้ดูแลระบบ (Admin) เท่านั้น');
+    const allowedRoles = ['admin', 'stock', 'accounting'];
+    if (!this.token || !this.user || !allowedRoles.includes(this.user.role)) {
+      alert('เข้าถึงไม่ได้: พื้นที่นี้สงวนสิทธิ์สำหรับแอดมินหรือเจ้าหน้าที่แผนกที่เกี่ยวข้องเท่านั้น');
       window.location.href = '/';
       return;
     }
 
     this.updateAuthHeader();
     this.loadCategories();
-    this.switchTab('dashboard');
+
+    // 2. Hide navigation tabs based on roles dynamically
+    const role = this.user.role;
+    if (role === 'stock') {
+      const dashboardNav = document.getElementById('admin-nav-dashboard');
+      const ordersNav = document.getElementById('admin-nav-orders');
+      const customersNav = document.getElementById('admin-nav-customers');
+      if (dashboardNav) dashboardNav.style.display = 'none';
+      if (ordersNav) ordersNav.style.display = 'none';
+      if (customersNav) customersNav.style.display = 'none';
+      this.switchTab('inventory');
+    } else if (role === 'accounting') {
+      const dashboardNav = document.getElementById('admin-nav-dashboard');
+      const inventoryNav = document.getElementById('admin-nav-inventory');
+      const customersNav = document.getElementById('admin-nav-customers');
+      if (dashboardNav) dashboardNav.style.display = 'none';
+      if (inventoryNav) inventoryNav.style.display = 'none';
+      if (customersNav) customersNav.style.display = 'none';
+      this.switchTab('orders');
+    } else {
+      // admin role sees everything
+      this.switchTab('dashboard');
+    }
+  }
+
+  logout() {
+    localStorage.removeItem('tera_token');
+    localStorage.removeItem('tera_user');
+    this.token = null;
+    this.user = null;
+    window.location.href = '/';
   }
 
   // API Request Helper with authentication headers
-  async apiRequest(url, method = 'GET', body = null) {
+  async apiRequest(url, method = 'GET', body = null, isMultipart = false) {
     const headers = {
       'Authorization': `Bearer ${this.token}`
     };
@@ -43,8 +81,12 @@ class TeraSmartAdmin {
     let options = { method, headers };
     
     if (body) {
-      headers['Content-Type'] = 'application/json';
-      options.body = JSON.stringify(body);
+      if (isMultipart) {
+        options.body = body; // Browser sets Content-Type boundary automatically
+      } else {
+        headers['Content-Type'] = 'application/json';
+        options.body = JSON.stringify(body);
+      }
     }
 
     const response = await fetch(url, options);
@@ -75,14 +117,45 @@ class TeraSmartAdmin {
 
   updateAuthHeader() {
     const area = document.getElementById('admin-header-status');
+    let roleLabel = 'แอดมิน';
+    if (this.user.role === 'stock') roleLabel = 'คลังสินค้า';
+    if (this.user.role === 'accounting') roleLabel = 'บัญชีการเงิน';
+
+    const avatarHtml = this.user.profile_image 
+      ? `<img src="${this.user.profile_image}" style="width:100%; height:100%; object-fit:cover; border-radius:50%;">`
+      : this.user.username.charAt(0).toUpperCase();
+
     area.innerHTML = `
-      <span style="color:var(--text-muted)">แอดมิน:</span> 
-      <strong style="color:var(--primary-color)">${this.user.username}</strong>
+      <div class="admin-user-profile-wrapper" onclick="admin.openProfileModal()" style="cursor: pointer;" title="แก้ไขข้อมูลส่วนตัว">
+        <div class="admin-user-avatar">
+          ${avatarHtml}
+        </div>
+        <div class="admin-user-details">
+          <span class="admin-username-text" style="display: flex; align-items: center; gap: 4px;">
+            ${this.user.username}
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px; height:12px; opacity:0.6;">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+            </svg>
+          </span>
+          <span class="admin-role-badge role-${this.user.role}">${roleLabel}</span>
+        </div>
+      </div>
+      <button class="nav-btn logout-nav-btn admin-logout-btn" style="margin-left: 8px;" onclick="admin.logout()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icon-sm">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>
+        </svg>
+        ออกจากระบบ
+      </button>
     `;
   }
 
   // --- NAVIGATION TAB SWITCHING ---
   switchTab(tabName) {
+    // Strict RBAC tab lock: Block unauthorized departments from accessing other views
+    const role = this.user ? this.user.role : '';
+    if (role === 'stock' && tabName !== 'inventory') return;
+    if (role === 'accounting' && tabName !== 'orders') return;
+
     this.activeTab = tabName;
     
     // Hide all tabs
@@ -105,6 +178,36 @@ class TeraSmartAdmin {
       this.loadInventory();
     } else if (tabName === 'customers') {
       this.loadCustomers();
+    }
+  }
+
+  refreshActiveTab() {
+    if (this.activeTab === 'dashboard') {
+      this.loadDashboardMetrics();
+    } else if (this.activeTab === 'orders') {
+      const checkSlipModal = document.getElementById('slip-check-modal');
+      const shipmentModal = document.getElementById('shipment-modal');
+      const isSlipModalOpen = checkSlipModal && checkSlipModal.classList.contains('active');
+      const isShipmentModalOpen = shipmentModal && shipmentModal.classList.contains('active');
+      
+      if (!isSlipModalOpen && !isShipmentModalOpen) {
+        this.loadOrders();
+      }
+    } else if (this.activeTab === 'inventory') {
+      const addProdModal = document.getElementById('product-modal');
+      const editStockModal = document.getElementById('variant-stock-modal');
+      const isAddProdOpen = addProdModal && addProdModal.classList.contains('active');
+      const isEditStockOpen = editStockModal && editStockModal.classList.contains('active');
+      
+      if (!isAddProdOpen && !isEditStockOpen) {
+        this.loadInventory();
+      }
+    } else if (this.activeTab === 'customers') {
+      const userOrdersModal = document.getElementById('customer-orders-modal');
+      const isOrdersModalOpen = userOrdersModal && userOrdersModal.classList.contains('active');
+      if (!isOrdersModalOpen) {
+        this.loadCustomers();
+      }
     }
   }
 
@@ -144,6 +247,64 @@ class TeraSmartAdmin {
         `).join('');
       }
 
+      // Populate Team KPIs table
+      const teamKpisBody = document.getElementById('team-kpis-table');
+      if (teamKpisBody) {
+        if (!data.team_kpis || data.team_kpis.length === 0) {
+          teamKpisBody.innerHTML = `
+            <tr>
+              <td colspan="5" style="text-align:center; color:var(--text-muted);">ไม่พบข้อมูลยอดขายประจำทีม</td>
+            </tr>
+          `;
+        } else {
+          teamKpisBody.innerHTML = data.team_kpis.map(team => {
+            const barWidth = Math.min(100, team.kpi_percentage);
+            let barColor = '#ff3201'; // primary/warning red-orange
+            if (team.kpi_percentage >= 80) barColor = 'var(--success-color)';
+            else if (team.kpi_percentage >= 40) barColor = '#ff9800'; // warning orange
+            
+            return `
+              <tr>
+                <td><strong>${team.name}</strong></td>
+                <td>${team.target.toLocaleString('th-TH')} ฿</td>
+                <td><strong>${team.sales.toLocaleString('th-TH', { minimumFractionDigits: 2 })} ฿</strong></td>
+                <td style="font-weight:700; color:${barColor};">${team.kpi_percentage}%</td>
+                <td>
+                  <div style="background:var(--border-color); width:100%; height:8px; border-radius:4px; overflow:hidden;">
+                    <div style="background:${barColor}; width:${barWidth}%; height:8px; border-radius:4px; transition:width 0.3s ease;"></div>
+                  </div>
+                </td>
+              </tr>
+            `;
+          }).join('');
+        }
+      }
+
+      // Populate Audit Logs table
+      const auditLogsBody = document.getElementById('audit-logs-table');
+      if (auditLogsBody) {
+        if (!data.audit_logs || data.audit_logs.length === 0) {
+          auditLogsBody.innerHTML = `
+            <tr>
+              <td colspan="5" style="text-align:center; color:var(--text-muted);">ไม่มีข้อมูลบันทึกประวัติกิจกรรม</td>
+            </tr>
+          `;
+        } else {
+          auditLogsBody.innerHTML = data.audit_logs.map(log => {
+            const dateStr = new Date(log.created_at).toLocaleString('th-TH');
+            return `
+              <tr>
+                <td><strong>${log.admin_name || 'ระบบอัตโนมัติ'}</strong></td>
+                <td>${log.action}</td>
+                <td><code>${log.target_table}</code></td>
+                <td><code>${log.target_id}</code></td>
+                <td>${dateStr}</td>
+              </tr>
+            `;
+          }).join('');
+        }
+      }
+
       // Render Charts
       this.renderCharts(data.daily_sales, data.monthly_sales);
 
@@ -154,16 +315,18 @@ class TeraSmartAdmin {
   }
 
   renderCharts(dailySales, monthlySales) {
+    if (!window.Chart) return;
+
     // 1. Daily Sales Chart
     const dailyCtx = document.getElementById('sales-daily-chart').getContext('2d');
     const dailyLabels = dailySales.map(d => d.date);
     const dailyData = dailySales.map(d => parseFloat(d.total_sales));
 
     if (this.dailyChartInstance) {
-      this.dailyChartInstance.destroy();
-    }
-
-    if (window.Chart) {
+      this.dailyChartInstance.data.labels = dailyLabels.length > 0 ? dailyLabels : ['ไม่มีข้อมูล'];
+      this.dailyChartInstance.data.datasets[0].data = dailyData.length > 0 ? dailyData : [0];
+      this.dailyChartInstance.update('none');
+    } else {
       this.dailyChartInstance = new Chart(dailyCtx, {
         type: 'line',
         data: {
@@ -196,10 +359,10 @@ class TeraSmartAdmin {
     const monthlyData = monthlySales.map(m => parseFloat(m.total_sales));
 
     if (this.monthlyChartInstance) {
-      this.monthlyChartInstance.destroy();
-    }
-
-    if (window.Chart) {
+      this.monthlyChartInstance.data.labels = monthlyLabels.length > 0 ? monthlyLabels : ['ไม่มีข้อมูล'];
+      this.monthlyChartInstance.data.datasets[0].data = monthlyData.length > 0 ? monthlyData : [0];
+      this.monthlyChartInstance.update('none');
+    } else {
       this.monthlyChartInstance = new Chart(monthlyCtx, {
         type: 'bar',
         data: {
@@ -265,11 +428,11 @@ class TeraSmartAdmin {
       
       let actionButtons = '';
       if (isPending) {
-        actionButtons = `<button class="btn btn-primary btn-sm btn-auto" onclick="admin.updateStatus('${o.id}', 'paid')">กดยืนยันการรับเงิน</button>`;
+        actionButtons = `<button class="btn btn-confirm btn-sm btn-auto" onclick="admin.updateStatus('${o.id}', 'paid')">กดยืนยันการรับเงิน</button>`;
       } else if (isPaid) {
-        actionButtons = `<button class="btn btn-secondary btn-sm btn-auto" onclick="admin.openShipmentModal('${o.id}')">ดำเนินการส่งของ</button>`;
+        actionButtons = `<button class="btn btn-ship btn-sm btn-auto" onclick="admin.openShipmentModal('${o.id}')">ดำเนินการส่งของ</button>`;
       } else if (isShipping) {
-        actionButtons = `<button class="btn btn-primary btn-sm btn-auto" style="background-color:var(--success-color);" onclick="admin.updateStatus('${o.id}', 'delivered')">ส่งสำเร็จแล้ว</button>`;
+        actionButtons = `<button class="btn btn-confirm btn-sm btn-auto" onclick="admin.updateStatus('${o.id}', 'delivered')">ส่งสำเร็จแล้ว</button>`;
       } else {
         actionButtons = `<span style="color:var(--text-muted)">สิ้นสุดรายการ</span>`;
       }
@@ -430,7 +593,7 @@ class TeraSmartAdmin {
               <button class="btn btn-secondary btn-sm btn-auto" onclick="admin.toggleProductActive(${p.id}, ${p.is_active})">
                 ${p.is_active ? 'ปิดขาย' : 'เปิดขาย'}
               </button>
-              <button class="btn btn-primary btn-sm btn-auto" style="background-color:var(--error-color)" onclick="admin.deleteProduct(${p.id})">
+              <button class="btn btn-danger-outline btn-sm btn-auto" onclick="admin.deleteProduct(${p.id})">
                 ลบสินค้า
               </button>
             </div>
@@ -630,7 +793,7 @@ class TeraSmartAdmin {
             </span>
           </td>
           <td>
-            <button class="btn btn-secondary btn-sm btn-auto" onclick="admin.toggleBlockStatus('${c.id}', '${c.account_status}')">
+            <button class="btn btn-danger-outline btn-sm btn-auto" onclick="admin.toggleBlockStatus('${c.id}', '${c.account_status}')">
               ${isActive ? 'ระงับการใช้งาน' : 'ยกเลิกระงับ'}
             </button>
           </td>
@@ -705,6 +868,210 @@ class TeraSmartAdmin {
 
   closeCustomerOrdersModal() {
     document.getElementById('customer-orders-modal').classList.remove('active');
+  }
+
+  // --- CSV EXPORT FUNCTIONS ---
+  async exportOrdersCSV() {
+    try {
+      const response = await fetch('/api/v1/admin/export/orders', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${this.token}`
+        }
+      });
+      if (!response.ok) throw new Error('ไม่สามารถดึงข้อมูล CSV ได้');
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `orders_export_${Date.now()}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      this.showToast('ส่งออกข้อมูลคำสั่งซื้อสำเร็จ', 'success');
+    } catch (err) {
+      console.error(err);
+      this.showToast(err.message || 'ส่งออกล้มเหลว', 'error');
+    }
+  }
+
+  async exportProductsCSV() {
+    try {
+      const response = await fetch('/api/v1/admin/export/products', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${this.token}`
+        }
+      });
+      if (!response.ok) throw new Error('ไม่สามารถดึงข้อมูล CSV ได้');
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `products_export_${Date.now()}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      this.showToast('ส่งออกข้อมูลสินค้าสำเร็จ', 'success');
+    } catch (err) {
+      console.error(err);
+      this.showToast(err.message || 'ส่งออกล้มเหลว', 'error');
+    }
+  }
+
+  openProfileModal() {
+    document.getElementById('admin-profile-username').value = this.user.username;
+    document.getElementById('admin-profile-phone').value = this.user.phone || '';
+    document.getElementById('admin-username-error').innerText = '';
+    document.getElementById('admin-phone-error').innerText = '';
+    
+    // ตั้งค่ารูปโปรไฟล์เริ่มต้น
+    const previewDiv = document.getElementById('admin-avatar-preview');
+    if (this.user.profile_image) {
+      previewDiv.innerHTML = `<img src="${this.user.profile_image}" style="width:100%; height:100%; object-fit:cover; border-radius:50%;">`;
+    } else {
+      previewDiv.innerHTML = this.user.username.charAt(0).toUpperCase();
+    }
+    document.getElementById('admin-avatar-filename').innerText = 'ยังไม่ได้เลือกรูปภาพ';
+    document.getElementById('admin-avatar-file').value = '';
+    this._croppedBlob = null;
+    this._cropFileName = null;
+    
+    document.getElementById('admin-profile-modal').classList.add('active');
+  }
+
+  closeProfileModal() {
+    document.getElementById('admin-profile-modal').classList.remove('active');
+  }
+
+  previewAdminAvatar(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (file.size > 2 * 1024 * 1024) {
+      this.showToast('ขนาดไฟล์รูปภาพห้ามเกิน 2MB', 'error');
+      e.target.value = '';
+      return;
+    }
+
+    document.getElementById('admin-avatar-filename').innerText = file.name;
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      this.openAdminCropModal(evt.target.result, file.name);
+    };
+    reader.readAsDataURL(file);
+  }
+
+  openAdminCropModal(imageSrc, fileName) {
+    this._cropFileName = fileName;
+    const cropModal = document.getElementById('admin-crop-modal');
+    const cropImg = document.getElementById('admin-crop-image-el');
+    cropImg.src = imageSrc;
+    cropModal.classList.add('active');
+
+    if (!window.Cropper) {
+      const script = document.createElement('script');
+      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js';
+      script.onload = () => this.initAdminCropper(cropImg);
+      document.head.appendChild(script);
+
+      const link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = 'https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.css';
+      document.head.appendChild(link);
+    } else {
+      this.initAdminCropper(cropImg);
+    }
+  }
+
+  initAdminCropper(imgEl) {
+    if (this._cropper) { this._cropper.destroy(); this._cropper = null; }
+    this._cropper = new Cropper(imgEl, {
+      aspectRatio: 1,
+      viewMode: 1,
+      dragMode: 'move',
+      autoCropArea: 0.85,
+      cropBoxResizable: true,
+      background: false
+    });
+  }
+
+  confirmAdminCrop() {
+    if (!this._cropper) return;
+    this._cropper.getCroppedCanvas({ width: 300, height: 300 }).toBlob((blob) => {
+      this._croppedBlob = blob;
+      const url = URL.createObjectURL(blob);
+      const previewDiv = document.getElementById('admin-avatar-preview');
+      if (previewDiv) {
+        previewDiv.innerHTML = `<img src="${url}" style="width:100%; height:100%; object-fit:cover; border-radius:50%;">`;
+      }
+      this.cancelAdminCrop();
+      this.showToast('ปรับแต่งรูปเรียบร้อยแล้ว!', 'success');
+    }, 'image/jpeg', 0.9);
+  }
+
+  cancelAdminCrop() {
+    const cropModal = document.getElementById('admin-crop-modal');
+    if (cropModal) cropModal.classList.remove('active');
+    if (this._cropper) { this._cropper.destroy(); this._cropper = null; }
+  }
+
+  async submitProfileUpdate(e) {
+    e.preventDefault();
+    const username = document.getElementById('admin-profile-username').value.trim();
+    const phone = document.getElementById('admin-profile-phone').value.trim();
+    
+    const usernameErr = document.getElementById('admin-username-error');
+    const phoneErr = document.getElementById('admin-phone-error');
+    usernameErr.innerText = '';
+    phoneErr.innerText = '';
+    
+    if (username.length < 3) {
+      usernameErr.innerText = 'ชื่อผู้ใช้ต้องยาวอย่างน้อย 3 ตัวอักษร';
+      return;
+    }
+    if (!/^[0-9]{10}$/.test(phone)) {
+      phoneErr.innerText = 'เบอร์โทรศัพท์ต้องเป็นตัวเลข 10 หลัก';
+      return;
+    }
+    
+    const saveBtn = document.getElementById('admin-profile-save-btn');
+    saveBtn.disabled = true;
+    
+    // อัปโหลดรูปภาพโปรไฟล์ก่อนหากมี Blob ที่ถูก Crop
+    if (this._croppedBlob) {
+      const fileToUpload = new File([this._croppedBlob], this._cropFileName || 'avatar.jpg', { type: 'image/jpeg' });
+      const formData = new FormData();
+      formData.append('avatar', fileToUpload);
+      
+      try {
+        const avatarRes = await this.apiRequest('/api/v1/auth/avatar', 'PUT', formData, true);
+        this.user.profile_image = avatarRes.data.profile_image;
+        this._croppedBlob = null;
+      } catch (err) {
+        this.showToast(err.message || 'ไม่สามารถอัปโหลดรูปโปรไฟล์ได้', 'error');
+        saveBtn.disabled = false;
+        return;
+      }
+    }
+    
+    try {
+      const res = await this.apiRequest('/api/v1/auth/profile', 'PUT', { username, phone });
+      
+      // อัปเดตข้อมูลผู้ใช้ในหน่วยความจำและลอคอลสตอเรจ
+      this.user.username = username;
+      this.user.phone = phone;
+      localStorage.setItem('tera_user', JSON.stringify(this.user));
+      
+      this.showToast('แก้ไขข้อมูลส่วนตัวเรียบร้อยแล้ว!', 'success');
+      this.updateAuthHeader();
+      this.closeProfileModal();
+    } catch (err) {
+      this.showToast(err.message || 'ไม่สามารถแก้ไขข้อมูลได้', 'error');
+    } finally {
+      saveBtn.disabled = false;
+    }
   }
 }
 

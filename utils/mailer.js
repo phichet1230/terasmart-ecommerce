@@ -53,3 +53,40 @@ exports.sendRecoveryEmail = async (toEmail, token) => {
     console.log(`✉️ [SIMULATED EMAIL DISPATCH] to ${toEmail}: Recovery PIN is ${token}`);
   }
 };
+
+/**
+ * ส่งอีเมลยืนยันการรับชำระเงินและคำสั่งซื้อสินค้าสำเร็จ
+ * @param {string} toEmail - อีเมลผู้รับ
+ * @param {object} order - ข้อมูลคำสั่งซื้อ { id, total_price, ... }
+ */
+exports.sendOrderConfirmationEmail = async (toEmail, order) => {
+  const mailOptions = {
+    from: `"TeraSmart E-Commerce" <${process.env.SMTP_USER || 'no-reply@terasmart.com'}>`,
+    to: toEmail,
+    subject: `ยืนยันการชำระเงินและคำสั่งซื้อสำเร็จ #${order.id.substring(0, 8)}`,
+    html: `
+      <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;">
+        <h2 style="color: #ff3201; text-align: center;">ยืนยันคำสั่งซื้อและชำระเงินสำเร็จ</h2>
+        <hr style="border: 0; border-top: 1px solid #eeeeee; margin: 20px 0;">
+        <p>สวัสดีคุณลูกค้า,</p>
+        <p>เราได้รับการยืนยันการชำระเงินสำหรับคำสั่งซื้อของคุณเรียบร้อยแล้ว รายละเอียดออเดอร์มีดังนี้:</p>
+        <div style="background-color: #f9f9f9; padding: 15px; border-radius: 5px; margin: 20px 0;">
+          <p><strong>หมายเลขคำสั่งซื้อ:</strong> ${order.id}</p>
+          <p><strong>ยอดชำระเงินสุทธิ:</strong> ${parseFloat(order.total_price).toFixed(2)} ฿</p>
+          <p><strong>สถานะออเดอร์:</strong> ชำระเงินเรียบร้อย (Paid)</p>
+          <p><strong>วันเวลาที่ชำระเงิน:</strong> ${new Date().toLocaleString('th-TH')}</p>
+        </div>
+        <p>เราจะรีบเตรียมการจัดส่งพัสดุให้คุณโดยเร็วที่สุด คุณสามารถติดตามสถานะการจัดส่งได้จากเมนูประวัติการสั่งซื้อบนเว็บไซต์</p>
+        <hr style="border: 0; border-top: 1px solid #eeeeee; margin: 20px 0;">
+        <p style="font-size: 12px; color: #999999; text-align: center;">© TeraSmart E-Commerce. All rights reserved.</p>
+      </div>
+    `
+  };
+
+  if (hasSmtpConfig) {
+    await transporter.sendMail(mailOptions);
+    console.log(`✉️ Real order confirmation email sent successfully to ${toEmail}`);
+  } else {
+    console.log(`✉️ [SIMULATED EMAIL DISPATCH] to ${toEmail}: Order confirmation for #${order.id} sent.`);
+  }
+};

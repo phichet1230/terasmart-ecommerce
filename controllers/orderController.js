@@ -3,7 +3,7 @@ const pool = require('../config/db');
 // 1. สร้างคำสั่งซื้อใหม่ (Checkout จากตะกร้า)
 exports.createOrder = async (req, res) => {
   const user_id = req.user.id;
-  const { address_id, coupon_id = null } = req.body;
+  const { address_id, coupon_id = null, buy_now_item = null, selected_cart_item_ids = null } = req.body;
 
   if (!address_id) {
     return res.status(400).json({ status: 'error', message: 'กรุณาระบุที่อยู่จัดส่ง' });
@@ -21,22 +21,25 @@ exports.createOrder = async (req, res) => {
       return res.status(404).json({ status: 'error', message: 'ไม่พบที่อยู่จัดส่งนี้' });
     }
 
-    // 2. ดึงสินค้าในตะกร้า
-    const cartResult = await client.query(`
-      SELECT ci.id, ci.variant_id, ci.quantity, v.price, v.stock_quantity, v.variant_name
-      FROM cart_items ci
-      JOIN product_variants v ON ci.variant_id = v.id
-      JOIN carts c ON ci.cart_id = c.id
-      WHERE c.user_id = $1
-    `, [user_id]);
+    let cartResultRows = [];
 
-    if (cartResult.rows.length === 0) {
-      await client.query('ROLLBACK');
-      return res.status(400).json({ status: 'error', message: 'ไม่มีสินค้าในตะกร้า' });
-    }
+    if (buy_now_item) {
+      // 2. ดึงข้อมูลสินค้าโดยตรงจากพารามิเตอร์ Buy Now (เลี่ยงตะกร้า)
+      const variantResult = await client.query(`
+        SELECT v.id as variant_id, v.price, v.stock_quantity, v.variant_name
+        FROM product_variants v
+        JOIN products p ON v.product_id = p.id
+        WHERE v.id = $1 AND p.deleted_at IS NULL
+      `, [buy_now_item.variant_id]);
 
-    // 3. ตรวจสอบสต็อกสินค้าทุกชิ้น
-    for (const item of cartResult.rows) {
+      if (variantResult.rows.length === 0) {
+        await client.query('ROLLBACK');
+        return res.status(404).json({ status: 'error', message: 'ไม่พบตัวเลือกสินค้าชิ้นนี้' });
+      }
+
+      const item = variantResult.rows[0];
+      item.quantity = parseInt(buy_now_item.quantity || 1);
+
       if (item.quantity > item.stock_quantity) {
         await client.query('ROLLBACK');
         return res.status(400).json({ 
@@ -44,11 +47,48 @@ exports.createOrder = async (req, res) => {
           message: `สินค้า ${item.variant_name} ในสต็อกไม่เพียงพอ (สต็อกปัจจุบัน: ${item.stock_quantity})` 
         });
       }
+
+      cartResultRows = [item];
+    } else {
+      // 2. ดึงสินค้าในตะกร้าปกติ
+      let queryStr = `
+        SELECT ci.id, ci.variant_id, ci.quantity, v.price, v.stock_quantity, v.variant_name
+        FROM cart_items ci
+        JOIN product_variants v ON ci.variant_id = v.id
+        JOIN carts c ON ci.cart_id = c.id
+        WHERE c.user_id = $1
+      `;
+      let queryParams = [user_id];
+
+      if (selected_cart_item_ids && Array.isArray(selected_cart_item_ids)) {
+        queryStr += ` AND ci.id = ANY($2::uuid[])`;
+        queryParams.push(selected_cart_item_ids);
+      }
+
+      const cartResult = await client.query(queryStr, queryParams);
+
+      if (cartResult.rows.length === 0) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ status: 'error', message: 'ไม่มีสินค้าในตะกร้า' });
+      }
+
+      // 3. ตรวจสอบสต็อกสินค้าทุกชิ้นในตะกร้า
+      for (const item of cartResult.rows) {
+        if (item.quantity > item.stock_quantity) {
+          await client.query('ROLLBACK');
+          return res.status(400).json({ 
+            status: 'error', 
+            message: `สินค้า ${item.variant_name} ในสต็อกไม่เพียงพอ (สต็อกปัจจุบัน: ${item.stock_quantity})` 
+          });
+        }
+      }
+
+      cartResultRows = cartResult.rows;
     }
 
     // 4. คำนวณเงิน
     let subtotal = 0;
-    for (const item of cartResult.rows) {
+    for (const item of cartResultRows) {
       subtotal += parseFloat(item.price) * item.quantity;
     }
 
@@ -89,8 +129,8 @@ exports.createOrder = async (req, res) => {
     );
     const order_id = orderInsert.rows[0].id;
 
-    // 6. ย้ายข้อมูลจากตะกร้าไปที่ order_items และอัปเดตสต็อกสินค้า
-    for (const item of cartResult.rows) {
+    // 6. ย้ายข้อมูลไปที่ order_items และอัปเดตสต็อกสินค้า
+    for (const item of cartResultRows) {
       // บันทึก order_item
       await client.query(
         `INSERT INTO order_items (order_id, variant_id, quantity, unit_price)
@@ -105,10 +145,16 @@ exports.createOrder = async (req, res) => {
       );
     }
 
-    // 7. เคลียร์ตะกร้าสินค้าของผู้ใช้
-    const userCart = await client.query('SELECT id FROM carts WHERE user_id = $1', [user_id]);
-    if (userCart.rows.length > 0) {
-      await client.query('DELETE FROM cart_items WHERE cart_id = $1', [userCart.rows[0].id]);
+    // 7. เคลียร์ตะกร้าสินค้าของผู้ใช้ (เฉพาะสินค้าที่เลือกชำระเงินและไม่ได้ซื้อแบบ Buy Now)
+    if (!buy_now_item) {
+      if (selected_cart_item_ids && Array.isArray(selected_cart_item_ids)) {
+        await client.query('DELETE FROM cart_items WHERE id = ANY($1::uuid[])', [selected_cart_item_ids]);
+      } else {
+        const userCart = await client.query('SELECT id FROM carts WHERE user_id = $1', [user_id]);
+        if (userCart.rows.length > 0) {
+          await client.query('DELETE FROM cart_items WHERE cart_id = $1', [userCart.rows[0].id]);
+        }
+      }
     }
 
     // 8. สร้างแถวเริ่มต้นในตาราง payments
