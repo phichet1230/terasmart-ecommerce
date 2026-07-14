@@ -6,11 +6,14 @@ CREATE TABLE users (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     username VARCHAR(255) NOT NULL UNIQUE,
     email VARCHAR(255) NOT NULL UNIQUE,
-    password_hash VARCHAR(255) NOT NULL,
+    password_hash VARCHAR(255),
     phone VARCHAR(10) UNIQUE,
     role VARCHAR(50) DEFAULT 'customer',
     account_status VARCHAR(50) DEFAULT 'active',
     profile_image VARCHAR(555),
+    google_id VARCHAR(255) UNIQUE,
+    line_id VARCHAR(255) UNIQUE,
+    facebook_id VARCHAR(255) UNIQUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -120,6 +123,7 @@ CREATE TABLE payments (
     ai_verified_amount DECIMAL(10, 2),
     ai_verified_datetime TIMESTAMP,
     is_ai_verified BOOLEAN DEFAULT FALSE,
+    transaction_ref VARCHAR(100),
     paid_at TIMESTAMP
 );
 

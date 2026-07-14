@@ -44,13 +44,28 @@ async function main() {
     console.log('Seeding users...');
     const adminPasswordHash = await bcrypt.hash('admin1234', 10);
     const customerPasswordHash = await bcrypt.hash('customer1234', 10);
+    const departmentPasswordHash = await bcrypt.hash('password123', 10);
 
     const adminUser = await client.query(
       `INSERT INTO users (username, email, password_hash, phone, role, account_status) 
        VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
-      ['AdminTera', 'admin@terasmart.com', adminPasswordHash, '0899999999', 'admin', 'active']
+      ['AdminTera', 'admin@terasmart.com', adminPasswordHash, '0811111111', 'admin', 'active']
     );
     console.log('Admin user seeded. ID:', adminUser.rows[0].id);
+
+    const stockUser = await client.query(
+      `INSERT INTO users (username, email, password_hash, phone, role, account_status) 
+       VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+      ['StockTera', 'stock@terasmart.com', departmentPasswordHash, '0822222222', 'stock', 'active']
+    );
+    console.log('Stock user seeded. ID:', stockUser.rows[0].id);
+
+    const accountingUser = await client.query(
+      `INSERT INTO users (username, email, password_hash, phone, role, account_status) 
+       VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+      ['AccountingTera', 'accounting@terasmart.com', departmentPasswordHash, '0833333333', 'accounting', 'active']
+    );
+    console.log('Accounting user seeded. ID:', accountingUser.rows[0].id);
 
     const customerUser = await client.query(
       `INSERT INTO users (username, email, password_hash, phone, role, account_status) 

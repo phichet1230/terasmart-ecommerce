@@ -1,21 +1,21 @@
 /* Global Style Tokens & CSS Variables */
 :root {
-  --primary-color: #ff3201;
-  --primary-hover: #e02c00;
-  --bg-dark: #0f1016;
-  --bg-card: #171923;
-  --bg-input: #1f2232;
-  --text-main: #f7fafc;
-  --text-muted: #a0aec0;
-  --border-color: #2d3748;
-  --success-color: #48bb78;
-  --success-bg: rgba(72, 187, 120, 0.1);
-  --error-color: #f56565;
-  --error-bg: rgba(245, 101, 101, 0.1);
+  --primary-color: #ff3b30;
+  --primary-hover: #e03228;
+  --bg-dark: #07080c;
+  --bg-card: #111218;
+  --bg-input: #171822;
+  --text-main: #f5f6fa;
+  --text-muted: #8e9cae;
+  --border-color: rgba(255, 255, 255, 0.08);
+  --success-color: #34c759;
+  --success-bg: rgba(52, 199, 89, 0.1);
+  --error-color: #ff3b30;
+  --error-bg: rgba(255, 59, 48, 0.1);
   --font-family: 'Inter', 'Sarabun', sans-serif;
-  --transition-speed: 0.3s;
-  --shadow-main: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.3);
+  --transition-speed: 0.25s;
+  --shadow-main: 0 8px 32px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.6);
 }
 
 /* Base Styles */
@@ -174,28 +174,34 @@ a {
 /* Toast Notifications */
 .toast-container {
   position: fixed;
-  top: 80px;
-  right: 20px;
-  z-index: 1000;
+  top: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 999999;
   display: flex;
   flex-direction: column;
   gap: 10px;
-  max-width: 350px;
+  width: min(420px, 90vw);
 }
 
 .toast {
-  background-color: var(--bg-card);
+  background-color: #1e1e2e;
   color: var(--text-main);
-  padding: 12px 20px;
-  border-radius: 8px;
-  border-left: 4px solid var(--primary-color);
-  box-shadow: var(--shadow-lg);
-  font-size: 0.9rem;
+  padding: 14px 22px;
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  border-left: 6px solid var(--primary-color);
+  box-shadow: 0 20px 40px rgba(0,0,0,0.55), 0 1px 3px rgba(255,255,255,0.08) inset;
+  font-size: 0.95rem;
+  font-weight: 550;
   display: flex;
-  justify-content: space-between;
+  justify-content: center;
   align-items: center;
   gap: 15px;
-  animation: slide-in 0.3s ease forwards;
+  transform-origin: top center;
+  animation: toast-fade-in 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+  position: relative;
+  text-align: center;
 }
 
 .toast.toast-success {
@@ -206,15 +212,30 @@ a {
   border-left-color: var(--error-color);
 }
 
-@keyframes slide-in {
-  from { transform: translateX(120%); opacity: 0; }
-  to { transform: translateX(0); opacity: 1; }
+@keyframes toast-fade-in {
+  from { 
+    transform: translateY(-40px) scale(0.85); 
+    opacity: 0; 
+  }
+  to { 
+    transform: translateY(0) scale(1); 
+    opacity: 1; 
+  }
 }
 
 .toast-close {
   cursor: pointer;
   color: var(--text-muted);
-  font-size: 1.2rem;
+  font-size: 1.3rem;
+  transition: color 0.2s;
+  position: absolute;
+  right: 15px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.toast-close:hover {
+  color: var(--text-main);
 }
 
 /* Main Content Area */
@@ -512,15 +533,15 @@ a {
   gap: 8px;
   width: 100%;
   padding: 10px 16px;
-  border-radius: 8px;
+  border-radius: 10px;
   border: none;
+  box-sizing: border-box;
   font-family: var(--font-family);
   font-size: 0.9rem;
   font-weight: 600;
   cursor: pointer;
   position: relative;
-  transform: translateY(0);
-  transition: transform 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.15s ease, background-color 0.2s ease;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 /* Micro-animations for SVGs and Icons inside buttons */
@@ -533,25 +554,23 @@ a {
 }
 
 .btn:active:not(:disabled) {
-  transform: translateY(3px) !important;
-  box-shadow: 0 1px 0 rgba(0,0,0,0.2) !important;
+  transform: translateY(1px);
 }
 
 .btn-primary {
-  background-color: var(--primary-color);
+  background: linear-gradient(135deg, var(--primary-color), #ff5e36);
   color: #fff;
-  box-shadow: 0 4px 0 #b32200, 0 6px 12px rgba(255, 50, 1, 0.2);
+  box-shadow: 0 4px 14px rgba(255, 59, 48, 0.25);
 }
 
 .btn-primary:hover {
-  background-color: var(--primary-hover);
-  box-shadow: 0 4px 0 #b32200, 0 8px 18px rgba(255, 50, 1, 0.35);
-  transform: translateY(-1px);
+  background: linear-gradient(135deg, var(--primary-hover), var(--primary-color));
+  box-shadow: 0 6px 20px rgba(255, 59, 48, 0.4);
+  transform: translateY(-2px);
 }
 
 .btn-primary:active {
-  transform: translateY(3px);
-  box-shadow: 0 0px 0 #b32200 !important;
+  transform: translateY(0);
 }
 
 .btn-secondary {
@@ -924,7 +943,7 @@ a {
 
 .cart-item-row {
   display: grid;
-  grid-template-columns: 80px 2fr 100px 100px 40px;
+  grid-template-columns: 40px 80px 2fr 120px 100px 40px;
   gap: 15px;
   align-items: center;
   padding: 15px 0;
@@ -2118,3 +2137,155 @@ a {
   font-family: inherit;
   box-sizing: border-box;
 }
+
+/* Fix checkbox input stretching to 100% in modals */
+.modal input[type="checkbox"],
+#address-edit-modal input[type="checkbox"] {
+  width: auto !important;
+  height: auto !important;
+  margin: 0 !important;
+  cursor: pointer;
+}
+
+/* --- Premium UI/UX Polish Enhancements --- */
+
+/* 1. Global Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-dark);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 10px;
+  transition: background-color 0.2s;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--primary-color);
+}
+
+/* 2. Global Dynamic Input Focus Ring Glow */
+input, textarea, select {
+  transition: border-color 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+input:focus, textarea:focus, select:focus {
+  border-color: var(--primary-color) !important;
+  box-shadow: 0 0 0 3px rgba(255, 50, 1, 0.25) !important;
+  outline: none;
+}
+
+/* 3. Table Rows Interactive Hover State */
+tbody tr {
+  transition: background-color 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+tbody tr:hover {
+  background-color: rgba(255, 255, 255, 0.02) !important;
+}
+
+/* 4. Glassmorphism Navigation Enhancements */
+.main-header {
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.45);
+  border-bottom: 1px solid rgba(255, 50, 1, 0.15) !important;
+}
+
+/* 5. Admin Profile Info Widget & Role Badges */
+.auth-status-area {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.admin-user-profile-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 6px 14px;
+  border-radius: 99px;
+}
+
+.admin-user-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary-color), #f6ad55);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.admin-user-details {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+}
+
+.admin-username-text {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-main);
+  letter-spacing: -0.1px;
+  line-height: 1.2;
+}
+
+.admin-role-badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  width: fit-content;
+}
+
+.admin-role-badge.role-admin {
+  background-color: rgba(255, 50, 1, 0.15);
+  color: var(--primary-color);
+  border: 1px solid rgba(255, 50, 1, 0.3);
+}
+
+.admin-role-badge.role-stock {
+  background-color: rgba(72, 187, 120, 0.15);
+  color: var(--success-color);
+  border: 1px solid rgba(72, 187, 120, 0.3);
+}
+
+.admin-role-badge.role-accounting {
+  background-color: rgba(66, 153, 225, 0.15);
+  color: #4299e1;
+  border: 1px solid rgba(66, 153, 225, 0.3);
+}
+
+.admin-logout-btn {
+  background-color: rgba(255, 255, 255, 0.04) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  color: var(--text-muted) !important;
+  padding: 6px 12px !important;
+  font-size: 0.78rem !important;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border-radius: 99px !important;
+  height: 32px !important;
+  transition: all 0.2s ease !important;
+  cursor: pointer;
+  box-shadow: none !important;
+  width: auto !important;
+}
+
+.admin-logout-btn:hover {
+  background-color: rgba(245, 101, 101, 0.15) !important;
+  border-color: rgba(245, 101, 101, 0.4) !important;
+  color: #f56565 !important;
+  transform: scale(1.02);
+}
+
+
+

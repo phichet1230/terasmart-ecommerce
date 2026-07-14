@@ -47,19 +47,36 @@ const jwt = require('jsonwebtoken');
 
 exports.login = async (req, res) => {
   const { email, password } = req.body;
-  const emailNormalized = email ? email.trim().toLowerCase() : '';
+  const inputNormalized = email ? email.trim() : '';
 
   try {
-    // 1. ค้นหาผู้ใช้ด้วย Email
-    const userResult = await pool.query('SELECT * FROM users WHERE email = $1', [emailNormalized]);
+    // 1. ค้นหาผู้ใช้ด้วย Email หรือ เบอร์โทรศัพท์
+    let userResult;
+    if (/^\d{10}$/.test(inputNormalized)) {
+      userResult = await pool.query('SELECT * FROM users WHERE phone = $1', [inputNormalized]);
+    } else {
+      userResult = await pool.query('SELECT * FROM users WHERE email = $1', [inputNormalized.toLowerCase()]);
+    }
     
     if (userResult.rows.length === 0) {
-      return res.status(401).json({ status: 'error', message: 'อีเมลหรือรหัสผ่านไม่ถูกต้อง' });
+      return res.status(401).json({ status: 'error', message: 'อีเมล/เบอร์โทรศัพท์ หรือรหัสผ่านไม่ถูกต้อง' });
     }
 
     const user = userResult.rows[0];
 
+    // 1.5 ตรวจสอบสถานะการโดนระงับบัญชี (Suspend Check)
+    if (user.account_status === 'suspended') {
+      return res.status(403).json({ status: 'error', message: 'บัญชีผู้ใช้ของคุณถูกระงับการใช้งาน กรุณาติดต่อฝ่ายบริการลูกค้า' });
+    }
+
     // 2. ตรวจสอบรหัสผ่าน (เทียบรหัสที่กรอกมากับค่า Hash ใน DB)
+    if (!user.password_hash) {
+      return res.status(400).json({ 
+        status: 'error', 
+        message: 'บัญชีนี้ลงทะเบียนผ่านช่องทางโซเชียล (Google/LINE) ไว้ กรุณาเข้าสู่ระบบด้วยปุ่มโซเชียลล็อกอิน หรือใช้งานเมนู "ลืมรหัสผ่าน?" เพื่อสร้างรหัสผ่านใหม่สำหรับเข้าสู่ระบบด้วยอีเมล' 
+      });
+    }
+
     const isMatch = await bcrypt.compare(password, user.password_hash);
     if (!isMatch) {
       return res.status(401).json({ status: 'error', message: 'อีเมลหรือรหัสผ่านไม่ถูกต้อง' });
@@ -179,21 +196,36 @@ exports.changePassword = async (req, res) => {
   }
 };
 
-// 7. ขอรหัสกู้คืนรหัสผ่าน (Forgot Password - Email only)
+// 7. ขอรหัสกู้คืนรหัสผ่าน (Forgot Password - Email & SMS)
 exports.forgotPassword = async (req, res) => {
-  const { email } = req.body;
-  const emailNormalized = email ? email.trim().toLowerCase() : '';
+  const { type, value, email: legacyEmail } = req.body;
+  const recoveryType = type || 'email';
+  const rawValue = value || legacyEmail || '';
+  const searchVal = rawValue.trim();
 
-  if (!emailNormalized) {
-    return res.status(400).json({ status: 'error', message: 'กรุณาระบุอีเมล' });
+  if (!searchVal) {
+    return res.status(400).json({ 
+      status: 'error', 
+      message: recoveryType === 'email' ? 'กรุณาระบุอีเมล' : 'กรุณาระบุเบอร์โทรศัพท์' 
+    });
   }
 
   try {
-    const userResult = await pool.query('SELECT id, email FROM users WHERE email = $1', [emailNormalized]);
-    if (userResult.rows.length === 0) {
-      return res.status(404).json({ status: 'error', message: 'ไม่พบอีเมลนี้ในระบบ' });
+    let user;
+    if (recoveryType === 'email') {
+      const emailNormalized = searchVal.toLowerCase();
+      const userResult = await pool.query('SELECT id, email, phone FROM users WHERE email = $1', [emailNormalized]);
+      if (userResult.rows.length === 0) {
+        return res.status(404).json({ status: 'error', message: 'ไม่พบบัญชีนี้ในระบบเลย' });
+      }
+      user = userResult.rows[0];
+    } else {
+      const userResult = await pool.query('SELECT id, email, phone FROM users WHERE phone = $1', [searchVal]);
+      if (userResult.rows.length === 0) {
+        return res.status(404).json({ status: 'error', message: 'ไม่พบบัญชีนี้ในระบบเลย' });
+      }
+      user = userResult.rows[0];
     }
-    const user = userResult.rows[0];
 
     // สร้าง Token 6 หลัก สำหรับกรอกกู้คืน
     const token = 'TS-' + Math.floor(100000 + Math.random() * 900000);
@@ -205,18 +237,35 @@ exports.forgotPassword = async (req, res) => {
       [user.email, token, expiresAt]
     );
 
-    console.log(`🔑 Security Token Reset for ${user.email}: [ ${token} ]`);
+    console.log(`🔑 Security Token Reset for ${user.email} (${recoveryType}): [ ${token} ]`);
 
-    // ส่งอีเมลจริง
-    try {
-      await mailer.sendRecoveryEmail(user.email, token);
-    } catch (mailErr) {
-      console.error('Failed to send recovery email:', mailErr);
+    if (recoveryType === 'email') {
+      // ส่งอีเมลจริง
+      try {
+        await mailer.sendRecoveryEmail(user.email, token);
+      } catch (mailErr) {
+        console.error('Failed to send recovery email:', mailErr);
+      }
+    } else {
+      // ส่ง SMS จริง/จำลอง
+      try {
+        const sms = require('../utils/sms');
+        await sms.sendSms(user.phone, `รหัสกู้คืนรหัสผ่าน TeraSmart ของคุณคือ ${token} (มีอายุ 15 นาที)`);
+      } catch (smsErr) {
+        console.error('Failed to send recovery SMS:', smsErr);
+      }
     }
 
     res.json({
       status: 'success',
-      message: 'รหัสลับสำหรับรีเซ็ตถูกส่งไปยังอีเมลของคุณแล้ว กรุณาตรวจสอบกล่องจดหมาย'
+      message: recoveryType === 'email' 
+        ? 'รหัสลับสำหรับรีเซ็ตถูกส่งไปยังอีเมลของคุณแล้ว กรุณาตรวจสอบกล่องจดหมาย'
+        : 'รหัสลับสำหรับรีเซ็ตถูกส่งไปยังเบอร์โทรศัพท์ของคุณทาง SMS เรียบร้อยแล้ว',
+      data: {
+        email: user.email,
+        token: token,
+        token_simulated: token
+      }
     });
 
   } catch (err) {

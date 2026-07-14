@@ -1,6 +1,7 @@
 // TeraSmart Client Application Engine
 class TeraSmartApp {
   constructor() {
+    console.log("TeraSmartApp v103 Initialized");
     this.user = JSON.parse(localStorage.getItem('tera_user')) || null;
     this.token = localStorage.getItem('tera_token') || null;
     this.activeTab = 'catalog';
@@ -29,18 +30,168 @@ class TeraSmartApp {
     this.currentOrder = null;
     this.slipFile = null;
     this.countdownTimer = null;
+    this.selectedCoupon = null;
+    this.checkoutMode = 'cart'; // 'cart' or 'buy_now'
+    this.buyNowItem = null;
   }
 
   init() {
+    // Check if redirected from OAuth with token and user in URL queries
+    const urlParams = new URLSearchParams(window.location.search);
+    const oauthToken = urlParams.get('token');
+    const oauthUserStr = urlParams.get('user');
+    
+    if (oauthToken && oauthUserStr) {
+      try {
+        const oauthUser = JSON.parse(decodeURIComponent(oauthUserStr));
+        this.token = oauthToken;
+        this.user = oauthUser;
+        
+        localStorage.setItem('tera_token', this.token);
+        localStorage.setItem('tera_user', JSON.stringify(this.user));
+        
+        // Clean URL query parameters
+        window.history.replaceState({}, document.title, window.location.pathname);
+        this.showToast('เข้าสู่ระบบสำเร็จ ยินดีต้อนรับครับ', 'success');
+      } catch (err) {
+        console.error('Error parsing OAuth user data:', err);
+      }
+    }
+
     this.setupEventListeners();
     this.loadCategories();
     this.loadProducts();
     this.updateAuthHeader();
     
     if (this.token) {
+      if (this.user && ['admin', 'stock', 'accounting'].includes(this.user.role)) {
+        window.location.href = '/admin.html';
+        return;
+      }
       this.loadCart();
       this.loadAddresses();
     }
+
+    // Real-time auto-reload interval (every 4 seconds)
+    setInterval(() => {
+      // 1. Refresh Catalog grid if active tab is catalog and user is not actively searching
+      if (this.activeTab === 'catalog') {
+        const isSearching = document.activeElement === document.getElementById('search-box');
+        if (!isSearching) {
+          this.loadProducts();
+        }
+      }
+      
+      // 2. Refresh open product detail modal if it's active
+      if (this.selectedProduct) {
+        const detailModal = document.getElementById('product-detail-modal');
+        if (detailModal && detailModal.classList.contains('active')) {
+          this.refreshOpenProductDetail(this.selectedProduct.slug);
+        }
+      }
+
+      // 3. Refresh Orders History if active tab is profile (silent)
+      if (this.token && this.activeTab === 'profile') {
+        const ptabOrders = document.getElementById('ptab-orders');
+        const isOrdersSubTabActive = ptabOrders && ptabOrders.classList.contains('active');
+        
+        const uploadModal = document.getElementById('slip-upload-modal');
+        const isUploadModalOpen = uploadModal && uploadModal.style.display !== 'none';
+        
+        if (isOrdersSubTabActive && !isUploadModalOpen) {
+          this.loadMyOrders();
+        }
+      }
+    }, 4000);
+  }
+
+  getProductSvg(productName) {
+    const name = (productName || '').toLowerCase();
+    
+    // 1. Smart Phone
+    if (name.includes('phone')) {
+      return `
+        <svg viewBox="0 0 100 100" style="width: 55%; height: 55%; color: #3182ce; filter: drop-shadow(0 6px 14px rgba(49, 130, 206, 0.35));">
+          <rect x="26" y="8" width="48" height="84" rx="9" fill="#1a202c" stroke="#4a5568" stroke-width="2.5" />
+          <rect x="29" y="11" width="42" height="78" rx="7" fill="url(#phone-screen-grad)" />
+          <rect x="41" y="14" width="18" height="4.5" rx="2.5" fill="#0c0d12" />
+          <circle cx="50" cy="83" r="2.5" fill="#2d3748" />
+          <defs>
+            <linearGradient id="phone-screen-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#3182ce" stop-opacity="0.85" />
+              <stop offset="100%" stop-color="#805ad5" stop-opacity="0.85" />
+            </linearGradient>
+          </defs>
+        </svg>
+      `;
+    }
+    
+    // 2. Smart Watch
+    if (name.includes('watch')) {
+      return `
+        <svg viewBox="0 0 100 100" style="width: 55%; height: 55%; color: #e53e3e; filter: drop-shadow(0 6px 14px rgba(229, 62, 62, 0.35));">
+          <rect x="42" y="4" width="16" height="26" rx="3" fill="#2d3748" />
+          <rect x="42" y="70" width="16" height="26" rx="3" fill="#2d3748" />
+          <rect x="28" y="28" width="44" height="44" rx="12" fill="#1a202c" stroke="#4a5568" stroke-width="2.5" />
+          <rect x="31" y="31" width="38" height="38" rx="9" fill="url(#watch-screen-grad)" />
+          <circle cx="50" cy="50" r="12" fill="none" stroke="#ffffff" stroke-dasharray="2,2" stroke-width="1.2" />
+          <line x1="50" y1="50" x2="50" y2="40" stroke="#ff3201" stroke-width="1.8" stroke-linecap="round" />
+          <line x1="50" y1="50" x2="59" y2="50" stroke="#ffffff" stroke-width="1.8" stroke-linecap="round" />
+          <defs>
+            <linearGradient id="watch-screen-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stop-color="#2d3748" />
+              <stop offset="100%" stop-color="#141622" />
+            </linearGradient>
+          </defs>
+        </svg>
+      `;
+    }
+    
+    // 3. Wireless Earbuds
+    if (name.includes('buds')) {
+      return `
+        <svg viewBox="0 0 100 100" style="width: 55%; height: 55%; color: #38a169; filter: drop-shadow(0 6px 14px rgba(56, 161, 105, 0.35));">
+          <rect x="24" y="32" width="52" height="42" rx="14" fill="#1a202c" stroke="#4a5568" stroke-width="2.5" />
+          <line x1="24" y1="45" x2="76" y2="45" stroke="#4a5568" stroke-width="1.8" />
+          <circle cx="50" cy="58" r="2.5" fill="#38a169" />
+          <circle cx="37" cy="20" r="8" fill="url(#buds-grad)" />
+          <path d="M37,20 L37,29" stroke="#cbd5e0" stroke-width="3" stroke-linecap="round" />
+          <circle cx="63" cy="20" r="8" fill="url(#buds-grad)" />
+          <path d="M63,20 L63,29" stroke="#cbd5e0" stroke-width="3" stroke-linecap="round" />
+          <defs>
+            <linearGradient id="buds-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#718096" />
+              <stop offset="100%" stop-color="#e2e8f0" />
+            </linearGradient>
+          </defs>
+        </svg>
+      `;
+    }
+    
+    // 4. Power Bank
+    if (name.includes('powerbank') || name.includes('battery')) {
+      return `
+        <svg viewBox="0 0 100 100" style="width: 55%; height: 55%; color: #dd6b20; filter: drop-shadow(0 6px 14px rgba(221, 107, 32, 0.35));">
+          <rect x="28" y="12" width="44" height="76" rx="7" fill="#1a202c" stroke="#4a5568" stroke-width="2.5" />
+          <rect x="31" y="15" width="38" height="2" fill="#ff3201" />
+          <circle cx="38" cy="24" r="2" fill="#38a169" />
+          <circle cx="46" cy="24" r="2" fill="#38a169" />
+          <circle cx="54" cy="24" r="2" fill="#38a169" />
+          <circle cx="62" cy="24" r="2" fill="#4a5568" />
+          <rect x="40" y="80" width="7" height="3" fill="#a0aec0" rx="1" />
+          <rect x="53" y="80" width="7" height="3" fill="#a0aec0" rx="1" />
+        </svg>
+      `;
+    }
+    
+    // 5. Default Fallback Item
+    return `
+      <svg viewBox="0 0 100 100" style="width: 50%; height: 50%; color: var(--text-muted); opacity: 0.4;">
+        <rect x="25" y="25" width="50" height="50" rx="6" fill="none" stroke="currentColor" stroke-width="2" />
+        <path d="M25,25 L75,75" stroke="currentColor" stroke-width="1.5" />
+        <path d="M75,25 L25,75" stroke="currentColor" stroke-width="1.5" />
+      </svg>
+    `;
   }
 
   // Helper function to issue requests to backend
@@ -62,7 +213,17 @@ class TeraSmartApp {
     }
 
     const response = await fetch(url, options);
-    const data = await response.json();
+    
+    let data = {};
+    const text = await response.text();
+    if (text) {
+      try {
+        data = JSON.parse(text);
+      } catch (parseErr) {
+        console.error('Failed to parse response JSON:', text);
+        data = { status: 'error', message: text.substring(0, 150) || 'การตอบกลับจากเซิร์ฟเวอร์ผิดพลาด' };
+      }
+    }
     
     if (!response.ok) {
       // Catch unauthorized/expired token
@@ -83,7 +244,7 @@ class TeraSmartApp {
     toast.className = `toast toast-${type}`;
     
     toast.innerHTML = `
-      <span>${message}</span>
+      <span style="flex: 1; text-align: center; padding: 0 12px;">${message}</span>
       <span class="toast-close">&times;</span>
     `;
     
@@ -162,11 +323,23 @@ class TeraSmartApp {
     if (tabName === 'catalog') {
       this.loadProducts();
     } else if (tabName === 'cart') {
+      this.checkoutMode = 'cart';
+      this.buyNowItem = null;
       this.loadCart().then(() => this.renderCart());
     } else if (tabName === 'profile') {
       this.renderProfile();
     } else if (tabName === 'checkout') {
-      this.loadAddresses().then(() => this.renderCheckout());
+      this.selectedCoupon = null;
+      const msgEl = document.getElementById('checkout-promo-message');
+      if (msgEl) msgEl.classList.add('hidden');
+      const promoInput = document.getElementById('checkout-promo-input');
+      if (promoInput) promoInput.value = '';
+      
+      if (this.checkoutMode === 'buy_now') {
+        this.loadAddresses().then(() => this.renderCheckout());
+      } else {
+        Promise.all([this.loadCart(), this.loadAddresses()]).then(() => this.renderCheckout());
+      }
     }
     
     // scroll to top
@@ -186,7 +359,7 @@ class TeraSmartApp {
       area.innerHTML = `
         <div style="display:inline-flex; align-items:center; gap:8px; cursor:pointer;" onclick="app.switchTab('profile')">
           ${avatarHTML}
-          <strong style="color:var(--primary-color);">${this.user.username}</strong>
+          <strong style="color:var(--primary-color); max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-block; vertical-align: middle;">${this.user.username}</strong>
         </div>
       `;
       if (this.user.role === 'admin') {
@@ -221,21 +394,63 @@ class TeraSmartApp {
             <h3>เข้าสู่ระบบผู้ใช้งาน</h3>
             <form onsubmit="app.handleLogin(event)">
               <div class="form-group form-group-margin">
-                <label for="login-email">อีเมล</label>
-                <input type="email" id="login-email" placeholder="email@terasmart.com" required>
+                <label for="login-email">อีเมล หรือ เบอร์โทรศัพท์</label>
+                <input type="text" id="login-email" placeholder="เช่น email@terasmart.com หรือ 08XXXXXXXX" required>
               </div>
               <div class="form-group form-group-margin">
                 <label for="login-password">รหัสผ่าน</label>
-                <input type="password" id="login-password" placeholder="รหัสผ่านของคุณ" required>
+                <div style="position: relative; display: flex; align-items: center; width: 100%;">
+                  <input type="password" id="login-password" placeholder="รหัสผ่านของคุณ" required style="padding-right: 40px; width: 100%;">
+                  <button type="button" onclick="app.togglePasswordVisibility('login-password')" style="position: absolute; right: 10px; background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 5px; display: flex; align-items: center; z-index: 5;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 18px; height: 18px;">
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                      <circle cx="12" cy="12" r="3"/>
+                    </svg>
+                  </button>
+                </div>
               </div>
               <div style="text-align: right; margin-bottom: 15px;">
                 <a href="#" style="font-size: 0.8rem; color: var(--primary-color); text-decoration: none; font-weight: 500;" onclick="app.showForgotPassword(event)">ลืมรหัสผ่าน?</a>
               </div>
               <button type="submit" class="btn btn-primary auth-btn">เข้าสู่ระบบ</button>
             </form>
-            <div style="margin-top: 15px; text-align: center; font-size: 0.8rem; color: var(--text-muted)">
-              บัญชีทดสอบ ลูกค้า: customer@terasmart.com / customer1234<br>
-              บัญชีทดสอบ แอดมิน: admin@terasmart.com / admin1234
+            <!-- SOCIAL LOGINS -->
+            <div style="margin-top: 20px; text-align: center;">
+              <div style="display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 15px; color: var(--text-muted); font-size: 0.8rem;">
+                <span style="flex: 1; height: 1px; background: var(--border-color);"></span>
+                <span>หรือเข้าสู่ระบบด้วย</span>
+                <span style="flex: 1; height: 1px; background: var(--border-color);"></span>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 10px;">
+                <a href="/api/v1/auth/google" class="btn" style="background: #fff; color: #333; border: 1px solid #ddd; font-size: 0.85rem; font-weight: 600; padding: 10px; border-radius: 8px; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; gap: 8px; width: 100%;">
+                  <svg viewBox="0 0 24 24" width="18" height="18" style="display:block;">
+                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+                  </svg>
+                  เข้าสู่ระบบด้วย Google
+                </a>
+                <a href="/api/v1/auth/line" class="btn" style="background: #06C755; color: #fff; font-size: 0.85rem; font-weight: 600; padding: 10px; border-radius: 8px; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; gap: 8px; width: 100%;">
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" style="display:block;">
+                    <path d="M12 2C6.48 2 2 5.82 2 10.53c0 4.22 3.56 7.75 8.38 8.43.33.07.78.22.89.5.1.25.07.65.03.9-.03.26-.16 1.06-.2 1.48-.05.4-.24 1.57 1.03.86 1.27-.72 8.19-4.83 11.17-8.27C21.43 13.06 22 11.83 22 10.53 22 5.82 17.52 2 12 2zm4.61 10.37h-1.3v-3.7h1.3v3.7zm-2.28 0H13v-3.7h1.33v3.7zm-2.26 0H10.74v-2.37l-1.42 2.37H8.25v-3.7h1.33v2.37l1.42-2.37h1.07v3.7z"/>
+                  </svg>
+                  เข้าสู่ระบบด้วย LINE
+                </a>
+                <a href="/api/v1/auth/facebook" class="btn" style="background: #1877F2; color: #fff; font-size: 0.85rem; font-weight: 600; padding: 10px; border-radius: 8px; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; gap: 8px; width: 100%;">
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" style="display:block;">
+                    <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                  </svg>
+                  เข้าสู่ระบบด้วย Facebook
+                </a>
+              </div>
+            </div>
+            <div style="margin-top: 15px; text-align: center; font-size: 0.75rem; color: var(--text-muted); line-height: 1.5; border-top: 1px dashed var(--border-color); padding-top: 12px;">
+              <strong>🔑 ข้อมูลบัญชีทดสอบการเชื่อมโยงแผนกงาน (Test Accounts):</strong><br>
+              • แผนกคลังสินค้า: <strong>stock@terasmart.com</strong> (หรือ <strong>0822222222</strong>) / รหัส: <strong>password123</strong><br>
+              • แผนกบัญชีการเงิน: <strong>accounting@terasmart.com</strong> (หรือ <strong>0833333333</strong>) / รหัส: <strong>password123</strong><br>
+              • ผู้ดูแลระบบหลัก: <strong>admin@terasmart.com</strong> (หรือ <strong>0811111111</strong>) / รหัส: <strong>admin1234</strong><br>
+              • ลูกค้าทดลอง: <strong>customer@terasmart.com</strong> / รหัส: <strong>customer1234</strong>
             </div>
           </div>
           
@@ -259,23 +474,90 @@ class TeraSmartApp {
               </div>
               <div class="form-group form-group-margin">
                 <label for="register-password">รหัสผ่าน</label>
-                <input type="password" id="register-password" placeholder="อย่างน้อย 6 ตัวอักษร" minLength="6" required>
+                <div style="position: relative; display: flex; align-items: center; width: 100%;">
+                  <input type="password" id="register-password" placeholder="อย่างน้อย 6 ตัวอักษร" minLength="6" required style="padding-right: 40px; width: 100%;">
+                  <button type="button" onclick="app.togglePasswordVisibility('register-password')" style="position: absolute; right: 10px; background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 5px; display: flex; align-items: center; z-index: 5;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 18px; height: 18px;">
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                      <circle cx="12" cy="12" r="3"/>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+              <div class="form-group form-group-margin">
+                <label for="register-confirm-password">ยืนยันรหัสผ่าน</label>
+                <div style="position: relative; display: flex; align-items: center; width: 100%;">
+                  <input type="password" id="register-confirm-password" placeholder="กรอกรหัสผ่านอีกครั้งเพื่อตรวจสอบ" minLength="6" required style="padding-right: 40px; width: 100%;">
+                  <button type="button" onclick="app.togglePasswordVisibility('register-confirm-password')" style="position: absolute; right: 10px; background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 5px; display: flex; align-items: center; z-index: 5;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 18px; height: 18px;">
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                      <circle cx="12" cy="12" r="3"/>
+                    </svg>
+                  </button>
+                </div>
               </div>
               <button type="submit" class="btn btn-primary auth-btn" id="register-submit-btn">สร้างบัญชีผู้ใช้</button>
             </form>
+            <!-- SOCIAL REGISTRATION -->
+            <div style="margin-top: 20px; text-align: center;">
+              <div style="display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 15px; color: var(--text-muted); font-size: 0.8rem;">
+                <span style="flex: 1; height: 1px; background: var(--border-color);"></span>
+                <span>หรือสมัครสมาชิกด้วย</span>
+                <span style="flex: 1; height: 1px; background: var(--border-color);"></span>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 10px;">
+                <a href="/api/v1/auth/google" class="btn" style="background: #fff; color: #333; border: 1px solid #ddd; font-size: 0.85rem; font-weight: 600; padding: 10px; border-radius: 8px; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; gap: 8px; width: 100%;">
+                  <svg viewBox="0 0 24 24" width="18" height="18" style="display:block;">
+                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+                  </svg>
+                  สมัครสมาชิกด้วย Google
+                </a>
+                <a href="/api/v1/auth/line" class="btn" style="background: #06C755; color: #fff; font-size: 0.85rem; font-weight: 600; padding: 10px; border-radius: 8px; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; gap: 8px; width: 100%;">
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" style="display:block;">
+                    <path d="M12 2C6.48 2 2 5.82 2 10.53c0 4.22 3.56 7.75 8.38 8.43.33.07.78.22.89.5.1.25.07.65.03.9-.03.26-.16 1.06-.2 1.48-.05.4-.24 1.57 1.03.86 1.27-.72 8.19-4.83 11.17-8.27C21.43 13.06 22 11.83 22 10.53 22 5.82 17.52 2 12 2zm4.61 10.37h-1.3v-3.7h1.3v3.7zm-2.28 0H13v-3.7h1.33v3.7zm-2.26 0H10.74v-2.37l-1.42 2.37H8.25v-3.7h1.33v2.37l1.42-2.37h1.07v3.7z"/>
+                  </svg>
+                  สมัครสมาชิกด้วย LINE
+                </a>
+                <a href="/api/v1/auth/facebook" class="btn" style="background: #1877F2; color: #fff; font-size: 0.85rem; font-weight: 600; padding: 10px; border-radius: 8px; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; gap: 8px; width: 100%;">
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" style="display:block;">
+                    <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                  </svg>
+                  สมัครสมาชิกด้วย Facebook
+                </a>
+              </div>
+            </div>
           </div>
 
-          <!-- FORGOT PASSWORD FORM (Email only) -->
+          <!-- FORGOT PASSWORD FORM (Email & SMS) -->
           <div id="auth-form-forgot" class="auth-form">
             <h3>กู้คืนบัญชีผู้ใช้งาน</h3>
-            <p class="upload-guide" style="color:var(--text-muted); font-size:0.8rem; margin-bottom:15px;">ระบบจะส่งรหัส PIN 6 หลักไปยังอีเมลของคุณ</p>
+            <p class="upload-guide" style="color:var(--text-muted); font-size:0.8rem; margin-bottom:15px;">ระบบจะส่งรหัส PIN 6 หลักไปให้คุณตามช่องทางที่เลือก</p>
+            
+            <div style="display:flex; gap:10px; margin-bottom:15px; width:100%;">
+              <button type="button" id="recovery-type-email-btn" class="btn" style="flex:1; padding:8px; font-size:0.85rem;" onclick="app.setRecoveryType('email')">กู้คืนทางอีเมล</button>
+              <button type="button" id="recovery-type-phone-btn" class="btn" style="flex:1; padding:8px; font-size:0.85rem;" onclick="app.setRecoveryType('phone')">กู้คืนทางเบอร์โทร</button>
+            </div>
+
             <form onsubmit="app.handleForgotPassword(event)">
-              <div class="form-group form-group-margin">
+              <!-- Email Group -->
+              <div class="form-group form-group-margin" id="recovery-email-group">
                 <label for="forgot-email">อีเมลผู้ใช้ของคุณ</label>
-                <input type="email" id="forgot-email" placeholder="email@terasmart.com" required>
+                <input type="email" id="forgot-email" placeholder="email@terasmart.com">
               </div>
-              <button type="submit" class="btn btn-primary auth-btn" style="margin-top:15px;">ส่งรหัสกู้คืนทางอีเมล</button>
-              <button type="button" class="btn btn-secondary auth-btn" style="margin-top: 10px;" onclick="app.switchAuthForm('login')">ยกเลิก</button>
+
+              <!-- Phone Group -->
+              <div class="form-group form-group-margin hidden" id="recovery-phone-group">
+                <label for="forgot-phone">เบอร์โทรศัพท์ของคุณ</label>
+                <input type="text" id="forgot-phone" placeholder="เช่น 0820761709" maxLength="10">
+              </div>
+
+              <div style="display:flex; gap:10px; margin-top:20px; width:100%;">
+                <button type="submit" class="btn btn-primary" style="flex:1;">ส่งรหัสกู้คืน</button>
+                <button type="button" class="btn btn-secondary" style="flex:1;" onclick="app.switchAuthForm('login')">ยกเลิก</button>
+              </div>
             </form>
           </div>
 
@@ -312,9 +594,9 @@ class TeraSmartApp {
             <div id="crop-image-wrapper" style="max-height:380px; overflow:hidden; border-radius:8px; background:#000;">
               <img id="crop-image-el" style="max-width:100%; display:block;">
             </div>
-            <div style="display:flex; gap:10px;">
+            <div style="display:flex; gap:10px; width:100%;">
               <button class="btn btn-primary" style="flex:1;" onclick="app.confirmCrop()">ยืนยันและอัปโหลด</button>
-              <button class="btn btn-secondary" onclick="app.cancelCrop()">ยกเลิก</button>
+              <button class="btn btn-secondary" style="flex:1;" onclick="app.cancelCrop()">ยกเลิก</button>
             </div>
           </div>
         </div>
@@ -324,13 +606,13 @@ class TeraSmartApp {
             <div class="profile-avatar-wrapper" style="overflow:hidden; display:flex; justify-content:center; align-items:center;">
               ${this.user.profile_image ? `<img src="${this.user.profile_image}" style="width:100%; height:100%; object-fit:cover;">` : this.user.username.charAt(0).toUpperCase()}
             </div>
-            <div class="profile-name">${this.user.username}</div>
+            <div class="profile-name" style="word-break: break-all; line-height: 1.2;">${this.user.username}</div>
             <div class="profile-role-tag">${this.user.role === 'admin' ? 'ผู้ดูแลระบบ (Admin)' : 'ลูกค้าสมาชิก (Customer)'}</div>
             
             <div class="profile-details-list">
-              <div class="profile-detail-item">
+              <div class="profile-detail-item" style="max-width: 100%; overflow: hidden;">
                 <span class="profile-detail-label">บัญชีผู้ใช้</span>
-                <strong>${this.user.email}</strong>
+                <strong style="word-break: break-all; font-size: 0.82rem; color: var(--text-main); font-weight: 500; display: block; margin-top: 4px;">${this.user.email}</strong>
               </div>
               <div class="profile-detail-item" style="margin-top: 10px;">
                 <span class="profile-detail-label">เบอร์โทรศัพท์</span>
@@ -358,7 +640,6 @@ class TeraSmartApp {
             <div style="display:flex; gap:0; border-bottom:2px solid var(--border-color); margin-bottom:20px;">
               <button id="ptab-orders" class="profile-subtab active" onclick="app.switchProfileTab('orders')">ประวัติสั่งซื้อ</button>
               <button id="ptab-addresses" class="profile-subtab" onclick="app.switchProfileTab('addresses')">ที่อยู่จัดส่ง</button>
-              <button id="ptab-payment" class="profile-subtab" onclick="app.switchProfileTab('payment')">การชำระเงิน</button>
             </div>
 
             <!-- Orders Panel -->
@@ -378,27 +659,6 @@ class TeraSmartApp {
                 <div class="payment-loading"><div class="spinner"></div><span>กำลังโหลด...</span></div>
               </div>
             </div>
-
-            <!-- Payment Panel -->
-            <div id="ppanel-payment" class="profile-subpanel" style="display:none;">
-              <div style="margin-bottom:20px;">
-                <h4 style="margin:0 0 8px;">ชำระเงินด้วย PromptPay</h4>
-                <p style="color:var(--text-muted); font-size:0.85rem; margin:0 0 16px;">สร้าง QR Code พร้อมราคาสินค้า เพื่อสแกนจ่ายได้ทันที</p>
-                <div style="display:flex; gap:10px; align-items:flex-end;">
-                  <div class="form-group" style="flex:1; margin:0;">
-                    <label>จำนวนเงิน (บาท)</label>
-                    <input type="number" id="qr-amount-input" placeholder="เช่น 1500.00" min="1" step="0.01" style="margin-top:6px;">
-                  </div>
-                  <button class="btn btn-primary" onclick="app.generatePromptPayQR()">สร้าง QR</button>
-                </div>
-              </div>
-              <div id="qr-result-panel" style="display:none; text-align:center;">
-                <img id="qr-result-img" src="" alt="PromptPay QR" style="width:220px; height:220px; border-radius:12px; border:2px solid var(--border-color);">
-                <div id="qr-result-amount" style="font-size:1.2rem; font-weight:700; color:var(--primary-color); margin:12px 0 4px;"></div>
-                <div id="qr-result-id" style="font-size:0.75rem; color:var(--text-muted); margin-bottom:14px;"></div>
-                <button class="btn btn-secondary" onclick="app.downloadQR()">บันทึก QR เป็นรูปภาพ</button>
-              </div>
-            </div>
           </div>
         </div>
       `;
@@ -411,9 +671,18 @@ class TeraSmartApp {
     document.querySelectorAll('.auth-tab').forEach(el => el.classList.remove('active'));
     document.querySelectorAll('.auth-form').forEach(el => el.classList.remove('active'));
     
+    // Clear all inputs in auth forms when switching to prevent old data from sticking around
+    document.querySelectorAll('.auth-form input').forEach(input => {
+      if (input.type === 'checkbox') {
+        input.checked = false;
+      } else {
+        input.value = '';
+      }
+    });
+    
     const tabContainer = document.getElementById('auth-tabs-container');
     if (formType === 'login' || formType === 'register') {
-      if (tabContainer) tabContainer.style.display = 'flex';
+      if (tabContainer) tabContainer.style.display = 'grid';
       const tabEl = document.getElementById(`auth-tab-${formType}`);
       if (tabEl) tabEl.classList.add('active');
 
@@ -422,16 +691,6 @@ class TeraSmartApp {
       if (devBox) devBox.classList.add('hidden');
     } else {
       if (tabContainer) tabContainer.style.display = 'none';
-    }
-
-    // ล้างค่าฟิลด์ฟอร์มกู้รหัสเพื่อเคลียร์ Autofill จากเบราว์เซอร์
-    if (formType === 'reset') {
-      const resetToken = document.getElementById('reset-token');
-      const resetNew = document.getElementById('reset-new-password');
-      const resetConf = document.getElementById('reset-confirm-password');
-      if (resetToken) resetToken.value = '';
-      if (resetNew) resetNew.value = '';
-      if (resetConf) resetConf.value = '';
     }
     
     const formEl = document.getElementById(`auth-form-${formType}`);
@@ -483,6 +742,13 @@ class TeraSmartApp {
       localStorage.setItem('tera_token', this.token);
       localStorage.setItem('tera_user', JSON.stringify(this.user));
       
+      if (['admin', 'stock', 'accounting'].includes(this.user.role)) {
+        this.showToast('เข้าสู่ระบบสิทธิ์เจ้าหน้าที่สำเร็จ กำลังพาไปยังระบบหลังบ้าน...', 'success');
+        setTimeout(() => {
+          window.location.href = '/admin.html';
+        }, 1200);
+        return;
+      }
       this.showToast('เข้าสู่ระบบสำเร็จ ยินดีต้อนรับครับ', 'success');
       this.updateAuthHeader();
       this.loadCart();
@@ -499,6 +765,7 @@ class TeraSmartApp {
     const email = document.getElementById('register-email').value;
     const phone = document.getElementById('register-phone').value;
     const password = document.getElementById('register-password').value;
+    const confirmPassword = document.getElementById('register-confirm-password').value;
 
     // Double-check validations
     if (/\d/.test(username)) {
@@ -507,6 +774,10 @@ class TeraSmartApp {
     }
     if (!/^\d{10}$/.test(phone)) {
       this.showToast('เบอร์โทรศัพท์ต้องมี 10 หลักเท่านั้น', 'error');
+      return;
+    }
+    if (password !== confirmPassword) {
+      this.showToast('รหัสผ่านและการยืนยันรหัสผ่านไม่ตรงกัน', 'error');
       return;
     }
 
@@ -520,6 +791,29 @@ class TeraSmartApp {
         this.showToast(fieldErr, 'error');
       } else {
         this.showToast(err.message || 'ลงทะเบียนไม่สำเร็จ', 'error');
+      }
+    }
+  }
+
+  togglePasswordVisibility(id) {
+    const input = document.getElementById(id);
+    if (input) {
+      const type = input.getAttribute('type') === 'password' ? 'text' : 'password';
+      input.setAttribute('type', type);
+      const btn = input.nextElementSibling;
+      if (btn) {
+        const svg = btn.querySelector('svg');
+        if (type === 'text') {
+          svg.innerHTML = `
+            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+            <line x1="1" y1="1" x2="23" y2="23"/>
+          `;
+        } else {
+          svg.innerHTML = `
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+            <circle cx="12" cy="12" r="3"/>
+          `;
+        }
       }
     }
   }
@@ -636,17 +930,13 @@ class TeraSmartApp {
 
     grid.innerHTML = this.products.map(p => {
       const priceStr = parseFloat(p.min_price).toFixed(2);
-      const isOutOfStock = p.total_stock === 0 || p.total_stock === null;
+      const isOutOfStock = parseInt(p.total_stock || 0) === 0;
       
       return `
         <div class="product-card" onclick="app.showProductDetail('${p.slug}')">
           <div class="product-image-container">
             <div class="product-image-placeholder">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
-                <line x1="8" y1="21" x2="16" y2="21"></line>
-                <line x1="12" y1="17" x2="12" y2="21"></line>
-              </svg>
+              ${this.getProductSvg(p.name)}
             </div>
             ${isOutOfStock ? '<span class="stock-status-badge stock-out" style="position:absolute; top:10px; left:10px; margin-bottom:0;">สินค้าหมด</span>' : ''}
           </div>
@@ -659,7 +949,7 @@ class TeraSmartApp {
             <div class="product-card-action">
               ${isOutOfStock 
                 ? `<button class="btn btn-disabled" disabled>สินค้าหมด (Out of Stock)</button>`
-                : `<button class="btn btn-primary btn-sm">ดูรายละเอียด</button>`
+                : `<button class="btn btn-primary btn-sm">สั่งซื้อ</button>`
               }
             </div>
           </div>
@@ -713,6 +1003,36 @@ class TeraSmartApp {
     }
   }
 
+  async refreshOpenProductDetail(slug) {
+    try {
+      const res = await this.apiRequest(`/api/v1/products/${slug}`);
+      const updatedProduct = res.data;
+      
+      // If the product was disabled or deleted by admin
+      if (!updatedProduct || updatedProduct.status === 'inactive') {
+        this.closeProductDetail();
+        this.showToast('สินค้านี้ถูกปิดการขายโดยผู้ดูแลระบบแล้ว', 'warning');
+        this.loadProducts();
+        return;
+      }
+      
+      this.selectedProduct = updatedProduct;
+      // Retain selection
+      const stillExists = this.selectedProduct.variants.find(v => this.selectedVariant && v.id === this.selectedVariant.id);
+      if (stillExists) {
+        this.selectedVariant = stillExists;
+      } else {
+        this.selectedVariant = this.selectedProduct.variants.find(v => v.stock_quantity > 0) || this.selectedProduct.variants[0];
+      }
+      
+      this.renderProductDetailModal();
+    } catch (err) {
+      this.closeProductDetail();
+      this.showToast('สินค้านี้ถูกยกเลิกการขายแล้ว', 'warning');
+      this.loadProducts();
+    }
+  }
+
   closeProductDetail() {
     document.getElementById('product-detail-modal').classList.remove('active');
     this.selectedProduct = null;
@@ -746,11 +1066,7 @@ class TeraSmartApp {
     content.innerHTML = `
       <div class="product-detail-img-box">
         <div class="product-image-placeholder">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:100px; height:100px;">
-            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
-            <line x1="8" y1="21" x2="16" y2="21"></line>
-            <line x1="12" y1="17" x2="12" y2="21"></line>
-          </svg>
+          ${this.getProductSvg(p.name)}
         </div>
       </div>
       
@@ -774,12 +1090,21 @@ class TeraSmartApp {
         </div>
 
         <div class="product-actions-row">
-          <button class="btn btn-secondary" ${isVarOutOfStock ? 'disabled' : ''} onclick="app.addToCartClick(false)">
-            เพิ่มลงตะกร้า
-          </button>
-          <button class="btn btn-primary" ${isVarOutOfStock ? 'disabled' : ''} onclick="app.addToCartClick(true)">
-            ซื้อเลย (Buy Now)
-          </button>
+          ${isVarOutOfStock 
+            ? `
+              <button class="btn btn-disabled" disabled style="background-color: var(--border-color); color: var(--text-muted); cursor: not-allowed; box-shadow: none; border: 1px solid var(--border-color);">
+                สินค้าหมด (Out of Stock)
+              </button>
+            `
+            : `
+              <button class="btn btn-secondary" onclick="app.addToCartClick(false)">
+                เพิ่มลงตะกร้า
+              </button>
+              <button class="btn btn-primary" onclick="app.addToCartClick(true)">
+                ซื้อเลย (Buy Now)
+              </button>
+            `
+          }
         </div>
       </div>
 
@@ -813,19 +1138,31 @@ class TeraSmartApp {
     // Update price and stock indicator
     document.getElementById('detail-price-text').innerText = `${parseFloat(this.selectedVariant.price).toFixed(2)} ฿`;
     
-    const badge = document.getElementById('detail-stock-badge');
-    const isOutOfStock = this.selectedVariant.stock_quantity <= 0;
+    const actionsRow = document.querySelector('.product-actions-row');
     
     if (isOutOfStock) {
       badge.className = 'stock-status-badge stock-out';
       badge.innerText = 'สินค้าหมด (Out of Stock)';
-      // Disable buttons
-      document.querySelectorAll('.product-actions-row button').forEach(btn => btn.disabled = true);
+      if (actionsRow) {
+        actionsRow.innerHTML = `
+          <button class="btn btn-disabled" disabled style="background-color: var(--border-color); color: var(--text-muted); cursor: not-allowed; box-shadow: none; border: 1px solid var(--border-color);">
+            สินค้าหมด (Out of Stock)
+          </button>
+        `;
+      }
     } else {
       badge.className = 'stock-status-badge stock-in';
       badge.innerText = `มีในสต็อก (${this.selectedVariant.stock_quantity} ชิ้น)`;
-      // Enable buttons
-      document.querySelectorAll('.product-actions-row button').forEach(btn => btn.disabled = false);
+      if (actionsRow) {
+        actionsRow.innerHTML = `
+          <button class="btn btn-secondary" onclick="app.addToCartClick(false)">
+            เพิ่มลงตะกร้า
+          </button>
+          <button class="btn btn-primary" onclick="app.addToCartClick(true)">
+            ซื้อเลย (Buy Now)
+          </button>
+        `;
+      }
     }
   }
 
@@ -834,7 +1171,17 @@ class TeraSmartApp {
     if (!this.token) return;
     try {
       const res = await this.apiRequest('/api/v1/cart');
-      this.cartItems = res.data;
+      const newData = res.data || [];
+      
+      // รักษาค่าเลือกติ๊กชำระเงินของลูกค้า (ถ้ามีอยู่ก่อนแล้ว)
+      this.cartItems = newData.map(newItem => {
+        const prevItem = (this.cartItems || []).find(p => p.cart_item_id === newItem.cart_item_id);
+        return {
+          ...newItem,
+          selected: prevItem ? prevItem.selected : true
+        };
+      });
+      
       this.updateCartBadge();
     } catch (err) {
       console.error(err);
@@ -851,6 +1198,14 @@ class TeraSmartApp {
     setTimeout(() => badge.classList.remove('bounce'), 250);
   }
 
+  toggleCartItemSelect(index, checkbox) {
+    const item = this.cartItems[index];
+    if (item && checkbox) {
+      item.selected = checkbox.checked;
+      this.renderCart();
+    }
+  }
+
   async addToCartClick(goToCheckout = false) {
     if (!this.token) {
       this.showToast('กรุณาเข้าสู่ระบบก่อนหยิบสินค้าลงตะกร้า', 'error');
@@ -861,21 +1216,32 @@ class TeraSmartApp {
 
     if (!this.selectedVariant) return;
 
-    try {
-      await this.apiRequest('/api/v1/cart/add', 'POST', {
+    if (goToCheckout) {
+      // Buy Now: ตั้งค่าโหมดเป็นแบบซื้อทันที โดยไม่ต้องเพิ่มสินค้าเข้าตะกร้าในฐานข้อมูล
+      this.checkoutMode = 'buy_now';
+      this.buyNowItem = {
         variant_id: this.selectedVariant.id,
-        quantity: 1
-      });
-
-      this.showToast('เพิ่มสินค้าลงในตะกร้าสำเร็จ!', 'success');
-      await this.loadCart();
+        quantity: 1,
+        name: this.selectedProduct.name,
+        variant_name: this.selectedVariant.variant_name,
+        price: this.selectedVariant.price
+      };
       this.closeProductDetail();
+      this.switchTab('checkout');
+    } else {
+      // Add to Cart: เพิ่มเข้าตะกร้าสินค้าปกติ
+      try {
+        await this.apiRequest('/api/v1/cart/add', 'POST', {
+          variant_id: this.selectedVariant.id,
+          quantity: 1
+        });
 
-      if (goToCheckout) {
-        this.switchTab('checkout');
+        this.showToast('เพิ่มสินค้าลงในตะกร้าสำเร็จ!', 'success');
+        await this.loadCart();
+        this.closeProductDetail();
+      } catch (err) {
+        this.showToast(err.message || 'ไม่สามารถหยิบสินค้าลงตะกร้าได้', 'error');
       }
-    } catch (err) {
-      this.showToast(err.message || 'ไม่สามารถหยิบสินค้าลงตะกร้าได้', 'error');
     }
   }
 
@@ -924,31 +1290,35 @@ class TeraSmartApp {
     }
 
     let subtotal = 0;
-    const itemsHtml = this.cartItems.map(item => {
+    const itemsHtml = this.cartItems.map((item, index) => {
       const itemSub = parseFloat(item.price) * item.quantity;
-      subtotal += itemSub;
+      if (item.selected) {
+        subtotal += itemSub;
+      }
       
       return `
         <div class="cart-item-row">
+          <!-- ติ๊กเลือกชำระเงินสินค้าชิ้นนี้ -->
+          <div class="cart-item-select-checkbox" style="margin-right: 15px; display: flex; align-items: center;">
+            <input type="checkbox" class="cart-item-checkbox" data-id="${item.cart_item_id}" style="width: 20px; height: 20px; accent-color: var(--primary-color); cursor: pointer;" ${item.selected ? 'checked' : ''} onchange="app.toggleCartItemSelect(${index}, this)">
+          </div>
           <div class="cart-item-img">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-              <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
-            </svg>
+            ${this.getProductSvg(item.name)}
           </div>
           <div class="cart-item-details">
             <h4>${item.name}</h4>
             <p>ตัวเลือก: ${item.variant_name}</p>
           </div>
           <div class="cart-item-quantity">
-            <button class="qty-btn" onclick="app.updateQty(${item.cart_item_id}, ${item.quantity - 1})">-</button>
+            <button class="qty-btn" onclick="app.updateQty('${item.cart_item_id}', ${item.quantity - 1})">-</button>
             <span class="qty-val">${item.quantity}</span>
-            <button class="qty-btn" onclick="app.updateQty(${item.cart_item_id}, ${item.quantity + 1})">+</button>
+            <button class="qty-btn" onclick="app.updateQty('${item.cart_item_id}', ${item.quantity + 1})">+</button>
           </div>
           <div class="cart-item-price">
             ${itemSub.toFixed(2)} ฿
           </div>
           <div>
-            <button class="remove-cart-item-btn" onclick="app.deleteCartItem(${item.cart_item_id})">&times;</button>
+            <button class="remove-cart-item-btn" onclick="app.deleteCartItem('${item.cart_item_id}')">&times;</button>
           </div>
         </div>
       `;
@@ -956,6 +1326,7 @@ class TeraSmartApp {
 
     const taxAmount = subtotal * 0.07;
     const totalAmount = subtotal + taxAmount;
+    const selectedCount = this.cartItems.filter(i => i.selected).length;
 
     wrapper.innerHTML = `
       <div class="cart-items-panel">
@@ -978,7 +1349,7 @@ class TeraSmartApp {
             <span>${totalAmount.toFixed(2)} ฿</span>
           </div>
         </div>
-        <button class="btn btn-primary checkout-btn" onclick="app.switchTab('checkout')">
+        <button class="btn btn-primary checkout-btn" ${selectedCount === 0 ? 'disabled style="opacity: 0.5; cursor: not-allowed;"' : ''} onclick="app.switchTab('checkout')">
           ไปหน้าชำระเงิน
         </button>
       </div>
@@ -1035,24 +1406,85 @@ class TeraSmartApp {
     let subtotal = 0;
     const summaryItems = document.getElementById('checkout-summary-items');
     
-    summaryItems.innerHTML = this.cartItems.map(item => {
-      const itemSub = parseFloat(item.price) * item.quantity;
-      subtotal += itemSub;
+    if (this.checkoutMode === 'buy_now' && this.buyNowItem) {
+      const itemSub = parseFloat(this.buyNowItem.price) * this.buyNowItem.quantity;
+      subtotal = itemSub;
       
-      return `
+      summaryItems.innerHTML = `
         <div class="summary-item-row">
-          <span class="summary-item-name">${item.name} (${item.variant_name}) x ${item.quantity}</span>
+          <span class="summary-item-name">${this.buyNowItem.name} (${this.buyNowItem.variant_name}) x ${this.buyNowItem.quantity}</span>
           <span class="summary-item-price">${itemSub.toFixed(2)} ฿</span>
         </div>
       `;
-    }).join('');
+    } else {
+      const selectedItems = this.cartItems.filter(item => item.selected);
+      summaryItems.innerHTML = selectedItems.map(item => {
+        const itemSub = parseFloat(item.price) * item.quantity;
+        subtotal += itemSub;
+        
+        return `
+          <div class="summary-item-row">
+            <span class="summary-item-name">${item.name} (${item.variant_name}) x ${item.quantity}</span>
+            <span class="summary-item-price">${itemSub.toFixed(2)} ฿</span>
+          </div>
+        `;
+      }).join('');
+    }
 
     const taxAmount = subtotal * 0.07;
-    const totalAmount = subtotal + taxAmount;
+    
+    // Calculate Promo Discount
+    let discountAmount = 0.00;
+    if (this.selectedCoupon) {
+      if (this.selectedCoupon.discount_type === 'percentage') {
+        discountAmount = parseFloat((subtotal * (this.selectedCoupon.discount_value / 100)).toFixed(2));
+      } else if (this.selectedCoupon.discount_type === 'fixed') {
+        discountAmount = parseFloat(this.selectedCoupon.discount_value.toFixed(2));
+      }
+    }
+    
+    const totalAmount = Math.max(0.00, subtotal + taxAmount - discountAmount);
 
     document.getElementById('checkout-subtotal').innerText = `${subtotal.toFixed(2)} ฿`;
     document.getElementById('checkout-tax').innerText = `${taxAmount.toFixed(2)} ฿`;
+    document.getElementById('checkout-discount').innerText = `-${discountAmount.toFixed(2)} ฿`;
     document.getElementById('checkout-total').innerText = `${totalAmount.toFixed(2)} ฿`;
+  }
+
+  async applyPromoCode() {
+    const input = document.getElementById('checkout-promo-input');
+    const msgEl = document.getElementById('checkout-promo-message');
+    const code = input ? input.value.trim() : '';
+
+    if (!code) {
+      this.showToast('กรุณาระบุรหัสส่วนลด', 'error');
+      return;
+    }
+
+    // Calculate subtotal of current cart items
+    let subtotal = 0;
+    this.cartItems.forEach(item => {
+      subtotal += parseFloat(item.price) * item.quantity;
+    });
+
+    try {
+      const res = await this.apiRequest('/api/v1/coupons/validate', 'POST', { code, order_amount: subtotal });
+      this.selectedCoupon = res.data;
+      
+      msgEl.innerText = `ประยุกต์ใช้โค้ดส่วนลด "${this.selectedCoupon.code}" สำเร็จ! ลดทันที ${this.selectedCoupon.discount_type === 'percentage' ? this.selectedCoupon.discount_value + '%' : this.selectedCoupon.discount_value + ' ฿'}`;
+      msgEl.classList.remove('hidden');
+      msgEl.style.color = 'var(--success-color)';
+      
+      this.showToast('ประยุกต์ใช้โค้ดส่วนลดสำเร็จ', 'success');
+      this.renderCheckout();
+    } catch (err) {
+      this.selectedCoupon = null;
+      msgEl.innerText = err.message || 'คูปองไม่สามารถใช้งานได้';
+      msgEl.classList.remove('hidden');
+      msgEl.style.color = 'var(--error-color)';
+      this.showToast(err.message || 'ไม่สามารถใช้งานคูปองได้', 'error');
+      this.renderCheckout();
+    }
   }
 
   selectAddress(addressId) {
@@ -1134,9 +1566,28 @@ class TeraSmartApp {
     }
 
     try {
-      const res = await this.apiRequest('/api/v1/orders', 'POST', {
-        address_id: this.selectedAddressId
-      });
+      const payload = {
+        address_id: this.selectedAddressId,
+        coupon_id: this.selectedCoupon ? this.selectedCoupon.id : null
+      };
+
+      if (this.checkoutMode === 'buy_now' && this.buyNowItem) {
+        payload.buy_now_item = {
+          variant_id: this.buyNowItem.variant_id,
+          quantity: this.buyNowItem.quantity
+        };
+      } else {
+        // ส่งเฉพาะไอดีสินค้าในตะกร้าที่กดติ๊กเลือกชำระเงิน
+        payload.selected_cart_item_ids = this.cartItems
+          .filter(item => item.selected)
+          .map(item => item.cart_item_id);
+      }
+
+      const res = await this.apiRequest('/api/v1/orders', 'POST', payload);
+      
+      this.selectedCoupon = null; // Clear coupon after order placement
+      this.buyNowItem = null;
+      this.checkoutMode = 'cart';
       
       this.currentOrder = res.data; // { id, total_price, ... }
       this.showToast('สร้างคำสั่งซื้อเรียบร้อย! กรุณาดำเนินการชำระเงิน', 'success');
@@ -1214,31 +1665,10 @@ class TeraSmartApp {
       // Display total
       document.getElementById('qr-total-amount').innerText = parseFloat(payload.amount).toFixed(2);
       
-      // Generate QR Code simulation (simple canvas image)
+      // Generate QR Code image (renders real PromptPay Base64 DataURL from API)
       const qrCanvas = document.getElementById('qr-code-canvas');
-      // Set to a standard simulated visual PromptPay QR Code
       qrCanvas.innerHTML = `
-        <div style="width: 150px; height: 150px; background-color: #0b0c10; display: flex; flex-direction: column; justify-content: center; align-items: center; border: 4px solid #007bc3; padding: 5px;">
-          <div style="background-color: #fff; width: 100%; height: 100%; display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px; padding: 2px;">
-            <!-- Dummy grid simulating QR blocks -->
-            <div style="background-color:#000; grid-column:span 2; grid-row:span 2;"></div>
-            <div style="background-color:#fff;"></div>
-            <div style="background-color:#000;"></div>
-            <div style="background-color:#fff;"></div>
-            <div style="background-color:#000;"></div>
-            <div style="background-color:#fff;"></div>
-            <div style="background-color:#000; grid-column:span 2; grid-row:span 2;"></div>
-            <div style="background-color:#000;"></div>
-            <div style="background-color:#fff;"></div>
-            <div style="background-color:#000;"></div>
-            <div style="background-color:#fff;"></div>
-            <div style="background-color:#000;"></div>
-            <div style="background-color:#fff;"></div>
-            <div style="background-color:#000;"></div>
-            <div style="background-color:#fff;"></div>
-            <div style="background-color:#000;"></div>
-          </div>
-        </div>
+        <img src="${payload.qr_image}" style="width: 160px; height: 160px; object-fit: contain; border-radius: 8px; background: #fff; padding: 4px; border: 1px solid var(--border-color);" alt="PromptPay QR">
       `;
 
       // Start countdown of 5 minutes (300 seconds)
@@ -1263,8 +1693,20 @@ class TeraSmartApp {
         clearInterval(this.countdownTimer);
         display.innerText = 'EXPIRED';
         display.style.color = 'var(--error-color)';
-        this.showToast('QR Code หมดอายุแล้ว กรุณายกเลิกและสั่งซื้อใหม่', 'error');
-        document.getElementById('submit-slip-btn').disabled = true;
+        
+        // Stop current polling loop
+        if (this.paymentPollingInterval) {
+          clearInterval(this.paymentPollingInterval);
+          this.paymentPollingInterval = null;
+        }
+        
+        // Alert user that transaction expired, then auto-regenerate new payment QR code
+        this.showToast('หมดเวลาชำระเงิน ระบบกำลังสร้าง QR Code ใหม่เพื่อชำระเงินรายการนี้อีกครั้ง...', 'error');
+        
+        setTimeout(() => {
+          this.generatePromptPayQR();
+          this.startPaymentPolling(this.currentOrder.id);
+        }, 1500);
         return;
       }
       
@@ -1908,7 +2350,7 @@ class TeraSmartApp {
       const res = await this.apiRequest('/api/v1/auth/avatar', 'PUT', formData, true);
       this.showToast('อัปโหลดรูปภาพโปรไฟล์สำเร็จ!', 'success');
       this.user.profile_image = res.data.profile_image;
-      localStorage.setItem('user', JSON.stringify(this.user));
+      localStorage.setItem('tera_user', JSON.stringify(this.user));
       this._croppedBlob = null;
       this.renderProfile();
       this.updateAuthHeader();
@@ -1965,7 +2407,7 @@ class TeraSmartApp {
       this.user.phone = res.data.phone;
       
       // อัปเดตใน LocalStorage
-      localStorage.setItem('user', JSON.stringify(this.user));
+      localStorage.setItem('tera_user', JSON.stringify(this.user));
       
       // โหลดการแสดงผลใหม่
       this.renderProfile();
@@ -2078,9 +2520,9 @@ class TeraSmartApp {
         <label style="display:flex; align-items:center; gap:8px; margin-bottom:16px; cursor:pointer; font-size:0.9rem;">
           <input type="checkbox" id="am-default" ${addr && addr.is_default ? 'checked' : ''}> ตั้งเป็นที่อยู่เริ่มต้น
         </label>
-        <div style="display:flex; gap:10px;">
+        <div style="display:flex; gap:10px; width:100%;">
           <button class="btn btn-primary" style="flex:1;" onclick="app.submitAddressModal(${addressId || 'null'})">บันทึก</button>
-          <button class="btn btn-secondary" onclick="document.getElementById('address-edit-modal').remove()">ยกเลิก</button>
+          <button class="btn btn-secondary" style="flex:1;" onclick="document.getElementById('address-edit-modal').remove()">ยกเลิก</button>
         </div>
       </div>
     `;
@@ -2142,38 +2584,6 @@ class TeraSmartApp {
     } catch (err) {
       this.showToast(err.message || 'ไม่สำเร็จ', 'error');
     }
-  }
-
-  // --- PROMPTPAY QR GENERATOR ---
-  async generatePromptPayQR() {
-    const amountInput = document.getElementById('qr-amount-input');
-    const amount = parseFloat(amountInput ? amountInput.value : '');
-    if (!amount || amount <= 0) {
-      this.showToast('กรุณาระบุจำนวนเงินที่ถูกต้อง (มากกว่า 0)', 'error');
-      return;
-    }
-
-    try {
-      const res = await this.apiRequest(`/api/v1/payment-methods/promptpay-qr?amount=${amount}`);
-      const { qr_image, promptpay_id, amount: amt } = res.data;
-
-      const qrPanel = document.getElementById('qr-result-panel');
-      document.getElementById('qr-result-img').src = qr_image;
-      document.getElementById('qr-result-amount').innerText = `฿${parseFloat(amt).toLocaleString('th-TH', { minimumFractionDigits: 2 })}`;
-      document.getElementById('qr-result-id').innerText = `PromptPay: ${promptpay_id}`;
-      qrPanel.style.display = 'block';
-    } catch (err) {
-      this.showToast(err.message || 'ไม่สามารถสร้าง QR ได้ กรุณาตรวจสอบการตั้งค่า PROMPTPAY_ID ใน .env', 'error');
-    }
-  }
-
-  downloadQR() {
-    const img = document.getElementById('qr-result-img');
-    if (!img || !img.src) return;
-    const a = document.createElement('a');
-    a.href = img.src;
-    a.download = `terasmart-promptpay-qr-${Date.now()}.png`;
-    a.click();
   }
 }
 

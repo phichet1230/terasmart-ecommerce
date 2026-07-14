@@ -55,7 +55,7 @@ exports.generateQR = async (req, res) => {
       data: {
         order_id: order.id,
         amount: parsedAmount,
-        qr_image: qrDataUrl,
+        qr_code_data: payload,
         expires_at: expiresAt.toISOString(),
       }
     });

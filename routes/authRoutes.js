@@ -37,11 +37,23 @@ const upload = multer({
   }
 });
 
+const oauthController = require('../controllers/oauthController');
+
 // Public routes
 router.post('/register', authController.register);
 router.post('/login', authController.login);
 router.post('/forgot-password', authController.forgotPassword);
 router.post('/reset-password', authController.resetPassword);
+
+// OAuth Redirection & Callback Routes
+router.get('/google', oauthController.redirectToGoogle);
+router.get('/google/callback', oauthController.handleGoogleCallback);
+
+router.get('/line', oauthController.redirectToLine);
+router.get('/line/callback', oauthController.handleLineCallback);
+
+router.get('/facebook', oauthController.redirectToFacebook);
+router.get('/facebook/callback', oauthController.handleFacebookCallback);
 
 // Protected routes
 router.put('/profile', protect, authController.updateProfile);

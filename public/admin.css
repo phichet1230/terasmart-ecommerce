@@ -32,23 +32,19 @@
 }
 
 .stat-card {
-  background: linear-gradient(135deg, var(--bg-card) 0%, rgba(27, 29, 39, 0.9) 100%);
-  border: 1px solid var(--border-color);
-  border-radius: 12px;
+  background: linear-gradient(135deg, var(--bg-card) 0%, rgba(20, 22, 32, 0.7) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 16px;
   padding: 24px;
   box-shadow: var(--shadow-main);
   position: relative;
   overflow: hidden;
+  transition: transform var(--transition-speed) ease, border-color var(--transition-speed) ease;
 }
 
-.stat-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 4px;
-  height: 100%;
-  background-color: var(--primary-color);
+.stat-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(255, 59, 48, 0.2);
 }
 
 .stat-title {
@@ -116,30 +112,55 @@
   text-align: left;
 }
 
-.admin-table th, .admin-table td {
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--border-color);
-}
-
 .admin-table th {
+  padding: 16px 20px;
   font-weight: 600;
   color: var(--text-muted);
   background-color: rgba(255, 255, 255, 0.02);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.admin-table td {
+  padding: 16px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  color: #e2e8f0;
+  vertical-align: middle;
+}
+
+.admin-table tbody tr {
+  transition: all var(--transition-speed) ease;
 }
 
 .admin-table tbody tr:hover {
-  background-color: rgba(255, 255, 255, 0.01);
+  background-color: rgba(255, 255, 255, 0.02) !important;
+}
+
+.admin-table tbody tr:last-child td {
+  border-bottom: none;
 }
 
 /* Badge Status Styles */
 .badge {
   display: inline-flex;
   align-items: center;
-  padding: 2px 8px;
-  border-radius: 12px;
-  font-size: 0.75rem;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 99px;
+  font-size: 0.72rem;
   font-weight: 600;
-  text-transform: capitalize;
+  letter-spacing: 0.2px;
+}
+
+.badge::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: currentColor;
+  display: inline-block;
 }
 
 .badge-pending {
@@ -170,6 +191,66 @@
 .badge-suspended {
   background-color: rgba(245, 101, 101, 0.15);
   color: #f56565;
+}
+
+/* Action button overrides inside all admin tables */
+.admin-table .btn {
+  padding: 6px 14px !important;
+  font-size: 0.78rem !important;
+  border-radius: 8px !important;
+  font-weight: 600 !important;
+  box-shadow: none !important;
+  width: auto !important;
+  white-space: nowrap !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  height: 32px !important;
+  transition: all var(--transition-speed) ease !important;
+}
+
+.admin-table .btn-secondary {
+  background-color: rgba(255, 255, 255, 0.04) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  color: var(--text-main) !important;
+}
+
+.admin-table .btn-secondary:hover {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+}
+
+.admin-table .btn-confirm {
+  background-color: rgba(52, 199, 89, 0.12) !important;
+  border: 1px solid rgba(52, 199, 89, 0.3) !important;
+  color: #34c759 !important;
+}
+
+.admin-table .btn-confirm:hover {
+  background-color: rgba(52, 199, 89, 0.22) !important;
+  border-color: rgba(52, 199, 89, 0.5) !important;
+}
+
+.admin-table .btn-ship {
+  background-color: rgba(66, 153, 225, 0.12) !important;
+  border: 1px solid rgba(66, 153, 225, 0.3) !important;
+  color: #4299e1 !important;
+}
+
+.admin-table .btn-ship:hover {
+  background-color: rgba(66, 153, 225, 0.22) !important;
+  border-color: rgba(66, 153, 225, 0.5) !important;
+}
+
+.admin-table .btn-danger-outline {
+  background-color: rgba(255, 59, 48, 0.12) !important;
+  border: 1px solid rgba(255, 59, 48, 0.3) !important;
+  color: #ff3b30 !important;
+}
+
+.admin-table .btn-danger-outline:hover {
+  background-color: rgba(255, 59, 48, 0.22) !important;
+  border-color: rgba(255, 59, 48, 0.5) !important;
 }
 
 /* Admin Form grids & Modals */
@@ -268,4 +349,41 @@
 
 .variant-stock-badge.low-stock strong {
   color: #ed8936;
+}
+
+/* Responsive Table Wrapper Layout Utilities */
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin-top: 15px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background-color: var(--bg-card);
+}
+
+.table-responsive .admin-table {
+  margin-top: 0 !important;
+}
+
+/* Header & Navigation Spacing fixes to prevent squishing */
+.header-container {
+  max-width: 1400px !important;
+  width: 100% !important;
+  flex-wrap: wrap !important;
+  gap: 15px !important;
+  padding: 12px 24px !important;
+}
+
+.main-nav {
+  gap: 8px !important;
+}
+
+.main-nav .nav-btn {
+  font-size: 0.85rem !important;
+  padding: 6px 12px !important;
+}
+
+.auth-status-area {
+  flex-shrink: 0 !important;
 }

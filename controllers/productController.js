@@ -11,10 +11,12 @@ exports.getAllProducts = async (req, res) => {
              c.name as category_name,
              MIN(v.price) as min_price, 
              MAX(v.price) as max_price,
-             SUM(v.stock_quantity) as total_stock
+             COALESCE(SUM(v.stock_quantity), 0) as total_stock,
+             COALESCE(SUM(oi.quantity), 0) as sales_count
       FROM products p
       LEFT JOIN categories c ON p.category_id = c.id
       LEFT JOIN product_variants v ON p.id = v.product_id
+      LEFT JOIN order_items oi ON v.id = oi.variant_id
       WHERE p.deleted_at IS NULL AND p.is_active = true
     `;
     
@@ -55,7 +57,8 @@ exports.getAllProducts = async (req, res) => {
     params.push(parseInt(offset));
     const offsetParam = `$${params.length}`;
 
-    query += ` ORDER BY p.id DESC LIMIT ${limitParam} OFFSET ${offsetParam}`;
+    // เรียงลำดับ: 1. สินค้าที่มีสต็อกอยู่ก่อน 2. สินค้าที่มียอดสั่งซื้อบ่อยสุด (sales_count) 3. สินค้าที่ลงล่าสุด
+    query += ` ORDER BY (CASE WHEN COALESCE(SUM(v.stock_quantity), 0) > 0 THEN 1 ELSE 0 END) DESC, COALESCE(SUM(oi.quantity), 0) DESC, p.id DESC LIMIT ${limitParam} OFFSET ${offsetParam}`;
     
     const productsResult = await pool.query(query, params);
 

@@ -9,8 +9,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <!-- Stylesheet -->
-  <link rel="stylesheet" href="style.css">
-  <link rel="stylesheet" href="admin.css">
+  <link rel="stylesheet" href="style.css?v=109">
+  <link rel="stylesheet" href="admin.css?v=109">
 </head>
 <body>
 
@@ -28,11 +28,10 @@
       </div>
 
       <nav class="main-nav">
-        <button id="admin-nav-dashboard" class="nav-btn active" onclick="admin.switchTab('dashboard')">สรุปยอดขาย</button>
-        <button id="admin-nav-orders" class="nav-btn" onclick="admin.switchTab('orders')">จัดการออเดอร์</button>
-        <button id="admin-nav-inventory" class="nav-btn" onclick="admin.switchTab('inventory')">คลังสินค้า</button>
-        <button id="admin-nav-customers" class="nav-btn" onclick="admin.switchTab('customers')">จัดการสมาชิก</button>
-        <button class="nav-btn logout-nav-btn" onclick="window.location.href='/'">กลับหน้าแรกหลัก</button>
+        <button id="admin-nav-dashboard" class="nav-btn active" onclick="admin.switchTab('dashboard')">ผลประกอบการและการเงิน</button>
+        <button id="admin-nav-orders" class="nav-btn" onclick="admin.switchTab('orders')">การอนุมัติใบสั่งซื้อสินค้า</button>
+        <button id="admin-nav-inventory" class="nav-btn" onclick="admin.switchTab('inventory')">การบริหารคลังสินค้า</button>
+        <button id="admin-nav-customers" class="nav-btn" onclick="admin.switchTab('customers')">ทะเบียนข้อมูลลูกค้า</button>
       </nav>
 
       <div class="auth-status-area" id="admin-header-status">
@@ -80,21 +79,65 @@
         <!-- Inventory Warning Box -->
         <div class="dashboard-card full-width">
           <h3>การแจ้งเตือนสต็อกสินค้าใกล้หมด (Low Stock Warning)</h3>
-          <table class="admin-table margin-top">
-            <thead>
-              <tr>
-                <th>สินค้าหลัก</th>
-                <th>ตัวเลือก (Variant)</th>
-                <th>SKU รหัส</th>
-                <th>ราคาขาย</th>
-                <th>สต็อกปัจจุบัน</th>
-                <th>สถานะแจ้งเตือน</th>
-              </tr>
-            </thead>
-            <tbody id="low-stock-warnings-table">
-              <!-- Dynamically populated -->
-            </tbody>
-          </table>
+          <div class="table-responsive">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>สินค้าหลัก</th>
+                  <th>ตัวเลือก (Variant)</th>
+                  <th>SKU รหัส</th>
+                  <th>ราคาขาย</th>
+                  <th>สต็อกปัจจุบัน</th>
+                  <th>สถานะแจ้งเตือน</th>
+                </tr>
+              </thead>
+              <tbody id="low-stock-warnings-table">
+                <!-- Dynamically populated -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Monthly Sales Target & KPI Table -->
+        <div class="dashboard-card full-width">
+          <h3>ตารางสรุปยอดขายสะสมรายเดือนเทียบกับเป้าหมาย (Monthly Sales Target & KPI)</h3>
+          <div class="table-responsive">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>ทีมขาย</th>
+                  <th>เป้าหมายประจำเดือน (Target)</th>
+                  <th>ยอดขายสะสมจริง (Actual Sales)</th>
+                  <th>อัตราความสำเร็จ (KPI %)</th>
+                  <th>แถบแสดงความสำเร็จ (Progress)</th>
+                </tr>
+              </thead>
+              <tbody id="team-kpis-table">
+                <!-- Dynamically populated -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Admin Audit Logs -->
+        <div class="dashboard-card full-width">
+          <h3>บันทึกประวัติการทำงานของผู้ดูแลระบบ (System Audit Logs)</h3>
+          <div class="table-responsive">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>ผู้ดำเนินการ (Admin)</th>
+                  <th>การทำงาน (Action)</th>
+                  <th>ตารางเป้าหมาย (Target Table)</th>
+                  <th>รหัสอ้างอิงเป้าหมาย (Target ID)</th>
+                  <th>วันเวลาทำรายการ (Created At)</th>
+                </tr>
+              </thead>
+              <tbody id="audit-logs-table">
+                <!-- Dynamically populated -->
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </section>
@@ -102,8 +145,9 @@
     <!-- ORDERS MANAGEMENT VIEW -->
     <section id="admin-tab-orders" class="tab-section">
       <div class="section-title-wrapper flex-row">
-        <h2>ระบบจัดการคำสั่งซื้อ (Order Management)</h2>
-        <div class="filter-controls">
+        <h2>ระบบบริหารจัดการและอนุมัติใบสั่งซื้อสินค้า (Purchase Order Processing & Fulfillment)</h2>
+        <div class="filter-controls" style="display:flex; gap:10px; align-items:center;">
+          <button class="btn btn-secondary btn-sm" onclick="admin.exportOrdersCSV()" style="width:auto; padding:8px 12px; font-size:0.8rem; font-family:var(--font-family);">ส่งออกข้อมูล CSV</button>
           <select id="order-status-filter" onchange="admin.handleOrderFilter()">
             <option value="">กรองออเดอร์ทั้งหมด</option>
             <option value="pending">รอยืนยันชำระเงิน (Pending)</option>
@@ -115,22 +159,24 @@
       </div>
 
       <div class="dashboard-card">
-        <table class="admin-table">
-          <thead>
-            <tr>
-              <th>รหัสออเดอร์</th>
-              <th>ชื่อลูกค้า / บัญชี</th>
-              <th>วันที่สั่งซื้อ</th>
-              <th>ยอดชำระเงิน</th>
-              <th>การชำระเงิน</th>
-              <th>สถานะหลัก</th>
-              <th>หลักฐาน / การดำเนินการ</th>
-            </tr>
-          </thead>
-          <tbody id="admin-orders-table">
-            <!-- Dynamically populated -->
-          </tbody>
-        </table>
+        <div class="table-responsive">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>รหัสออเดอร์</th>
+                <th>ชื่อลูกค้า / บัญชี</th>
+                <th>วันที่สั่งซื้อ</th>
+                <th>ยอดชำระเงิน</th>
+                <th>การชำระเงิน</th>
+                <th>สถานะหลัก</th>
+                <th>หลักฐาน / การดำเนินการ</th>
+              </tr>
+            </thead>
+            <tbody id="admin-orders-table">
+              <!-- Dynamically populated -->
+            </tbody>
+          </table>
+        </div>
       </div>
     </section>
 
@@ -162,32 +208,37 @@
     <!-- INVENTORY CRUD VIEW -->
     <section id="admin-tab-inventory" class="tab-section">
       <div class="section-title-wrapper flex-row">
-        <h2>ระบบจัดการคลังสินค้า (Inventory CRUD)</h2>
-        <button class="btn btn-primary btn-auto" onclick="admin.showAddProductModal()">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="icon-sm">
-            <line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line>
-          </svg>
-          เพิ่มสินค้าใหม่
-        </button>
+        <h2>ระบบควบคุมคลังสินค้าและรายการสินค้าคงคลัง (Inventory & Stock Control Center)</h2>
+        <div style="display:flex; gap:10px;">
+          <button class="btn btn-secondary btn-auto" onclick="admin.exportProductsCSV()" style="width:auto; padding:8px 12px; font-size:0.8rem; height:42px; font-family:var(--font-family);">ส่งออกข้อมูล CSV</button>
+          <button class="btn btn-primary btn-auto" onclick="admin.showAddProductModal()" style="height:42px;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="icon-sm">
+              <line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            เพิ่มสินค้าใหม่
+          </button>
+        </div>
       </div>
 
       <div class="dashboard-card">
-        <table class="admin-table">
-          <thead>
-            <tr>
-              <th>รหัสสินค้า</th>
-              <th>ชื่อสินค้าหลัก</th>
-              <th>Slug หน้าเว็บ</th>
-              <th>หมวดหมู่</th>
-              <th>ตัวเลือกสินค้า & สต็อกคงเหลือ</th>
-              <th>สถานะเปิดใช้งาน</th>
-              <th>การดำเนินการ</th>
-            </tr>
-          </thead>
-          <tbody id="admin-products-table">
-            <!-- Dynamically populated -->
-          </tbody>
-        </table>
+        <div class="table-responsive">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>รหัสสินค้า</th>
+                <th>ชื่อสินค้าหลัก</th>
+                <th>Slug หน้าเว็บ</th>
+                <th>หมวดหมู่</th>
+                <th>ตัวเลือกสินค้า & สต็อกคงเหลือ</th>
+                <th>สถานะเปิดใช้งาน</th>
+                <th>การดำเนินการ</th>
+              </tr>
+            </thead>
+            <tbody id="admin-products-table">
+              <!-- Dynamically populated -->
+            </tbody>
+          </table>
+        </div>
       </div>
     </section>
 
@@ -270,28 +321,30 @@
     <!-- CUSTOMERS MANAGEMENT VIEW -->
     <section id="admin-tab-customers" class="tab-section">
       <div class="section-title-wrapper">
-        <h2>ระบบจัดการสมาชิกและผู้ใช้งาน (Customer Management)</h2>
+        <h2>ระบบจัดการฐานข้อมูลสมาชิกและทะเบียนลูกค้า (Customer Registry & CRM Console)</h2>
       </div>
 
       <div class="dashboard-card">
-        <table class="admin-table">
-          <thead>
-            <tr>
-              <th>รหัสผู้ใช้ ID</th>
-              <th>ชื่อบัญชีสมาชิก</th>
-              <th>อีเมล</th>
-              <th>เบอร์โทรศัพท์</th>
-              <th>จำนวนสั่งซื้อ</th>
-              <th>ยอดซื้อสะสม</th>
-              <th>วันที่สมัคร</th>
-              <th>สถานะบัญชี</th>
-              <th>การจัดการสิทธิ์</th>
-            </tr>
-          </thead>
-          <tbody id="admin-customers-table">
-            <!-- Dynamically populated -->
-          </tbody>
-        </table>
+        <div class="table-responsive">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>รหัสผู้ใช้ ID</th>
+                <th>ชื่อบัญชีสมาชิก</th>
+                <th>อีเมล</th>
+                <th>เบอร์โทรศัพท์</th>
+                <th>จำนวนสั่งซื้อ</th>
+                <th>ยอดซื้อสะสม</th>
+                <th>วันที่สมัคร</th>
+                <th>สถานะบัญชี</th>
+                <th>การจัดการสิทธิ์</th>
+              </tr>
+            </thead>
+            <tbody id="admin-customers-table">
+              <!-- Dynamically populated -->
+            </tbody>
+          </table>
+        </div>
       </div>
     </section>
 
@@ -319,16 +372,74 @@
 
   </main>
 
+  <!-- Edit Profile Modal for Admin Staff -->
+  <div id="admin-profile-modal" class="modal">
+    <div class="modal-content admin-modal-card" style="padding: 24px; max-width: 480px;">
+      <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-bottom: 20px;">
+        <h3 style="margin: 0; font-size: 1.2rem; font-weight: 600;">แก้ไขข้อมูลส่วนตัว</h3>
+        <button class="close-modal-btn" onclick="admin.closeProfileModal()" style="background: none; border: none; font-size: 1.8rem; color: var(--text-muted); cursor: pointer; line-height: 1;">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="admin-profile-form" onsubmit="admin.submitProfileUpdate(event)">
+          <!-- Avatar Preview and Selection -->
+          <div class="form-group" style="margin-bottom: 20px; display: flex; flex-direction: column; align-items: center; gap: 10px;">
+            <div id="admin-avatar-preview" style="width: 80px; height: 80px; border-radius: 50%; background: linear-gradient(135deg, var(--primary-color), #f6ad55); display: flex; justify-content: center; align-items: center; font-weight: 700; font-size: 2rem; color: #fff; border: 2px solid rgba(255,255,255,0.15); overflow: hidden;">
+              A
+            </div>
+            <label class="btn btn-secondary btn-sm" style="width: auto; padding: 6px 12px; font-size: 0.8rem; cursor: pointer; display: inline-flex; align-items: center; justify-content: center;">
+              เลือกรูปภาพใหม่
+              <input type="file" id="admin-avatar-file" accept="image/*" style="display: none;" onchange="admin.previewAdminAvatar(event)">
+            </label>
+            <span id="admin-avatar-filename" style="font-size: 0.75rem; color: var(--text-muted);">ยังไม่ได้เลือกรูปภาพ</span>
+          </div>
+
+          <div class="form-group" style="margin-bottom: 16px;">
+            <label class="form-label" for="admin-profile-username" style="display: block; margin-bottom: 6px; font-size: 0.85rem; color: var(--text-muted);">ชื่อผู้ใช้งาน</label>
+            <input type="text" id="admin-profile-username" class="form-input" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); background-color: var(--bg-input); color: var(--text-main);" required>
+            <span class="input-error" id="admin-username-error" style="color:var(--error-color); font-size:0.75rem; display: block; margin-top: 4px;"></span>
+          </div>
+          <div class="form-group" style="margin-bottom: 20px;">
+            <label class="form-label" for="admin-profile-phone" style="display: block; margin-bottom: 6px; font-size: 0.85rem; color: var(--text-muted);">เบอร์โทรศัพท์</label>
+            <input type="tel" id="admin-profile-phone" class="form-input" placeholder="เช่น 0812345678" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); background-color: var(--bg-input); color: var(--text-main);" required>
+            <span class="input-error" id="admin-phone-error" style="color:var(--error-color); font-size:0.75rem; display: block; margin-top: 4px;"></span>
+          </div>
+          <div class="form-actions flex-row" style="display: flex; gap: 10px; justify-content: flex-end;">
+            <button type="button" class="btn btn-secondary btn-auto" onclick="admin.closeProfileModal()" style="padding: 10px 20px; border-radius: 8px; font-weight: 600; cursor: pointer;">ยกเลิก</button>
+            <button type="submit" id="admin-profile-save-btn" class="btn btn-primary btn-auto" style="padding: 10px 20px; border-radius: 8px; font-weight: 600; cursor: pointer;">บันทึกข้อมูล</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Crop Image Modal for Admin Staff -->
+  <div id="admin-crop-modal" class="modal" style="z-index: 10001;">
+    <div class="modal-content admin-modal-card" style="padding: 24px; max-width: 480px;">
+      <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-bottom: 20px;">
+        <h3 style="margin: 0; font-size: 1.2rem; font-weight: 600;">ปรับแต่งรูปภาพ (Crop / Resize)</h3>
+      </div>
+      <div class="modal-body" style="text-align: center;">
+        <div style="max-height: 300px; margin: 15px 0; overflow: hidden; background: #000; display: flex; justify-content: center; align-items: center; border-radius: 8px;">
+          <img id="admin-crop-image-el" style="max-width: 100%; max-height: 300px; display: block;">
+        </div>
+        <div class="form-actions flex-row" style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+          <button type="button" class="btn btn-secondary btn-auto" onclick="admin.cancelAdminCrop()">ยกเลิก</button>
+          <button type="button" class="btn btn-primary btn-auto" onclick="admin.confirmAdminCrop()">ตกลง</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Footer -->
   <footer class="main-footer">
     <div class="footer-container">
-      <p>&copy; 2026 Tera Group Co., Ltd. Admin Integration Dashboard v6 (RBAC Secured)</p>
+      <p>&copy; 2026 Tera Group Co., Ltd. Admin Integration Dashboard v6 (RBAC Secured) (System v110)</p>
     </div>
   </footer>
 
   <!-- Chart.js from CDN (Pure Canvas draw handles it if CDN fails, but CDN gives standard aesthetic) -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <!-- Admin Controller script -->
-  <script src="admin.js"></script>
+  <script src="admin.js?v=110"></script>
 </body>
 </html>

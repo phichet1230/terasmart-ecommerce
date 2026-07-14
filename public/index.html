@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <!-- Stylesheet -->
-  <link rel="stylesheet" href="style.css?v=10">
+  <link rel="stylesheet" href="style.css?v=109">
 </head>
 <body>
 
@@ -245,6 +245,13 @@
               <!-- Dynamically populated -->
             </div>
             
+            <!-- Promo Code Input Group -->
+            <div class="promo-code-container" style="margin-top: 15px; margin-bottom: 15px; display: flex; gap: 8px;">
+              <input type="text" id="checkout-promo-input" placeholder="ใส่โค้ดส่วนลด (เช่น WELCOME10)" style="flex: 1; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-input); color: var(--text-main); font-family: var(--font-family); font-size: 0.85rem;">
+              <button class="btn btn-secondary" onclick="app.applyPromoCode()" style="width: auto; padding: 8px 16px; font-size: 0.85rem; height: 38px;">ใช้งาน</button>
+            </div>
+            <div id="checkout-promo-message" class="hidden" style="font-size: 0.75rem; color: var(--success-color); margin-bottom: 10px; font-weight: 500; text-align: left;"></div>
+
             <div class="price-breakdown">
               <div class="price-row">
                 <span>ราคารวมสินค้า</span>
@@ -254,9 +261,9 @@
                 <span>ภาษีมูลค่าเพิ่ม (7%)</span>
                 <span id="checkout-tax">0.00 ฿</span>
               </div>
-              <div class="price-row">
+              <div class="price-row" id="checkout-discount-row" style="color: var(--success-color); font-weight: 500;">
                 <span>ส่วนลด</span>
-                <span>0.00 ฿</span>
+                <span id="checkout-discount">0.00 ฿</span>
               </div>
               <div class="price-row total-row">
                 <span>ยอดชำระเงินทั้งสิ้น</span>
@@ -499,11 +506,11 @@
   <!-- Footer -->
   <footer class="main-footer">
     <div class="footer-container">
-      <p>&copy; 2026 Tera Group Co., Ltd. All rights reserved. TeraSmart E-Commerce Platform v5</p>
+      <p>&copy; 2026 Tera Group Co., Ltd. All rights reserved. TeraSmart E-Commerce Platform v5 (System v115)</p>
     </div>
   </footer>
 
   <!-- App Logic script -->
-  <script src="app.js?v=10"></script>
+  <script src="app.js?v=115"></script>
 </body>
 </html>
