@@ -27,6 +27,16 @@ CREATE TABLE password_resets (
     is_used BOOLEAN DEFAULT FALSE
 );
 
+-- 3.5 ตารางเก็บ Refresh Tokens
+CREATE TABLE refresh_tokens (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    token VARCHAR(555) NOT NULL UNIQUE,
+    expires_at TIMESTAMP NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    revoked_at TIMESTAMP
+);
+
 -- 4. ตารางคูปองส่วนลด
 CREATE TABLE coupons (
     id SERIAL PRIMARY KEY,
