@@ -6,10 +6,14 @@ CREATE TABLE users (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     username VARCHAR(255) NOT NULL UNIQUE,
     email VARCHAR(255) NOT NULL UNIQUE,
-    password_hash VARCHAR(255) NOT NULL,
+    password_hash VARCHAR(255),
     phone VARCHAR(10) UNIQUE,
     role VARCHAR(50) DEFAULT 'customer',
     account_status VARCHAR(50) DEFAULT 'active',
+    profile_image VARCHAR(555),
+    google_id VARCHAR(255) UNIQUE,
+    line_id VARCHAR(255) UNIQUE,
+    facebook_id VARCHAR(255) UNIQUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -21,6 +25,16 @@ CREATE TABLE password_resets (
     token VARCHAR(255) NOT NULL,
     expires_at TIMESTAMP NOT NULL,
     is_used BOOLEAN DEFAULT FALSE
+);
+
+-- 3.5 ตารางเก็บ Refresh Tokens
+CREATE TABLE refresh_tokens (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    token VARCHAR(555) NOT NULL UNIQUE,
+    expires_at TIMESTAMP NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    revoked_at TIMESTAMP
 );
 
 -- 4. ตารางคูปองส่วนลด
@@ -119,6 +133,7 @@ CREATE TABLE payments (
     ai_verified_amount DECIMAL(10, 2),
     ai_verified_datetime TIMESTAMP,
     is_ai_verified BOOLEAN DEFAULT FALSE,
+    transaction_ref VARCHAR(100),
     paid_at TIMESTAMP
 );
 
@@ -157,4 +172,15 @@ CREATE TABLE cart_items (
     cart_id UUID REFERENCES carts(id) ON DELETE CASCADE,
     variant_id INTEGER REFERENCES product_variants(id),
     quantity INTEGER NOT NULL DEFAULT 1
+);
+
+-- 13. ตารางวิธีชำระเงินที่บันทึกไว้ (Saved Payment Methods - PromptPay)
+CREATE TABLE IF NOT EXISTS payment_methods (
+    id SERIAL PRIMARY KEY,
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    type VARCHAR(20) NOT NULL DEFAULT 'promptpay',   -- ประเภท: promptpay
+    label VARCHAR(100) DEFAULT 'PromptPay',           -- ชื่อที่แสดง เช่น "PromptPay ธนาคารไทย"
+    promptpay_number VARCHAR(20),                      -- เบอร์มือถือหรือเลขบัตรประชาชน
+    is_default BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
