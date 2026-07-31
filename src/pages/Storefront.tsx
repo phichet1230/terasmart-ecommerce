@@ -1613,7 +1613,6 @@ export default function Storefront() {
             }} 
             style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px' }}
           >
-            <img src="/extracted_img_4.png" alt="TERA Emblem" style={{ height: '36px', width: 'auto', objectFit: 'contain' }} />
             <img src="/tera_footer_logo.png" alt="TERA Text" style={{ height: '28px', width: 'auto', objectFit: 'contain' }} />
           </div>
 
