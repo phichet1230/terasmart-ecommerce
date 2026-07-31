@@ -280,7 +280,7 @@ exports.createProduct = async (req, res) => {
     }
 
     // บันทึกสินค้าหลัก
-    let { category_id, name, slug, short_description, description, image_url, images, spec_table, category_name, price, variants } = req.body;
+    let { category_id, name, slug, short_description, description, image_url, images, spec_table, spec_headers, detail_image_1, detail_image_2, advice_list, accessories_list, category_name, price, variants } = req.body;
 
     let imagesJson = '[]';
     if (images) {
@@ -294,10 +294,14 @@ exports.createProduct = async (req, res) => {
       specTableJson = typeof spec_table === 'string' ? spec_table : JSON.stringify(spec_table);
     }
 
+    let specHeadersJson = spec_headers ? (typeof spec_headers === 'string' ? spec_headers : JSON.stringify(spec_headers)) : '[]';
+    let adviceListJson = advice_list ? (typeof advice_list === 'string' ? advice_list : JSON.stringify(advice_list)) : '[]';
+    let accessoriesListJson = accessories_list ? (typeof accessories_list === 'string' ? accessories_list : JSON.stringify(accessories_list)) : '[]';
+
     const prodResult = await client.query(
-      `INSERT INTO products (category_id, name, slug, short_description, description, image_url, images, spec_table)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
-      [category_id, name, slug, short_description || name, description, image_url, imagesJson, specTableJson]
+      `INSERT INTO products (category_id, name, slug, short_description, description, image_url, images, spec_headers, spec_table, detail_image_1, detail_image_2, advice_list, accessories_list)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING id`,
+      [category_id, name, slug, short_description || name, description, image_url, imagesJson, specHeadersJson, specTableJson, detail_image_1 || null, detail_image_2 || null, adviceListJson, accessoriesListJson]
     );
     const product_id = prodResult.rows[0].id;
 
@@ -337,7 +341,7 @@ exports.createProduct = async (req, res) => {
 // 8. แก้ไขข้อมูลสินค้าหลัก
 exports.updateProduct = async (req, res) => {
   const productId = req.params.id;
-  let { category_id, name, slug, short_description, description, image_url, images, spec_table, category_name, price, is_active } = req.body;
+  let { category_id, name, slug, short_description, description, image_url, images, spec_table, spec_headers, detail_image_1, detail_image_2, advice_list, accessories_list, category_name, price, is_active } = req.body;
   const admin_id = req.user.id;
 
   try {
@@ -364,15 +368,11 @@ exports.updateProduct = async (req, res) => {
         .replace(/^-+|-+$/g, '');
     }
 
-    let imagesJson = null;
-    if (images !== undefined) {
-      imagesJson = typeof images === 'string' ? images : JSON.stringify(images);
-    }
-
-    let specTableJson = null;
-    if (spec_table !== undefined) {
-      specTableJson = typeof spec_table === 'string' ? spec_table : JSON.stringify(spec_table);
-    }
+    let imagesJson = images !== undefined ? (typeof images === 'string' ? images : JSON.stringify(images)) : null;
+    let specTableJson = spec_table !== undefined ? (typeof spec_table === 'string' ? spec_table : JSON.stringify(spec_table)) : null;
+    let specHeadersJson = spec_headers !== undefined ? (typeof spec_headers === 'string' ? spec_headers : JSON.stringify(spec_headers)) : null;
+    let adviceListJson = advice_list !== undefined ? (typeof advice_list === 'string' ? advice_list : JSON.stringify(advice_list)) : null;
+    let accessoriesListJson = accessories_list !== undefined ? (typeof accessories_list === 'string' ? accessories_list : JSON.stringify(accessories_list)) : null;
 
     await pool.query(
       `UPDATE products 
@@ -383,10 +383,15 @@ exports.updateProduct = async (req, res) => {
            description = COALESCE($5, description),
            image_url = COALESCE($6, image_url),
            images = COALESCE($7, images),
-           spec_table = COALESCE($8, spec_table),
-           is_active = COALESCE($9, is_active)
-       WHERE id = $10`,
-      [category_id, name, slug, short_description, description, image_url, imagesJson, specTableJson, is_active, productId]
+           spec_headers = COALESCE($8, spec_headers),
+           spec_table = COALESCE($9, spec_table),
+           detail_image_1 = COALESCE($10, detail_image_1),
+           detail_image_2 = COALESCE($11, detail_image_2),
+           advice_list = COALESCE($12, advice_list),
+           accessories_list = COALESCE($13, accessories_list),
+           is_active = COALESCE($14, is_active)
+       WHERE id = $15`,
+      [category_id, name, slug, short_description, description, image_url, imagesJson, specHeadersJson, specTableJson, detail_image_1, detail_image_2, adviceListJson, accessoriesListJson, is_active, productId]
     );
 
     // Sync product variants if variants array is provided

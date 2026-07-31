@@ -625,9 +625,15 @@ export default function Storefront() {
       const mappedProducts = (res.data || []).map((p: any) => {
         const localMatch = localSaved.find((sp: Product) => sp.id === p.id || sp.slug === p.slug);
         return {
+          ...(localMatch || {}),
           ...p,
-          price: p.min_price || '0',
-          ...(localMatch || {})
+          price: p.min_price || p.price || '0',
+          spec_table: p.spec_table || localMatch?.spec_table,
+          spec_headers: p.spec_headers || localMatch?.spec_headers,
+          detail_image_1: p.detail_image_1 || localMatch?.detail_image_1,
+          detail_image_2: p.detail_image_2 || localMatch?.detail_image_2,
+          advice_list: p.advice_list || localMatch?.advice_list,
+          accessories_list: p.accessories_list || localMatch?.accessories_list
         };
       });
       const localOnly = localSaved.filter((sp: Product) => !mappedProducts.some((p: any) => p.id === sp.id));
@@ -946,7 +952,7 @@ export default function Storefront() {
     try {
       const res = await apiRequest(`/api/v1/products/${prod.slug}`);
       if (res.data) {
-        fullProduct = { ...res.data, ...prod };
+        fullProduct = { ...prod, ...res.data };
       }
     } catch (err: any) {
       console.log('Using local product detail:', err);
@@ -959,14 +965,14 @@ export default function Storefront() {
         const localMatch = savedList.find((sp) => sp.id === prod.id || sp.slug === prod.slug);
         if (localMatch) {
           fullProduct = {
-            ...fullProduct,
             ...localMatch,
-            detail_image_1: localMatch.detail_image_1 || fullProduct.detail_image_1,
-            detail_image_2: localMatch.detail_image_2 || fullProduct.detail_image_2,
-            spec_table: localMatch.spec_table || fullProduct.spec_table,
-            spec_headers: localMatch.spec_headers || fullProduct.spec_headers,
-            advice_list: localMatch.advice_list || fullProduct.advice_list,
-            accessories_list: localMatch.accessories_list || fullProduct.accessories_list
+            ...fullProduct,
+            detail_image_1: fullProduct.detail_image_1 || localMatch.detail_image_1,
+            detail_image_2: fullProduct.detail_image_2 || localMatch.detail_image_2,
+            spec_table: fullProduct.spec_table || localMatch.spec_table,
+            spec_headers: fullProduct.spec_headers || localMatch.spec_headers,
+            advice_list: fullProduct.advice_list || localMatch.advice_list,
+            accessories_list: fullProduct.accessories_list || localMatch.accessories_list
           };
         }
       } catch (e) {}

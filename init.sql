@@ -63,6 +63,13 @@ CREATE TABLE products (
     short_description VARCHAR(255),
     description TEXT,
     image_url VARCHAR(500),
+    images JSONB,
+    spec_headers JSONB,
+    spec_table JSONB,
+    detail_image_1 VARCHAR(500),
+    detail_image_2 VARCHAR(500),
+    advice_list JSONB,
+    accessories_list JSONB,
     is_active BOOLEAN DEFAULT TRUE,
     deleted_at TIMESTAMP
 );
