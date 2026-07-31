@@ -138,6 +138,16 @@ CREATE TABLE payments (
     paid_at TIMESTAMP
 );
 
+-- Anti-Replay Protection: UNIQUE partial indexes (Idempotency & ISO 20022)
+CREATE UNIQUE INDEX idx_payments_bank_txref_unique
+  ON payments (sending_bank, transaction_ref)
+  WHERE payment_status = 'completed' AND transaction_ref IS NOT NULL AND sending_bank IS NOT NULL;
+
+CREATE UNIQUE INDEX idx_payments_qr_ref_unique
+  ON payments (qr_ref)
+  WHERE payment_status = 'completed' AND qr_ref IS NOT NULL;
+
+
 CREATE TABLE shipping (
     id SERIAL PRIMARY KEY,
     order_id UUID UNIQUE REFERENCES orders(id),

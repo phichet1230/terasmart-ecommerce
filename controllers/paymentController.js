@@ -92,70 +92,84 @@ exports.generateQR = async (req, res) => {
 };
 
 // 2. อัปโหลดสลิปเงินและตรวจสอบตามมาตรฐานสากล (ISO 20022, EMVCo, OWASP Top 10, PDPA Compliance)
+// ⚠️ SECURITY: ทุก Gate ต้องผ่านหมด — ห้ามข้ามแม้แต่ข้อเดียว
 exports.uploadSlip = async (req, res) => {
   const user_id = req.user.id;
   const { orderId } = req.params;
 
+  // Helper: ลบไฟล์อัปโหลดและส่ง error response กลับ
+  const rejectSlip = (statusCode, message) => {
+    if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+    return res.status(statusCode).json({ status: 'error', message });
+  };
+
   try {
+    // ═══════════════════════════════════════════════════
+    // GATE 1: OWASP — File Existence & Magic Number
+    // ═══════════════════════════════════════════════════
     if (!req.file) {
       return res.status(400).json({ status: 'error', message: 'กรุณาอัปโหลดไฟล์สลิปชำระเงิน' });
     }
 
-    // 🔴 OWASP Top 10 File Security Validation (Magic Number Header Check)
     const fileSecurity = validateUploadedFile(req.file.path, req.file.mimetype);
     if (!fileSecurity.isValid) {
-      if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
-      return res.status(400).json({ status: 'error', message: fileSecurity.message });
+      return rejectSlip(400, fileSecurity.message);
     }
 
-    // ค้นหาออเดอร์และดึงข้อมูลอีเมลผู้ใช้
+    // ═══════════════════════════════════════════════════
+    // GATE 2: Idempotency — MD5 Duplicate Image Check
+    // ═══════════════════════════════════════════════════
+    const crypto = require('crypto');
+    const fileBuffer = fs.readFileSync(req.file.path);
+    const fileHash = crypto.createHash('md5').update(fileBuffer).digest('hex');
+
     const orderResult = await pool.query(
-      `SELECT o.id, o.total_price, o.status, o.created_at, u.email 
-       FROM orders o 
-       JOIN users u ON o.user_id = u.id 
+      `SELECT o.id, o.total_price, o.status, o.created_at, u.email
+       FROM orders o
+       JOIN users u ON o.user_id = u.id
        WHERE o.id = $1 AND o.user_id = $2`,
       [orderId, user_id]
     );
 
     if (orderResult.rows.length === 0) {
-      if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
-      return res.status(404).json({ status: 'error', message: 'ไม่พบคำสั่งซื้อนี้' });
+      return rejectSlip(404, 'ไม่พบคำสั่งซื้อนี้');
     }
 
     const order = orderResult.rows[0];
     const expectedAmount = parseFloat(order.total_price);
+    const orderCreatedAt = new Date(order.created_at);
 
-    // Layer 1.2: คำนวณ MD5 Digital Signature ป้องกัน Replay Attack (สลิปซ้ำ)
-    const crypto = require('crypto');
-    const fileBuffer = fs.readFileSync(req.file.path);
-    const fileHash = crypto.createHash('md5').update(fileBuffer).digest('hex');
-
-    // ตรวจสอบในตาราง payments ว่าเคยใช้ภาพสลิปภาพนี้หรือยัง
+    // Anti-Replay: ตรวจว่าเคยใช้ภาพนี้ชำระเงินสำเร็จแล้วหรือยัง
     const duplicateHashCheck = await pool.query(
-      `SELECT order_id FROM payments WHERE (transaction_ref = $1 OR qr_ref = $1) AND payment_status = 'completed'`,
+      `SELECT order_id FROM payments WHERE qr_ref = $1 AND payment_status = 'completed'`,
       [fileHash]
     );
     if (duplicateHashCheck.rows.length > 0) {
-      if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
-      return res.status(400).json({
-        status: 'error',
-        message: `ชำระเงินไม่สำเร็จ: สลิปภาพนี้เคยถูกใช้ชำระเงินในออเดอร์ #${duplicateHashCheck.rows[0].order_id} แล้ว (Duplicate Image Signature)`
-      });
+      return rejectSlip(400,
+        `ชำระเงินไม่สำเร็จ: สลิปภาพนี้เคยถูกใช้ชำระเงินในออเดอร์ #${duplicateHashCheck.rows[0].order_id} แล้ว (Duplicate Image Signature)`
+      );
     }
 
-    // 🔴 ZERO-TRUST INITIALIZATION
+    // ═══════════════════════════════════════════════════
+    // ZERO-TRUST INITIALIZATION
+    // ═══════════════════════════════════════════════════
     let verifiedAmount = null;
     let verifiedDatetime = new Date();
     let slipTxRef = fileHash;
-    let receiverName = 'บจก. เทอรา สมาร์ท อีคอมเมิร์ซ';
     let isAuthenticBankSlip = false;
-    let detectedBankBrand = 'ไม่พบแบรนด์ธนาคาร';
+    let detectedBankBrand = null;
     let qrScannedPayload = null;
-    let trustScore = 0;
+    let isEmvcoQrValid = false;
     let ocrRawText = '';
+    let extractedSlipDate = null;
+    let isReceiverMatched = false;
+    let foundBankBrand = false;
+    let hasSuccessMarker = false;
+    let metadataLabelCount = 0;
 
-    // Layer 2: Automatic Embedded Image QR Scanner (EMVCo QR Scanner)
-    let isEmvcoQr = false;
+    // ═══════════════════════════════════════════════════
+    // GATE 3: EMVCo QR — Scan + CRC16 Checksum
+    // ═══════════════════════════════════════════════════
     try {
       const jsQR = require('jsqr');
       let width = 0, height = 0, rgbaData = null;
@@ -178,15 +192,12 @@ exports.uploadSlip = async (req, res) => {
         const qrCode = jsQR(rgbaData, width, height);
         if (qrCode && qrCode.data) {
           qrScannedPayload = qrCode.data;
-          if (typeof qrScannedPayload === 'string' && qrScannedPayload.includes('000201')) {
-            isEmvcoQr = true;
-          }
-          // สกัดยอดเงินจาก EMVCo Tag 54 ถ้ามี
-          const amountMatch = qrScannedPayload.match(/54(\d{2})([\d\.]{1,10})/);
-          if (amountMatch && amountMatch[2]) {
-            const parsedQrAmount = parseFloat(amountMatch[2]);
-            if (!isNaN(parsedQrAmount) && parsedQrAmount > 0) {
-              verifiedAmount = parsedQrAmount;
+          // ต้อง validate ด้วย parseEMVCoQR (CRC16 + TLV)
+          const emvcoResult = parseEMVCoQR(qrScannedPayload);
+          if (emvcoResult.isValid && emvcoResult.isChecksumValid) {
+            isEmvcoQrValid = true;
+            if (emvcoResult.amount !== null && emvcoResult.amount > 0) {
+              verifiedAmount = emvcoResult.amount;
             }
           }
         }
@@ -195,7 +206,10 @@ exports.uploadSlip = async (req, res) => {
       console.warn('QR Code Scan Notice:', qrErr.message);
     }
 
-    // Layer 3: Server-Side Tesseract OCR Multi-Language Engine
+    // ═══════════════════════════════════════════════════
+    // GATE 4: OCR — Server-Side Tesseract Only
+    // 🔴 ISO/IEC 27001: ห้ามรับ ocr_raw_text จาก client
+    // ═══════════════════════════════════════════════════
     try {
       const Tesseract = require('tesseract.js');
       const ocrResult = await Tesseract.recognize(req.file.path, 'tha+eng', { logger: () => {} });
@@ -204,11 +218,7 @@ exports.uploadSlip = async (req, res) => {
       console.warn('Tesseract OCR Warning:', ocrErr.message);
     }
 
-    if (req.body && req.body.ocr_raw_text) {
-      ocrRawText += '\n' + req.body.ocr_raw_text;
-    }
-
-    // แปลงตัวเลขไทย (๐-๙) ให้เป็นตัวเลขอารบิก (0-9) และลบช่องว่างส่วนเกิน
+    // แปลงตัวเลขไทย (๐-๙) → อารบิก (0-9)
     const thaiDigits = ['๐','๑','๒','๓','๔','๕','๖','๗','๘','๙'];
     let normalizedText = ocrRawText;
     thaiDigits.forEach((digit, index) => {
@@ -216,19 +226,20 @@ exports.uploadSlip = async (req, res) => {
     });
     normalizedText = normalizedText.replace(/\s+/g, ' ');
 
-    // Layer 4: Thai Banking Authentication & Strict Slip Structural Classifier
+    // ═══════════════════════════════════════════════════
+    // GATE 4A: Slip Structural Authentication
+    // ═══════════════════════════════════════════════════
     const bankBrandMap = [
-      { name: 'ธนาคารกสิกรไทย (KBank / K PLUS)', keywords: ['กสิกรไทย', 'KBANK', 'K-PLUS', 'K PLUS'] },
-      { name: 'ธนาคารไทยพาณิชย์ (SCB / SCB EASY)', keywords: ['ไทยพาณิชย์', 'SCB', 'SCB EASY', 'EASY APP'] },
-      { name: 'ธนาคารกรุงไทย (KTB / Krungthai NEXT)', keywords: ['กรุงไทย', 'KRUNGTHAI', 'KTB', 'NEXT'] },
-      { name: 'ธนาคารกรุงเทพ (BBL / Bualuang)', keywords: ['กรุงเทพ', 'BUALUANG', 'BBL'] },
+      { name: 'ธนาคารกสิกรไทย (KBank)', keywords: ['กสิกรไทย', 'KBANK', 'K-PLUS', 'K PLUS'] },
+      { name: 'ธนาคารไทยพาณิชย์ (SCB)', keywords: ['ไทยพาณิชย์', 'SCB', 'SCB EASY', 'EASY APP'] },
+      { name: 'ธนาคารกรุงไทย (KTB)', keywords: ['กรุงไทย', 'KRUNGTHAI', 'KTB'] },
+      { name: 'ธนาคารกรุงเทพ (BBL)', keywords: ['กรุงเทพ', 'BUALUANG', 'BBL'] },
       { name: 'ธนาคารทหารไทยธนชาต (ttb)', keywords: ['ทหารไทย', 'ธนชาต', 'TTB', 'TMB'] },
-      { name: 'ธนาคารออมสิน (GSB / MyMo)', keywords: ['ออมสิน', 'GSB', 'MYMO'] },
-      { name: 'ธนาคารกรุงศรีอยุธยา (BAY / KMA)', keywords: ['กรุงศรี', 'BAY', 'KMA'] },
+      { name: 'ธนาคารออมสิน (GSB)', keywords: ['ออมสิน', 'GSB', 'MYMO'] },
+      { name: 'ธนาคารกรุงศรีอยุธยา (BAY)', keywords: ['กรุงศรี', 'BAY', 'KMA'] },
       { name: 'พร้อมเพย์ (PromptPay)', keywords: ['PROMPTPAY', 'พร้อมเพย์'] }
     ];
 
-    let foundBankBrand = false;
     for (const b of bankBrandMap) {
       if (b.keywords.some(kw => normalizedText.toUpperCase().includes(kw.toUpperCase()))) {
         detectedBankBrand = b.name;
@@ -237,39 +248,66 @@ exports.uploadSlip = async (req, res) => {
       }
     }
 
-    // 1. ตรวจสอบเครื่องหมายการทำรายการโอนเงินสำเร็จ (Transfer Success Marker)
     const successMarkers = [
       'โอนเงินสำเร็จ', 'โอนสำเร็จ', 'รายการสำเร็จ', 'ชำระเงินสำเร็จ',
       'TRANSFER SUCCESSFUL', 'SUCCESSFUL TRANSFER', 'TRANSACTION SUCCESSFUL'
     ];
-    const hasSuccessMarker = successMarkers.some(marker => normalizedText.toUpperCase().includes(marker.toUpperCase()));
+    hasSuccessMarker = successMarkers.some(m => normalizedText.toUpperCase().includes(m.toUpperCase()));
 
-    // 2. ตรวจสอบป้ายกำกับรายละเอียดธุรกรรม (Transaction Metadata Labels - ต้องพบอย่างน้อย 2 รายการ)
     const metadataLabels = [
-      'ผู้โอน', 'FROM', 'ผู้รับโอน', 'TO', 'จำนวนเงิน', 'AMOUNT', 'เลขที่รายการ', 'รหัสอ้างอิง', 'REF NO', 'TRANSACTION ID'
+      'ผู้โอน', 'ผู้รับโอน', 'จำนวนเงิน', 'AMOUNT',
+      'เลขที่รายการ', 'รหัสอ้างอิง', 'REF NO', 'TRANSACTION ID'
     ];
-    let metadataLabelMatches = 0;
     metadataLabels.forEach(label => {
       if (normalizedText.toUpperCase().includes(label.toUpperCase())) {
-        metadataLabelMatches++;
+        metadataLabelCount++;
       }
     });
 
-    // 🔴 STRICT ZERO-TRUST AUTHENTICATION RULE:
-    // ต้องมี: (แบรนด์ธนาคาร + เครื่องหมายโอนสำเร็จ + ป้ายกำกับธุรกรรมอย่างน้อย 2 รายการ) หรือสแกนพบ EMVCo Bank QR Code บนรูปสลิป
-    if ((foundBankBrand && hasSuccessMarker && metadataLabelMatches >= 2) || isEmvcoQr) {
+    // OCR path: ต้องพบ 3 องค์ประกอบ | QR path: ต้องผ่าน CRC16
+    if (foundBankBrand && hasSuccessMarker && metadataLabelCount >= 2) {
       isAuthenticBankSlip = true;
-      trustScore += 50;
-    } else {
-      isAuthenticBankSlip = false;
+    } else if (isEmvcoQrValid) {
+      isAuthenticBankSlip = true;
     }
 
-    // Layer 5: Enterprise Receiver Account & Company Name Verification
+    // ★ HARD GATE: ต้องเป็นสลิปธนาคารจริง
+    if (!isAuthenticBankSlip) {
+      return rejectSlip(400,
+        'ชำระเงินไม่สำเร็จ: รูปภาพที่แนบไม่ใช่สลิปโอนเงินของธนาคาร (ระบบตรวจไม่พบองค์ประกอบหลักของสลิป เช่น ชื่อธนาคาร เครื่องหมายโอนเงินสำเร็จ และป้ายกำกับธุรกรรม หรือ QR Code ไม่ผ่าน CRC16 Checksum)'
+      );
+    }
+
+    // ═══════════════════════════════════════════════════
+    // GATE 5: Amount — ยอดเงินต้องตรง ±0.01 บาท
+    // ═══════════════════════════════════════════════════
+    if (verifiedAmount === null) {
+      const amountMatch1 = normalizedText.match(/(?:จำนวนเงิน|ยอดโอน|จำนวนเงินที่โอน|ยอดชำระ|AMOUNT|TOTAL)[:\s]*฿?\s*([\d,]+\.\d{2})/i);
+      const amountMatch2 = normalizedText.match(/([\d,]+\.\d{2})\s*(?:บาท|THB)/i);
+      if (amountMatch1 && amountMatch1[1]) {
+        verifiedAmount = parseFloat(amountMatch1[1].replace(/,/g, ''));
+      } else if (amountMatch2 && amountMatch2[1]) {
+        verifiedAmount = parseFloat(amountMatch2[1].replace(/,/g, ''));
+      }
+    }
+
+    // ★ HARD GATE: ยอดเงินต้องตรง
+    if (verifiedAmount === null || isNaN(verifiedAmount) || Math.abs(verifiedAmount - expectedAmount) > 0.01) {
+      const displayAmount = (verifiedAmount !== null && !isNaN(verifiedAmount))
+        ? `${verifiedAmount.toFixed(2)} บาท` : 'ไม่สามารถอ่านยอดเงินจากสลิปได้';
+      return rejectSlip(400,
+        `ชำระเงินไม่สำเร็จ: ยอดโอนในสลิป (${displayAmount}) ไม่ตรงกับยอดคำสั่งซื้อที่ต้องชำระ (${expectedAmount.toFixed(2)} บาท)`
+      );
+    }
+
+    // ═══════════════════════════════════════════════════
+    // GATE 6: Receiver — ผู้รับโอนต้องตรงกับบริษัท
+    // ═══════════════════════════════════════════════════
     const companyKeywords = ['เทอรา', 'TERA', 'บจก. เทอรา สมาร์ท อีคอมเมิร์ซ', 'TERA SMART E-COMMERCE'];
     const promptpayConfigId = process.env.PROMPTPAY_ID || '';
     const bankAccountConfigNo = process.env.BANK_ACCOUNT_NO || '';
 
-    let isReceiverMatched = companyKeywords.some(kw => normalizedText.toUpperCase().includes(kw.toUpperCase()));
+    isReceiverMatched = companyKeywords.some(kw => normalizedText.toUpperCase().includes(kw.toUpperCase()));
     if (!isReceiverMatched && promptpayConfigId) {
       isReceiverMatched = normalizedText.includes(promptpayConfigId);
     }
@@ -280,34 +318,27 @@ exports.uploadSlip = async (req, res) => {
         isReceiverMatched = true;
       }
     }
-    if (isReceiverMatched) trustScore += 15;
-
-    // Layer 6: Precise Monetary Amount Extractor & Precision Matching
-    if (verifiedAmount === null) {
-      const amountMatch1 = normalizedText.match(/(?:จำนวนเงิน|ยอดโอน|จำนวนเงินที่โอน|ยอดชำระ|AMOUNT|TOTAL)[:\s]*฿?\s*([\d,]+\.\d{2})/i);
-      const amountMatch2 = normalizedText.match(/([\d,]+\.\d{2})\s*(?:บาท|THB)/i);
-
-      if (amountMatch1 && amountMatch1[1]) {
-        verifiedAmount = parseFloat(amountMatch1[1].replace(/,/g, ''));
-      } else if (amountMatch2 && amountMatch2[1]) {
-        verifiedAmount = parseFloat(amountMatch2[1].replace(/,/g, ''));
-      }
+    // EMVCo QR ที่ผ่าน CRC16 = ถือว่าผู้รับตรง (QR สร้างจากระบบบริษัท)
+    if (isEmvcoQrValid) {
+      isReceiverMatched = true;
     }
 
-    if (verifiedAmount !== null && Math.abs(verifiedAmount - expectedAmount) <= 0.01) {
-      trustScore += 25;
+    // ★ HARD GATE: ผู้รับโอนต้องตรง
+    if (!isReceiverMatched) {
+      return rejectSlip(400,
+        'ชำระเงินไม่สำเร็จ: สลิปนี้ระบุชื่อผู้รับโอนไม่ตรงกับบัญชีของบริษัท (กรุณาโอนเข้าบัญชี บจก. เทอรา สมาร์ท อีคอมเมิร์ซ หรือ PromptPay ของบริษัทเท่านั้น)'
+      );
     }
 
-    // Layer 7: Transaction Time Window & Stale Slip Protection (สกัดถอดวันที่จากสลิป)
-    let extractedSlipDate = null;
+    // ═══════════════════════════════════════════════════
+    // GATE 7: Stale Slip — เวลาต้องไม่เก่ากว่า order
+    // ═══════════════════════════════════════════════════
     const monthThaiMap = {
       'ม.ค.': 0, 'ก.พ.': 1, 'มี.ค.': 2, 'เม.ย.': 3, 'พ.ค.': 4, 'มิ.ย.': 5,
       'ก.ค.': 6, 'ส.ค.': 7, 'ก.ย.': 8, 'ต.ค.': 9, 'พ.ย.': 10, 'ธ.ค.': 11
     };
-
     const dateMatch = normalizedText.match(/(\d{1,2})[\s\/\.-]+(ม\.ค\.|ก\.พ\.|มี\.ค\.|เม\.ย\.|พ\.ค\.|มิ\.ย\.|ก\.ค\.|ส\.ค\.|ก\.ย\.|ต\.ค\.|พ\.ย\.|ธ\.ค\.|\d{1,2})[\s\/\.-]+(\d{2,4})/i);
     const timeMatch = normalizedText.match(/(\d{1,2})[:\.](\d{2})/i);
-
     if (dateMatch) {
       const day = parseInt(dateMatch[1], 10);
       let month = 0;
@@ -317,11 +348,9 @@ exports.uploadSlip = async (req, res) => {
       } else {
         month = parseInt(rawMonth, 10) - 1;
       }
-
       let year = parseInt(dateMatch[3], 10);
       if (year < 100) year += 2500;
       if (year > 2400) year -= 543;
-
       let hours = 0, minutes = 0;
       if (timeMatch) {
         hours = parseInt(timeMatch[1], 10);
@@ -330,63 +359,33 @@ exports.uploadSlip = async (req, res) => {
       extractedSlipDate = new Date(year, month, day, hours, minutes);
     }
 
-    const orderCreatedAt = new Date(order.created_at);
-
-    // ==========================================
-    // ⚙️ ตรวจสอบผลลัพธ์ผ่าน Strict Verification Rules
-    // ==========================================
-
-    // Rule 1: ต้องเป็นสลิปโอนเงินจริงเท่านั้น
-    if (!isAuthenticBankSlip) {
-      if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
-      return res.status(400).json({
-        status: 'error',
-        message: 'ชำระเงินไม่สำเร็จ: รูปภาพที่แนบไม่ใช่สลิปโอนเงินของธนาคาร (ระบบตรวจไม่พบองค์ประกอบหลักของสลิป เช่น ชื่อธนาคาร เครื่องหมายโอนเงินสำเร็จ และป้ายกำกับธุรกรรม)'
-      });
-    }
-
-    // Rule 2: ตรวจสอบสลิปเก่า (Stale Slip Protection - ห้ามโอนก่อนเวลาสร้างออเดอร์เกิน 5 นาที)
+    // ★ HARD GATE: สลิปเก่าห้ามผ่าน
     if (extractedSlipDate && extractedSlipDate.getTime() < orderCreatedAt.getTime() - 300000) {
-      if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
-      return res.status(400).json({
-        status: 'error',
-        message: `ชำระเงินไม่สำเร็จ: ตรวจพบสลิปเก่าที่มีเวลาโอนก่อนเวลาสร้างออเดอร์นี้ (เวลาในสลิป: ${extractedSlipDate.toLocaleString('th-TH')}, เวลาสั่งซื้อออเดอร์นี้: ${orderCreatedAt.toLocaleString('th-TH')})`
-      });
+      return rejectSlip(400,
+        `ชำระเงินไม่สำเร็จ: ตรวจพบสลิปเก่าที่มีเวลาโอนก่อนเวลาสร้างออเดอร์นี้ (เวลาในสลิป: ${extractedSlipDate.toLocaleString('th-TH')}, เวลาสั่งซื้อ: ${orderCreatedAt.toLocaleString('th-TH')})`
+      );
     }
 
-    // Rule 3: ตรวจสอบชื่อบัญชีผู้รับโอน (Receiver Company Verification)
-    if (!isReceiverMatched && !isEmvcoQr) {
-      if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
-      return res.status(400).json({
-        status: 'error',
-        message: 'ชำระเงินไม่สำเร็จ: สลิปนี้ระบุชื่อผู้รับโอนไม่ตรงกับบัญชีของบริษัท (กรุณาโอนเข้าบัญชี บจก. เทอรา สมาร์ท อีคอมเมิร์ซ หรือ PromptPay ของบริษัทเท่านั้น)'
-      });
-    }
-
-    // Rule 2: ตรวจสอบสลิปซ้ำจากรหัสธุรกรรมหรือ MD5 Signature
+    // ═══════════════════════════════════════════════════
+    // GATE 8: Anti-Replay — Duplicate Transaction Ref
+    // ═══════════════════════════════════════════════════
     const duplicateTxCheck = await pool.query(
-      `SELECT order_id FROM payments WHERE (transaction_ref = $1 OR qr_ref = $1) AND payment_status = 'completed'`,
+      `SELECT order_id FROM payments
+       WHERE (transaction_ref = $1 OR qr_ref = $1)
+       AND payment_status = 'completed'`,
       [slipTxRef]
     );
     if (duplicateTxCheck.rows.length > 0) {
-      if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
-      return res.status(400).json({
-        status: 'error',
-        message: `ชำระเงินไม่สำเร็จ: สลิปนี้เคยใช้ชำระเงินไปแล้วในออเดอร์ #${duplicateTxCheck.rows[0].order_id}`
-      });
+      return rejectSlip(400,
+        `ชำระเงินไม่สำเร็จ: สลิปนี้เคยใช้ชำระเงินไปแล้วในออเดอร์ #${duplicateTxCheck.rows[0].order_id}`
+      );
     }
 
-    // Rule 3: ตรวจสอบความถูกต้องของยอดเงินโอนจริงกับยอดคำสั่งซื้อ
-    if (verifiedAmount === null || isNaN(verifiedAmount) || Math.abs(verifiedAmount - expectedAmount) > 0.01) {
-      if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
-      const displayAmount = verifiedAmount ? `${verifiedAmount.toFixed(2)} บาท` : 'อ่านยอดเงินไม่ชัดเจน';
-      return res.status(400).json({
-        status: 'error',
-        message: `ชำระเงินไม่สำเร็จ: ยอดโอนในสลิป (${displayAmount}) ไม่ตรงกับยอดคำสั่งซื้อที่ต้องชำระ (${expectedAmount.toFixed(2)} บาท)`
-      });
-    }
+    // ═══════════════════════════════════════════════════
+    // GATE 9: ISO 20022 Logging + PDPA Data Masking
+    // ═══════════════════════════════════════════════════
+    if (!detectedBankBrand) detectedBankBrand = 'PromptPay (QR Verified)';
 
-    // Layer 8 & 9: บันทึกรายงานการตรวจสอบเชิงลึกตามมาตรฐาน ISO 20022 และ PDPA Data Masking
     const iso20022Message = buildISO20022Message({
       orderId,
       amount: verifiedAmount,
@@ -399,25 +398,32 @@ exports.uploadSlip = async (req, res) => {
     });
 
     const auditReport = JSON.stringify({
-      trust_score: trustScore,
+      gates_passed: 'ALL 9/9',
       detected_bank: detectedBankBrand,
       verified_amount: verifiedAmount,
       expected_amount: expectedAmount,
+      amount_match: Math.abs(verifiedAmount - expectedAmount) <= 0.01,
       receiver_matched: isReceiverMatched,
       qr_scanned: !!qrScannedPayload,
-      emvco_parsed: qrScannedPayload ? parseEMVCoQR(qrScannedPayload) : null,
-      verification_layers_passed: '9/9 (ISO 20022 & OWASP Compliant)'
+      emvco_crc16_valid: isEmvcoQrValid,
+      emvco_parsed: isEmvcoQrValid ? parseEMVCoQR(qrScannedPayload) : null,
+      ocr_bank_brand: foundBankBrand,
+      ocr_success_marker: hasSuccessMarker,
+      ocr_metadata_labels: metadataLabelCount,
+      slip_date_extracted: extractedSlipDate ? extractedSlipDate.toISOString() : null,
+      order_created_at: orderCreatedAt.toISOString(),
+      standards: 'ISO 20022, EMVCo CRC16, OWASP Top 10, PDPA, ISO/IEC 27001'
     });
 
     const slipUrl = `/uploads/${req.file.filename}`;
 
-    // บันทึกสถานะชำระเงินสำเร็จลงตาราง payments พร้อมข้อมูล ISO 20022 และ PDPA Masking
+    // บันทึกสถานะชำระเงินสำเร็จลง payments (PDPA Masking)
     await pool.query(
-      `UPDATE payments 
-       SET slip_url = $1, 
-           ai_verified_amount = $2, 
-           ai_verified_datetime = $3, 
-           is_ai_verified = true, 
+      `UPDATE payments
+       SET slip_url = $1,
+           ai_verified_amount = $2,
+           ai_verified_datetime = $3,
+           is_ai_verified = true,
            ai_verified_status = 'MATCHED',
            qr_ref = $4,
            ocr_raw_text = $5,
@@ -430,12 +436,12 @@ exports.uploadSlip = async (req, res) => {
            iso20022_payload = $11
        WHERE order_id = $12`,
       [
-        slipUrl, 
-        verifiedAmount, 
-        verifiedDatetime, 
-        slipTxRef, 
-        auditReport, 
-        verifiedDatetime, 
+        slipUrl,
+        verifiedAmount,
+        verifiedDatetime,
+        fileHash,
+        auditReport,
+        verifiedDatetime,
         slipTxRef,
         detectedBankBrand,
         pdpaMask.name('ผู้โอนเงินผ่านระบบธนาคาร'),
@@ -461,13 +467,12 @@ exports.uploadSlip = async (req, res) => {
 
     res.json({
       status: 'success',
-      message: 'อัปโหลดและตรวจสอบสลิปสำเร็จ (ผ่านการรับรองตามมาตรฐานสากล ISO 20022, EMVCo, OWASP Top 10 และ PDPA)',
+      message: 'อัปโหลดและตรวจสอบสลิปสำเร็จ (ผ่านการรับรอง 9 Gates ตามมาตรฐาน ISO 20022, EMVCo CRC16, OWASP Top 10 และ PDPA)',
       data: {
         order_id: orderId,
         slip_url: slipUrl,
         ai_verified_amount: verifiedAmount,
         detected_bank: detectedBankBrand,
-        trust_score: `${trustScore}%`,
         iso20022_msg_id: iso20022Message.Document.FIToFICstmrCdtTrf.GrpHdr.MsgId,
         ai_verified_status: 'MATCHED',
         qr_ref: slipTxRef,
