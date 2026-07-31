@@ -2,7 +2,8 @@ const pool = require('../config/db');
 const path = require('path');
 const fs = require('fs');
 const { releaseExpiredOrders } = require('./orderController');
-const { pdpaMask, parseEMVCoQR, validateUploadedFile, buildISO20022Message } = require('../utils/bankSlipStandards');
+const { pdpaMask, parseEMVCoQR, validateUploadedFile, buildISO20022Message, verifyWithEasySlip } = require('../utils/bankSlipStandards');
+
 
 // 1. สร้าง Dynamic QR Code (PromptPay) และตั้งค่าหมดอายุ 5 นาที
 exports.generateQR = async (req, res) => {
@@ -205,11 +206,32 @@ exports.uploadSlip = async (req, res) => {
     } catch (qrErr) {
       console.warn('QR Code Scan Notice:', qrErr.message);
     }
+    // ═══════════════════════════════════════════════════
+    // GATE 3.5: EasySlip Developer API Integration (v1 / v2 Direct Bank Gateway)
+    // ═══════════════════════════════════════════════════
+    const easySlipRes = await verifyWithEasySlip({
+      filePath: req.file.path,
+      qrPayload: qrScannedPayload
+    });
+
+    if (easySlipRes.isConfigured) {
+      if (easySlipRes.success) {
+        isAuthenticBankSlip = true;
+        if (easySlipRes.amount) verifiedAmount = easySlipRes.amount;
+        if (easySlipRes.transRef) slipTxRef = easySlipRes.transRef;
+        if (easySlipRes.sendingBank) detectedBankBrand = easySlipRes.sendingBank;
+        if (easySlipRes.transDate) extractedSlipDate = easySlipRes.transDate;
+        isReceiverMatched = true; // ยืนยันจาก API ธนาคารสำเร็จ
+      } else {
+        console.warn('EasySlip Notice:', easySlipRes.message || easySlipRes.errorCode);
+      }
+    }
 
     // ═══════════════════════════════════════════════════
-    // GATE 4: OCR — Server-Side Tesseract Only
+    // GATE 4: OCR — Server-Side Tesseract Only (Fallback local verification)
     // 🔴 ISO/IEC 27001: ห้ามรับ ocr_raw_text จาก client
     // ═══════════════════════════════════════════════════
+
     try {
       const Tesseract = require('tesseract.js');
       const ocrResult = await Tesseract.recognize(req.file.path, 'tha+eng', { logger: () => {} });
