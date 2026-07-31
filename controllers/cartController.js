@@ -63,7 +63,7 @@ exports.addToCart = async (req, res) => {
 exports.getCart = async (req, res) => {
   try {
     const cart = await pool.query(`
-      SELECT ci.id as cart_item_id, ci.variant_id, p.id as product_id, p.name, p.slug, v.variant_name, v.price, ci.quantity, v.stock_quantity 
+      SELECT ci.id as cart_item_id, ci.variant_id, p.id as product_id, p.name, p.slug, p.image_url, v.variant_name, v.price, ci.quantity, v.stock_quantity 
       FROM cart_items ci
       JOIN product_variants v ON ci.variant_id = v.id
       JOIN products p ON v.product_id = p.id

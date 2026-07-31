@@ -62,6 +62,7 @@ CREATE TABLE products (
     slug VARCHAR(255) UNIQUE NOT NULL,
     short_description VARCHAR(255),
     description TEXT,
+    image_url VARCHAR(500),
     is_active BOOLEAN DEFAULT TRUE,
     deleted_at TIMESTAMP
 );

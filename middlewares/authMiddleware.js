@@ -7,8 +7,7 @@ exports.protect = async (req, res, next) => {
   // 1. เช็กว่ามีการส่ง Token มาใน Header หรือไม่
   if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
     token = req.headers.authorization.split(' ')[1];
-  } else if (req.cookies.token) {
-    // หรือเช็กจาก Cookie ตามที่ Frontend รีเควสมา
+  } else if (req.cookies && req.cookies.token) {
     token = req.cookies.token;
   }
 
@@ -20,8 +19,8 @@ exports.protect = async (req, res, next) => {
     // 2. ยืนยันความถูกต้องของ Token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     
-    // 3. ตรวจสอบว่าผู้ใช้ยังมีตัวตนอยู่ในระบบหรือไม่ (ป้องกันกรณี database reset)
-    const userResult = await pool.query('SELECT id, role, account_status FROM users WHERE id = $1', [decoded.id]);
+    // 3. ตรวจสอบว่าผู้ใช้ยังมีตัวตนอยู่ในระบบหรือไม่
+    const userResult = await pool.query('SELECT id, username, email, phone, role, account_status, profile_image FROM users WHERE id = $1', [decoded.id]);
     if (userResult.rows.length === 0) {
       return res.status(401).json({ status: 'error', message: 'ไม่พบผู้ใช้ในระบบ กรุณาเข้าสู่ระบบใหม่' });
     }

@@ -141,6 +141,14 @@ async function main() {
       [custId, 'สมชาย สายตรวจ (ที่ทำงาน)', '0812345678', 'อาคารทีซีซี ทาวเวอร์ ชั้น 18', 'ห้วยขวาง', 'ห้วยขวาง', 'กรุงเทพมหานคร', '10310', false]
     );
 
+    // 7. Seed coupons
+    console.log('Seeding coupons...');
+    await client.query(
+      `INSERT INTO coupons (code, discount_type, discount_value, min_order_amount, expiry_date, usage_limit, used_count) VALUES
+       ('WELCOME10', 'percentage', 10.00, 0.00, '2030-12-31 23:59:59', 100, 0),
+       ('TERASUPER', 'fixed', 100.00, 500.00, '2030-12-31 23:59:59', 50, 0)`
+    );
+
     console.log('All seeding completed successfully!');
   } catch (err) {
     console.error('Error seeding database:', err);
