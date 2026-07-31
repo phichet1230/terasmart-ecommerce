@@ -1294,6 +1294,7 @@ export default function Storefront() {
       
       fetchOrders();
       fetchCart(); 
+      fetchProducts();
 
       if (paymentMethod === 'qr') {
         const qrRes = await apiRequest(`/api/v1/payments/${order.id}/qr`, 'POST');
