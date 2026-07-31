@@ -502,21 +502,29 @@ export default function Storefront() {
 
     if (oauthToken && oauthUserStr) {
       try {
-        const oauthUser = JSON.parse(decodeURIComponent(oauthUserStr));
-        localStorage.setItem('tera_token', oauthToken);
-        localStorage.setItem('tera_user', JSON.stringify(oauthUser));
-        
-        window.history.replaceState({}, document.title, window.location.pathname);
-        showToast('เข้าสู่ระบบสำเร็จ ยินดีต้อนรับครับ');
-        
-        setUser(oauthUser);
-        setEditUsername(oauthUser.username);
-        setEditPhone(oauthUser.phone || '');
-        
-        if (['admin', 'stock', 'accounting'].includes(oauthUser.role)) {
-          navigate('/admin');
+        let oauthUser = null;
+        try {
+          oauthUser = JSON.parse(oauthUserStr);
+        } catch {
+          oauthUser = JSON.parse(decodeURIComponent(oauthUserStr));
         }
-        return;
+
+        if (oauthUser && oauthUser.id) {
+          localStorage.setItem('tera_token', oauthToken);
+          localStorage.setItem('tera_user', JSON.stringify(oauthUser));
+          
+          window.history.replaceState({}, document.title, window.location.pathname);
+          showToast('เข้าสู่ระบบด้วยแพลตฟอร์มสำเร็จ ยินดีต้อนรับครับ!');
+          
+          setUser(oauthUser);
+          setEditUsername(oauthUser.username);
+          setEditPhone(oauthUser.phone || '');
+          
+          if (['admin', 'stock', 'accounting'].includes(oauthUser.role)) {
+            navigate('/admin');
+          }
+          return;
+        }
       } catch (err) {
         console.error('Error parsing OAuth user data:', err);
       }
