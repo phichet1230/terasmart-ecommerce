@@ -1172,14 +1172,46 @@ export default function Storefront() {
   };
 
   const submitOrder = async () => {
-    if (!selectedAddressId) {
-      showToast('กรุณาเลือกที่อยู่สำหรับจัดส่ง');
+    let addressIdToUse = selectedAddressId;
+
+    if (!addressIdToUse) {
+      const defaultAddr = addresses.find(a => a.is_default) || addresses[0];
+      if (defaultAddr) {
+        addressIdToUse = defaultAddr.id;
+        setSelectedAddressId(defaultAddr.id);
+      } else if (newAddress.detail && newAddress.province) {
+        try {
+          const savedAddr = await apiRequest('/api/v1/addresses', 'POST', {
+            receiver_name: receiverName || user?.username || 'ลูกค้า',
+            phone: newAddress.phone || user?.phone || '0812345678',
+            address_detail: newAddress.detail,
+            sub_district: newAddress.subdistrict || 'เมือง',
+            district: newAddress.district || 'เมือง',
+            province: newAddress.province,
+            postal_code: newAddress.postalCode || '10000',
+            is_default: true
+          });
+          if (savedAddr.data && savedAddr.data.id) {
+            addressIdToUse = savedAddr.data.id;
+            setSelectedAddressId(savedAddr.data.id);
+            fetchAddresses();
+          }
+        } catch (addrErr: any) {
+          console.error('Auto save address error:', addrErr);
+        }
+      }
+    }
+
+    if (!addressIdToUse) {
+      showToast('กรุณากรอกที่อยู่และเบอร์โทรศัพท์สำหรับจัดส่งให้ครบถ้วน');
       return;
     }
+
     try {
       const payload: any = {
-        address_id: selectedAddressId
+        address_id: addressIdToUse
       };
+
 
       if (checkoutDirectItem) {
         payload.buy_now_item = {
@@ -3076,17 +3108,43 @@ export default function Storefront() {
                               setSelectedAddressId(defaultAddr.id);
                               showToast('ดึงข้อมูลที่อยู่ปัจจุบันเรียบร้อยแล้ว');
                             } else if (user) {
-                              setReceiverName(user.username || '');
+                              const rName = user.username || 'ลูกค้า';
+                              const rPhone = user.phone || '0812345678';
+                              const rDetail = '123 ม.1 ถ.เพชรเกษม';
+                              const rProv = 'สตูล';
+                              const rDist = 'ท่าแพ';
+                              const rSub = 'ท่าแพ';
+                              const rZip = '91150';
+
+                              setReceiverName(rName);
                               setNewAddress({
-                                province: 'สตูล',
-                                district: 'ท่าแพ',
-                                subdistrict: 'ท่าแพ',
-                                postalCode: '91150',
-                                detail: '123 ม.1 ถ.เพชรเกษม',
-                                phone: '0812345678'
+                                province: rProv,
+                                district: rDist,
+                                subdistrict: rSub,
+                                postalCode: rZip,
+                                detail: rDetail,
+                                phone: rPhone
                               });
+
+                              apiRequest('/api/v1/addresses', 'POST', {
+                                receiver_name: rName,
+                                phone: rPhone,
+                                address_detail: rDetail,
+                                sub_district: rSub,
+                                district: rDist,
+                                province: rProv,
+                                postal_code: rZip,
+                                is_default: true
+                              }).then(saved => {
+                                if (saved.data && saved.data.id) {
+                                  setSelectedAddressId(saved.data.id);
+                                  fetchAddresses();
+                                }
+                              }).catch(err => console.error('Error saving address:', err));
+
                               showToast('ดึงข้อมูลที่อยู่ผู้ใช้เรียบร้อยแล้ว');
                             } else {
+
                               showToast('ไม่พบข้อมูลที่อยู่ปัจจุบัน');
                             }
                           }}
