@@ -1917,16 +1917,16 @@ export default function Storefront() {
                     { name: 'HUAWEI', logo: '/brand_huawei.svg' },
                     { name: 'ABB', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/00/ABB_logo.svg/960px-ABB_logo.svg.png' },
                     { name: 'Schneider', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/95/Schneider_Electric_2007.svg/1280px-Schneider_Electric_2007.svg.png' },
-                    { name: 'DELTA', logo: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTDQ616VVCuM4YQeEuDvz9IxzpeOal9PfRT0IpfeHD-GQ&s=10' },
+                    { name: 'DELTA', logo: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTDQ616VVCuM4YQeEuDvz9IxzpeOal9PfRT0IpfeHD-GQ&s=10', scale: 1.25 },
                     { name: 'TOSHIBA', logo: 'https://upload.wikimedia.org/wikipedia/commons/d/df/TOSHIBA_Logo.png' },
-                    { name: 'HASCON', logo: 'https://www.euroventblower.com/sites/default/files/hascon.png' },
+                    { name: 'HASCON', logo: 'https://www.euroventblower.com/sites/default/files/hascon.png', scale: 2.2 },
                     { name: 'Danfoss', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f2/Danfoss-Logo.svg/3840px-Danfoss-Logo.svg.png' },
-                    { name: 'SIEMENS', logo: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTmOhQMf2Kf7OkPu3nYLPaPM0SUKHfLoS_XrrrIY9nGxorYkioYroVuvso&s=10' },
+                    { name: 'SIEMENS', logo: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTmOhQMf2Kf7OkPu3nYLPaPM0SUKHfLoS_XrrrIY9nGxorYkioYroVuvso&s=10', scale: 1.3 },
                     { name: 'YASKAWA', logo: 'https://www.evolectriconline.com/images/content/original-1645536471827.png' },
-                    { name: 'Caprari', logo: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRv8FlPZE_x8TtAOTAi7zRKDi1IlvjmyCpcdf_rLXQZAMMn1I7KYvDPCbNT&s=10' },
-                    { name: 'BCC Cable', logo: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQpasZXF-HGcJb6Uqh0yuVyhDoXkKck82R4x8QTKHGtcA&s=10' },
+                    { name: 'Caprari', logo: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRv8FlPZE_x8TtAOTAi7zRKDi1IlvjmyCpcdf_rLXQZAMMn1I7KYvDPCbNT&s=10', scale: 2.1 },
+                    { name: 'BCC Cable', logo: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQpasZXF-HGcJb6Uqh0yuVyhDoXkKck82R4x8QTKHGtcA&s=10', scale: 1.2 },
                     { name: 'OMRON', logo: 'https://logos-world.net/wp-content/uploads/2023/01/Omron-Logo.png' },
-                    { name: 'YAZAKI', logo: 'https://seekvectorlogo.com/wp-content/uploads/2019/05/yazaki-vector-logo.png' }
+                    { name: 'YAZAKI', logo: 'https://seekvectorlogo.com/wp-content/uploads/2019/05/yazaki-vector-logo.png', scale: 1.2 }
                   ].map((item, idx) => (
                     <div 
                       key={idx}
@@ -1937,9 +1937,9 @@ export default function Storefront() {
                         setActiveTab('catalog');
                         window.scrollTo({ top: 0, behavior: 'smooth' });
                       }}
-                      style={{ height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, cursor: 'pointer', padding: '0 8px' }}
+                      style={{ height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, cursor: 'pointer', padding: '0 8px', overflow: 'hidden' }}
                     >
-                      <img src={item.logo} alt={item.name} style={{ maxHeight: '34px', maxWidth: '120px', objectFit: 'contain' }} />
+                      <img src={item.logo} alt={item.name} style={{ maxHeight: '34px', maxWidth: '120px', objectFit: 'contain', transform: item.scale ? `scale(${item.scale})` : 'none' }} />
                     </div>
                   ))}
                 </div>
@@ -5317,16 +5317,16 @@ export default function Storefront() {
                     { name: 'HUAWEI', logo: '/brand_huawei.svg' },
                     { name: 'ABB', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/00/ABB_logo.svg/960px-ABB_logo.svg.png' },
                     { name: 'Schneider Electric', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/95/Schneider_Electric_2007.svg/1280px-Schneider_Electric_2007.svg.png' },
-                    { name: 'DELTA', logo: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTDQ616VVCuM4YQeEuDvz9IxzpeOal9PfRT0IpfeHD-GQ&s=10' },
+                    { name: 'DELTA', logo: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTDQ616VVCuM4YQeEuDvz9IxzpeOal9PfRT0IpfeHD-GQ&s=10', scale: 1.25 },
                     { name: 'TOSHIBA', logo: 'https://upload.wikimedia.org/wikipedia/commons/d/df/TOSHIBA_Logo.png' },
-                    { name: 'HASCON', logo: 'https://www.euroventblower.com/sites/default/files/hascon.png' },
+                    { name: 'HASCON', logo: 'https://www.euroventblower.com/sites/default/files/hascon.png', scale: 2.2 },
                     { name: 'Danfoss', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f2/Danfoss-Logo.svg/3840px-Danfoss-Logo.svg.png' },
-                    { name: 'SIEMENS', logo: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTmOhQMf2Kf7OkPu3nYLPaPM0SUKHfLoS_XrrrIY9nGxorYkioYroVuvso&s=10' },
+                    { name: 'SIEMENS', logo: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTmOhQMf2Kf7OkPu3nYLPaPM0SUKHfLoS_XrrrIY9nGxorYkioYroVuvso&s=10', scale: 1.3 },
                     { name: 'YASKAWA', logo: 'https://www.evolectriconline.com/images/content/original-1645536471827.png' },
-                    { name: 'Caprari', logo: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRv8FlPZE_x8TtAOTAi7zRKDi1IlvjmyCpcdf_rLXQZAMMn1I7KYvDPCbNT&s=10' },
-                    { name: 'BCC Cable', logo: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQpasZXF-HGcJb6Uqh0yuVyhDoXkKck82R4x8QTKHGtcA&s=10' },
+                    { name: 'Caprari', logo: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRv8FlPZE_x8TtAOTAi7zRKDi1IlvjmyCpcdf_rLXQZAMMn1I7KYvDPCbNT&s=10', scale: 2.1 },
+                    { name: 'BCC Cable', logo: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQpasZXF-HGcJb6Uqh0yuVyhDoXkKck82R4x8QTKHGtcA&s=10', scale: 1.2 },
                     { name: 'OMRON', logo: 'https://logos-world.net/wp-content/uploads/2023/01/Omron-Logo.png' },
-                    { name: 'YAZAKI', logo: 'https://seekvectorlogo.com/wp-content/uploads/2019/05/yazaki-vector-logo.png' }
+                    { name: 'YAZAKI', logo: 'https://seekvectorlogo.com/wp-content/uploads/2019/05/yazaki-vector-logo.png', scale: 1.2 }
                   ].map((b, idx) => (
                     <div 
                       key={idx}
@@ -5362,12 +5362,18 @@ export default function Storefront() {
                         e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.03)';
                       }}
                     >
-                      <div style={{ height: '52px', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <div style={{ height: '52px', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
                         {b.logo ? (
                           <img 
                             src={b.logo} 
                             alt={b.name} 
-                            style={{ maxHeight: '44px', maxWidth: '85%', objectFit: 'contain', filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.05))' }} 
+                            style={{ 
+                              maxHeight: '44px', 
+                              maxWidth: '85%', 
+                              objectFit: 'contain', 
+                              transform: b.scale ? `scale(${b.scale})` : 'none',
+                              filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.05))' 
+                            }} 
                             onError={(e) => {
                               // Fallback text if external image fails to load
                               (e.currentTarget.style.display = 'none');
