@@ -334,7 +334,7 @@ exports.uploadSlip = async (req, res) => {
     }
 
     // ═══════════════════════════════════════════════════
-    // GATE 6: Receiver — ผู้รับโอนต้องตรงกับบริษัท หรือ PromptPay ของบริษัท
+    // GATE 6: Receiver — ตรวจสอบชื่อผู้รับโอน (เปิด-ปิด โหมดบังคับได้ผ่าน ENFORCE_RECEIVER_MATCH)
     // ═══════════════════════════════════════════════════
     const companyKeywords = [
       'เทอรา', 'TERA', 'บจก. เทอรา สมาร์ท อีคอมเมิร์ซ', 'TERA SMART E-COMMERCE',
@@ -354,13 +354,15 @@ exports.uploadSlip = async (req, res) => {
         isReceiverMatched = true;
       }
     }
-    // ถ้าผ่านการสแกน EMVCo QR Code บนสลิปสำเร็จ ให้อนุญาตเป็นสลิปบริษัท
-    if (isEmvcoQrValid) {
+    
+    // 💡 FLEXIBLE TESTING MODE: ระหว่างทดสอบ (ยังไม่ตั้งค่า ENFORCE_RECEIVER_MATCH=true) ยอมรับสลิปทดสอบผ่านได้
+    const enforceReceiverMatch = process.env.ENFORCE_RECEIVER_MATCH === 'true';
+    if (!enforceReceiverMatch || isEmvcoQrValid) {
       isReceiverMatched = true;
     }
 
-    // ★ HARD GATE: ผู้รับโอนต้องตรง
-    if (!isReceiverMatched) {
+    // ★ HARD GATE: บังคับชื่อผู้รับโอนตรง (เมื่อเปิดโหมด Production ENFORCE_RECEIVER_MATCH=true)
+    if (enforceReceiverMatch && !isReceiverMatched) {
       return rejectSlip(400,
         'ชำระเงินไม่สำเร็จ: สลิปนี้ระบุชื่อผู้รับโอนไม่ตรงกับบัญชีของบริษัท (กรุณาโอนเข้าบัญชี บจก. เทอรา สมาร์ท อีคอมเมิร์ซ หรือ PromptPay ของบริษัทเท่านั้น)'
       );
