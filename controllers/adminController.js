@@ -515,8 +515,15 @@ exports.updateProduct = async (req, res) => {
             }
           }
         }
-      }
-    } else if (price !== undefined && price !== null) {
+    }
+
+    if (req.body.stock_quantity !== undefined && req.body.stock_quantity !== null) {
+      await pool.query(
+        'UPDATE product_variants SET stock_quantity = $1 WHERE product_id = $2',
+        [parseInt(req.body.stock_quantity), productId]
+      );
+    }
+    if (price !== undefined && price !== null) {
       await pool.query(
         'UPDATE product_variants SET price = $1 WHERE product_id = $2',
         [parseFloat(price), productId]

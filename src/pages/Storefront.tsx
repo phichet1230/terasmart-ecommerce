@@ -1137,12 +1137,18 @@ export default function Storefront() {
       setActiveTab('profile');
       return;
     }
+
+    fetchCart();
+    fetchProducts();
+
     if (directItem) {
-      if (directItem.variant.stock_quantity <= 0) {
-        showToast('ไม่สามารถสั่งซื้อหรือชำระเงินได้เนื่องจากสินค้าหมดชั่วคราว');
+      const latestProduct = products.find(p => p.id === directItem.product.id);
+      const latestVariant = latestProduct?.variants?.find(v => v.id === directItem.variant.id) || directItem.variant;
+      if (latestVariant.stock_quantity <= 0) {
+        showToast(`ไม่สามารถสั่งซื้อได้เนื่องจากสินค้า ${latestVariant.variant_name} หมดชั่วคราว (สต็อกปัจจุบัน: 0)`);
         return;
       }
-      setCheckoutDirectItem(directItem);
+      setCheckoutDirectItem({ ...directItem, variant: latestVariant });
     } else {
       setCheckoutDirectItem(null);
       const selectedCartItems = cartItems.filter(i => i.selected !== false);
