@@ -154,7 +154,8 @@ exports.uploadSlip = async (req, res) => {
     let trustScore = 0;
     let ocrRawText = '';
 
-    // Layer 2: Automatic Embedded Image QR Scanner (jsQR Scanner)
+    // Layer 2: Automatic Embedded Image QR Scanner (EMVCo QR Scanner)
+    let isEmvcoQr = false;
     try {
       const jsQR = require('jsqr');
       let width = 0, height = 0, rgbaData = null;
@@ -177,6 +178,9 @@ exports.uploadSlip = async (req, res) => {
         const qrCode = jsQR(rgbaData, width, height);
         if (qrCode && qrCode.data) {
           qrScannedPayload = qrCode.data;
+          if (typeof qrScannedPayload === 'string' && qrScannedPayload.includes('000201')) {
+            isEmvcoQr = true;
+          }
           // สกัดยอดเงินจาก EMVCo Tag 54 ถ้ามี
           const amountMatch = qrScannedPayload.match(/54(\d{2})([\d\.]{1,10})/);
           if (amountMatch && amountMatch[2]) {
@@ -252,8 +256,8 @@ exports.uploadSlip = async (req, res) => {
     });
 
     // 🔴 STRICT ZERO-TRUST AUTHENTICATION RULE:
-    // ต้องมี: (แบรนด์ธนาคาร + เครื่องหมายโอนสำเร็จ + ป้ายกำกับธุรกรรมอย่างน้อย 2 รายการ) หรือสแกนพบ EMVCo QR Code บนรูปสลิป
-    if ((foundBankBrand && hasSuccessMarker && metadataLabelMatches >= 2) || qrScannedPayload) {
+    // ต้องมี: (แบรนด์ธนาคาร + เครื่องหมายโอนสำเร็จ + ป้ายกำกับธุรกรรมอย่างน้อย 2 รายการ) หรือสแกนพบ EMVCo Bank QR Code บนรูปสลิป
+    if ((foundBankBrand && hasSuccessMarker && metadataLabelMatches >= 2) || isEmvcoQr) {
       isAuthenticBankSlip = true;
       trustScore += 50;
     } else {
@@ -294,14 +298,42 @@ exports.uploadSlip = async (req, res) => {
       trustScore += 25;
     }
 
-    // Layer 7: Transaction Time Window & Stale Slip Protection
-    const orderCreatedAt = new Date(order.created_at);
-    if (verifiedDatetime.getTime() >= orderCreatedAt.getTime() - 60000) {
-      trustScore += 10;
+    // Layer 7: Transaction Time Window & Stale Slip Protection (สกัดถอดวันที่จากสลิป)
+    let extractedSlipDate = null;
+    const monthThaiMap = {
+      'ม.ค.': 0, 'ก.พ.': 1, 'มี.ค.': 2, 'เม.ย.': 3, 'พ.ค.': 4, 'มิ.ย.': 5,
+      'ก.ค.': 6, 'ส.ค.': 7, 'ก.ย.': 8, 'ต.ค.': 9, 'พ.ย.': 10, 'ธ.ค.': 11
+    };
+
+    const dateMatch = normalizedText.match(/(\d{1,2})[\s\/\.-]+(ม\.ค\.|ก\.พ\.|มี\.ค\.|เม\.ย\.|พ\.ค\.|มิ\.ย\.|ก\.ค\.|ส\.ค\.|ก\.ย\.|ต\.ค\.|พ\.ย\.|ธ\.ค\.|\d{1,2})[\s\/\.-]+(\d{2,4})/i);
+    const timeMatch = normalizedText.match(/(\d{1,2})[:\.](\d{2})/i);
+
+    if (dateMatch) {
+      const day = parseInt(dateMatch[1], 10);
+      let month = 0;
+      const rawMonth = dateMatch[2];
+      if (monthThaiMap[rawMonth] !== undefined) {
+        month = monthThaiMap[rawMonth];
+      } else {
+        month = parseInt(rawMonth, 10) - 1;
+      }
+
+      let year = parseInt(dateMatch[3], 10);
+      if (year < 100) year += 2500;
+      if (year > 2400) year -= 543;
+
+      let hours = 0, minutes = 0;
+      if (timeMatch) {
+        hours = parseInt(timeMatch[1], 10);
+        minutes = parseInt(timeMatch[2], 10);
+      }
+      extractedSlipDate = new Date(year, month, day, hours, minutes);
     }
 
+    const orderCreatedAt = new Date(order.created_at);
+
     // ==========================================
-    // ⚙️ ตรวจสอบผลลัพธ์ผ่าน 9 Verification Rules
+    // ⚙️ ตรวจสอบผลลัพธ์ผ่าน Strict Verification Rules
     // ==========================================
 
     // Rule 1: ต้องเป็นสลิปโอนเงินจริงเท่านั้น
@@ -310,6 +342,24 @@ exports.uploadSlip = async (req, res) => {
       return res.status(400).json({
         status: 'error',
         message: 'ชำระเงินไม่สำเร็จ: รูปภาพที่แนบไม่ใช่สลิปโอนเงินของธนาคาร (ระบบตรวจไม่พบองค์ประกอบหลักของสลิป เช่น ชื่อธนาคาร เครื่องหมายโอนเงินสำเร็จ และป้ายกำกับธุรกรรม)'
+      });
+    }
+
+    // Rule 2: ตรวจสอบสลิปเก่า (Stale Slip Protection - ห้ามโอนก่อนเวลาสร้างออเดอร์เกิน 5 นาที)
+    if (extractedSlipDate && extractedSlipDate.getTime() < orderCreatedAt.getTime() - 300000) {
+      if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+      return res.status(400).json({
+        status: 'error',
+        message: `ชำระเงินไม่สำเร็จ: ตรวจพบสลิปเก่าที่มีเวลาโอนก่อนเวลาสร้างออเดอร์นี้ (เวลาในสลิป: ${extractedSlipDate.toLocaleString('th-TH')}, เวลาสั่งซื้อออเดอร์นี้: ${orderCreatedAt.toLocaleString('th-TH')})`
+      });
+    }
+
+    // Rule 3: ตรวจสอบชื่อบัญชีผู้รับโอน (Receiver Company Verification)
+    if (!isReceiverMatched && !isEmvcoQr) {
+      if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+      return res.status(400).json({
+        status: 'error',
+        message: 'ชำระเงินไม่สำเร็จ: สลิปนี้ระบุชื่อผู้รับโอนไม่ตรงกับบัญชีของบริษัท (กรุณาโอนเข้าบัญชี บจก. เทอรา สมาร์ท อีคอมเมิร์ซ หรือ PromptPay ของบริษัทเท่านั้น)'
       });
     }
 
