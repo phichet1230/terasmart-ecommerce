@@ -2433,12 +2433,12 @@ export default function Storefront() {
                           รายละเอียดสินค้า
                         </h3>
                         
-                        <div style={{ fontSize: '1rem', color: '#0F172A', fontWeight: 600, marginBottom: '28px' }}>
+                        <div style={{ fontSize: '1rem', color: '#0F172A', fontWeight: 600, marginBottom: '16px' }}>
                           {selectedProduct.name}
                         </div>
 
                         {/* SECTION 1: SPEC TABLE (LEFT) & VERTICAL PUMP STANDING IMAGE (RIGHT) */}
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 280px', gap: '36px', alignItems: 'center', marginBottom: '40px' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 280px', gap: '36px', alignItems: 'start', marginBottom: '40px' }}>
                           <div style={{ overflowX: 'auto' }}>
                             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.88rem', border: '1px solid #555555' }}>
                               <thead>
