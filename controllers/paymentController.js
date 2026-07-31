@@ -296,15 +296,15 @@ exports.uploadSlip = async (req, res) => {
       }
     });
 
-    // Flexible Authentic Bank Slip Detection (Accepts valid bank slip images & OCR keywords)
-    if (foundBankBrand || hasSuccessMarker || metadataLabelCount >= 1 || isEmvcoQrValid || (scannedQrText && scannedQrText.length > 10) || (ocrRawText && ocrRawText.length > 15)) {
+    // Strict Authentic Bank Slip Detection (No loose fallbacks)
+    if (isEmvcoQrValid || ((foundBankBrand || hasSuccessMarker) && metadataLabelCount >= 2)) {
       isAuthenticBankSlip = true;
     }
 
     // ★ HARD GATE: ต้องเป็นสลิปธนาคารจริง
     if (!isAuthenticBankSlip) {
       return rejectSlip(400,
-        'ชำระเงินไม่สำเร็จ: รูปภาพที่แนบไม่ใช่สลิปโอนเงินของธนาคาร (ระบบตรวจไม่พบองค์ประกอบหลักของสลิป เช่น ชื่อธนาคาร เครื่องหมายโอนเงินสำเร็จ และป้ายกำกับธุรกรรม หรือ QR Code ไม่ผ่าน CRC16 Checksum)'
+        'ชำระเงินไม่สำเร็จ: รูปภาพที่แนบไม่ใช่สลิปโอนเงินของธนาคาร (ระบบตรวจไม่พบองค์ประกอบหลักของสลิป เช่น ชื่อธนาคาร เครื่องหมายโอนเงินสำเร็จ และป้ายกำกับธุรกรรม หรือ QR Code ไม่ผ่านการตรวจสอบความถูกต้อง)'
       );
     }
 
@@ -314,16 +314,17 @@ exports.uploadSlip = async (req, res) => {
     if (verifiedAmount === null) {
       const amountMatch1 = normalizedText.match(/(?:จำนวนเงิน|จํานวนเงิน|ยอดโอน|จำนวนเงินที่โอน|ยอดชำระ|AMOUNT|TOTAL)[:\s]*฿?\s*([\d,]+\.\d{2})/i);
       const amountMatch2 = normalizedText.match(/([\d,]+\.\d{2})\s*(?:บาท|THB)/i);
+      const amountMatch3 = normalizedText.match(/\b([\d]{1,3}(?:,[\d]{3})*\.[\d]{2})\b/);
       if (amountMatch1 && amountMatch1[1]) {
         verifiedAmount = parseFloat(amountMatch1[1].replace(/,/g, ''));
       } else if (amountMatch2 && amountMatch2[1]) {
         verifiedAmount = parseFloat(amountMatch2[1].replace(/,/g, ''));
-      } else {
-        verifiedAmount = expectedAmount;
+      } else if (amountMatch3 && amountMatch3[1]) {
+        verifiedAmount = parseFloat(amountMatch3[1].replace(/,/g, ''));
       }
     }
 
-    // ★ HARD GATE: ยอดเงินต้องตรง
+    // ★ HARD GATE: ยอดเงินต้องมีจริงและตรงกับ expectedAmount (ไม่มีการเดาหรือสุ่มให้ผ่าน)
     if (verifiedAmount === null || isNaN(verifiedAmount) || Math.abs(verifiedAmount - expectedAmount) > 0.01) {
       const displayAmount = (verifiedAmount !== null && !isNaN(verifiedAmount))
         ? `${verifiedAmount.toFixed(2)} บาท` : 'ไม่สามารถอ่านยอดเงินจากสลิปได้';
@@ -333,7 +334,7 @@ exports.uploadSlip = async (req, res) => {
     }
 
     // ═══════════════════════════════════════════════════
-    // GATE 6: Receiver — ผู้รับโอนต้องตรงกับบริษัท หรือการทดสอบโอนเงิน
+    // GATE 6: Receiver — ผู้รับโอนต้องตรงกับบริษัท หรือ PromptPay ของบริษัท
     // ═══════════════════════════════════════════════════
     const companyKeywords = [
       'เทอรา', 'TERA', 'บจก. เทอรา สมาร์ท อีคอมเมิร์ซ', 'TERA SMART E-COMMERCE',
@@ -353,8 +354,8 @@ exports.uploadSlip = async (req, res) => {
         isReceiverMatched = true;
       }
     }
-    // EMVCo QR หรือสลิปทดสอบโอนเข้า PromptPay ส่วนตัว = ยอมรับเพื่อการทดสอบ
-    if (isEmvcoQrValid || !isReceiverMatched) {
+    // ถ้าผ่านการสแกน EMVCo QR Code บนสลิปสำเร็จ ให้อนุญาตเป็นสลิปบริษัท
+    if (isEmvcoQrValid) {
       isReceiverMatched = true;
     }
 
