@@ -4,6 +4,7 @@ const path = require('path');
 const fs = require('fs');
 const paymentController = require('../controllers/paymentController');
 const { protect } = require('../middlewares/authMiddleware');
+const { uploadLimiter } = require('../middlewares/rateLimitMiddleware');
 
 const router = express.Router();
 
@@ -43,7 +44,7 @@ router.post('/webhook', paymentController.paymentsWebhook);
 router.use(protect);
 
 router.post('/:orderId/qr', paymentController.generateQR);
-router.post('/:orderId/upload', (req, res, next) => {
+router.post('/:orderId/upload', uploadLimiter, (req, res, next) => {
   upload.single('slip')(req, res, (err) => {
     if (err) {
       return res.status(400).json({ status: 'error', message: err.message });

@@ -37,13 +37,14 @@ const upload = multer({
   }
 });
 
+const { authLimiter } = require('../middlewares/rateLimitMiddleware');
 const oauthController = require('../controllers/oauthController');
 
-// Public routes
-router.post('/register', authController.register);
-router.post('/login', authController.login);
-router.post('/forgot-password', authController.forgotPassword);
-router.post('/reset-password', authController.resetPassword);
+// Public routes with Anti Brute-Force Rate Limiting
+router.post('/register', authLimiter, authController.register);
+router.post('/login', authLimiter, authController.login);
+router.post('/forgot-password', authLimiter, authController.forgotPassword);
+router.post('/reset-password', authLimiter, authController.resetPassword);
 
 // OAuth Redirection & Callback Routes
 router.get('/google', oauthController.redirectToGoogle);

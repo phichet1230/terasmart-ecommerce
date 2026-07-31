@@ -5,7 +5,7 @@ require('dotenv').config();
 
 const app = express();
 
-// CORS Middleware for Multi-Device & Tunnel Access
+// Security & CORS Middleware for Multi-Device, Tunnel & International Security Compliance
 app.use((req, res, next) => {
   const origin = req.headers.origin;
   if (origin) {
@@ -16,6 +16,14 @@ app.use((req, res, next) => {
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
   res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, Cookie');
+  
+  // Enterprise Security Headers (OWASP Standards)
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+
   if (req.method === 'OPTIONS') {
     return res.sendStatus(200);
   }
