@@ -1905,15 +1905,43 @@ export default function Storefront() {
                     ดูทั้งหมด &gt;
                   </span>
                 </div>
-                <div className="brand-logos-row" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '32px', flexWrap: 'nowrap', overflowX: 'auto', padding: '24px 28px', background: '#FFFFFF', borderRadius: '16px', border: '1px solid #E2E8F0', boxShadow: '0 4px 16px rgba(0,0,0,0.03)' }}>
-                  <div style={{ height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><img src="/brand_veichi.svg" alt="VEICHI" style={{ maxHeight: '32px', maxWidth: '130px', objectFit: 'contain' }} /></div>
-                  <div style={{ height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><img src="/brand_powran.svg" alt="POWTRAN" style={{ maxHeight: '32px', maxWidth: '130px', objectFit: 'contain' }} /></div>
-                  <div style={{ height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><img src="/brand_mitsubishi.svg" alt="MITSUBISHI ELECTRIC" style={{ maxHeight: '32px', maxWidth: '130px', objectFit: 'contain' }} /></div>
-                  <div style={{ height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><img src="/brand_hitachi.svg" alt="HITACHI" style={{ maxHeight: '32px', maxWidth: '130px', objectFit: 'contain' }} /></div>
-                  <div style={{ height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><img src="/brand_fuji.svg" alt="Fuji Electric" style={{ maxHeight: '32px', maxWidth: '130px', objectFit: 'contain' }} /></div>
-                  <div style={{ height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><img src="/brand_sunways.svg" alt="sunways" style={{ maxHeight: '32px', maxWidth: '130px', objectFit: 'contain' }} /></div>
-                  <div style={{ height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><img src="/brand_risen.svg" alt="risen" style={{ maxHeight: '32px', maxWidth: '130px', objectFit: 'contain' }} /></div>
-                  <div style={{ height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><img src="/brand_huawei.svg" alt="HUAWEI" style={{ maxHeight: '32px', maxWidth: '130px', objectFit: 'contain' }} /></div>
+                <div className="brand-logos-row" style={{ display: 'flex', alignItems: 'center', gap: '32px', flexWrap: 'nowrap', overflowX: 'auto', padding: '24px 28px', background: '#FFFFFF', borderRadius: '16px', border: '1px solid #E2E8F0', boxShadow: '0 4px 16px rgba(0,0,0,0.03)' }}>
+                  {[
+                    { name: 'VEICHI', logo: '/brand_veichi.svg' },
+                    { name: 'POWTRAN', logo: '/brand_powran.svg' },
+                    { name: 'MITSUBISHI', logo: '/brand_mitsubishi.svg' },
+                    { name: 'HITACHI', logo: '/brand_hitachi.svg' },
+                    { name: 'Fuji Electric', logo: '/brand_fuji.svg' },
+                    { name: 'sunways', logo: '/brand_sunways.svg' },
+                    { name: 'risen', logo: '/brand_risen.svg' },
+                    { name: 'HUAWEI', logo: '/brand_huawei.svg' },
+                    { name: 'ABB', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/00/ABB_logo.svg/960px-ABB_logo.svg.png' },
+                    { name: 'Schneider', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/95/Schneider_Electric_2007.svg/1280px-Schneider_Electric_2007.svg.png' },
+                    { name: 'DELTA', logo: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTDQ616VVCuM4YQeEuDvz9IxzpeOal9PfRT0IpfeHD-GQ&s=10' },
+                    { name: 'TOSHIBA', logo: 'https://upload.wikimedia.org/wikipedia/commons/d/df/TOSHIBA_Logo.png' },
+                    { name: 'HASCON', logo: 'https://www.euroventblower.com/sites/default/files/hascon.png' },
+                    { name: 'Danfoss', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f2/Danfoss-Logo.svg/3840px-Danfoss-Logo.svg.png' },
+                    { name: 'SIEMENS', logo: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTmOhQMf2Kf7OkPu3nYLPaPM0SUKHfLoS_XrrrIY9nGxorYkioYroVuvso&s=10' },
+                    { name: 'YASKAWA', logo: 'https://www.evolectriconline.com/images/content/original-1645536471827.png' },
+                    { name: 'Caprari', logo: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRv8FlPZE_x8TtAOTAi7zRKDi1IlvjmyCpcdf_rLXQZAMMn1I7KYvDPCbNT&s=10' },
+                    { name: 'BCC Cable', logo: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQpasZXF-HGcJb6Uqh0yuVyhDoXkKck82R4x8QTKHGtcA&s=10' },
+                    { name: 'OMRON', logo: 'https://logos-world.net/wp-content/uploads/2023/01/Omron-Logo.png' },
+                    { name: 'YAZAKI', logo: 'https://seekvectorlogo.com/wp-content/uploads/2019/05/yazaki-vector-logo.png' }
+                  ].map((item, idx) => (
+                    <div 
+                      key={idx}
+                      onClick={() => {
+                        setSelectedBrands([item.name]);
+                        setSelectedCategory('ทั้งหมด');
+                        setSearchText('');
+                        setActiveTab('catalog');
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                      }}
+                      style={{ height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, cursor: 'pointer', padding: '0 8px' }}
+                    >
+                      <img src={item.logo} alt={item.name} style={{ maxHeight: '34px', maxWidth: '120px', objectFit: 'contain' }} />
+                    </div>
+                  ))}
                 </div>
               </div>
 
@@ -5287,18 +5315,18 @@ export default function Storefront() {
                     { name: 'sunways', logo: '/brand_sunways.svg' },
                     { name: 'risen', logo: '/brand_risen.svg' },
                     { name: 'HUAWEI', logo: '/brand_huawei.svg' },
-                    { name: 'ABB', logo: null },
-                    { name: 'Schneider Electric', logo: null },
-                    { name: 'DELTA', logo: null },
-                    { name: 'TOSHIBA', logo: null },
-                    { name: 'HASCON', logo: null },
-                    { name: 'Danfoss', logo: null },
-                    { name: 'SIEMENS', logo: null },
-                    { name: 'YASKAWA', logo: null },
-                    { name: 'Caprari', logo: null },
-                    { name: 'BCC Cable', logo: null },
-                    { name: 'OMRON', logo: null },
-                    { name: 'YAZAKI', logo: null }
+                    { name: 'ABB', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/00/ABB_logo.svg/960px-ABB_logo.svg.png' },
+                    { name: 'Schneider Electric', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/95/Schneider_Electric_2007.svg/1280px-Schneider_Electric_2007.svg.png' },
+                    { name: 'DELTA', logo: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTDQ616VVCuM4YQeEuDvz9IxzpeOal9PfRT0IpfeHD-GQ&s=10' },
+                    { name: 'TOSHIBA', logo: 'https://upload.wikimedia.org/wikipedia/commons/d/df/TOSHIBA_Logo.png' },
+                    { name: 'HASCON', logo: 'https://www.euroventblower.com/sites/default/files/hascon.png' },
+                    { name: 'Danfoss', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f2/Danfoss-Logo.svg/3840px-Danfoss-Logo.svg.png' },
+                    { name: 'SIEMENS', logo: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTmOhQMf2Kf7OkPu3nYLPaPM0SUKHfLoS_XrrrIY9nGxorYkioYroVuvso&s=10' },
+                    { name: 'YASKAWA', logo: 'https://www.evolectriconline.com/images/content/original-1645536471827.png' },
+                    { name: 'Caprari', logo: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRv8FlPZE_x8TtAOTAi7zRKDi1IlvjmyCpcdf_rLXQZAMMn1I7KYvDPCbNT&s=10' },
+                    { name: 'BCC Cable', logo: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQpasZXF-HGcJb6Uqh0yuVyhDoXkKck82R4x8QTKHGtcA&s=10' },
+                    { name: 'OMRON', logo: 'https://logos-world.net/wp-content/uploads/2023/01/Omron-Logo.png' },
+                    { name: 'YAZAKI', logo: 'https://seekvectorlogo.com/wp-content/uploads/2019/05/yazaki-vector-logo.png' }
                   ].map((b, idx) => (
                     <div 
                       key={idx}
@@ -5312,26 +5340,49 @@ export default function Storefront() {
                       style={{
                         background: '#FFFFFF',
                         border: '1px solid #E2E8F0',
-                        borderRadius: '12px',
-                        padding: '16px',
+                        borderRadius: '16px',
+                        padding: '20px 16px',
                         display: 'flex',
                         flexDirection: 'column',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        minHeight: '100px',
+                        minHeight: '120px',
                         cursor: 'pointer',
-                        transition: 'all 0.2s ease',
-                        boxShadow: '0 2px 6px rgba(0,0,0,0.02)'
+                        transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.03)'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.borderColor = '#FF3201';
+                        e.currentTarget.style.transform = 'translateY(-4px)';
+                        e.currentTarget.style.boxShadow = '0 12px 24px rgba(255, 50, 1, 0.12)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.borderColor = '#E2E8F0';
+                        e.currentTarget.style.transform = 'translateY(0)';
+                        e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.03)';
                       }}
                     >
-                      {b.logo ? (
-                        <img src={b.logo} alt={b.name} style={{ maxHeight: '38px', maxWidth: '85%', objectFit: 'contain' }} />
-                      ) : (
-                        <div style={{ fontSize: '1.15rem', fontFamily: "'Rubik', sans-serif", fontWeight: 800, color: '#0F172A', letterSpacing: '0.5px', textAlign: 'center' }}>
-                          {b.name}
-                        </div>
-                      )}
-                      <span style={{ fontSize: '0.78rem', fontWeight: 600, color: '#64748B', marginTop: '6px' }}>{b.name}</span>
+                      <div style={{ height: '52px', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        {b.logo ? (
+                          <img 
+                            src={b.logo} 
+                            alt={b.name} 
+                            style={{ maxHeight: '44px', maxWidth: '85%', objectFit: 'contain', filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.05))' }} 
+                            onError={(e) => {
+                              // Fallback text if external image fails to load
+                              (e.currentTarget.style.display = 'none');
+                              if (e.currentTarget.parentElement) {
+                                e.currentTarget.parentElement.innerHTML = `<span style="font-size: 1.1rem; font-weight: 800; color: #0F172A;">${b.name}</span>`;
+                              }
+                            }}
+                          />
+                        ) : (
+                          <div style={{ fontSize: '1.15rem', fontFamily: "'Rubik', sans-serif", fontWeight: 800, color: '#0F172A', letterSpacing: '0.5px', textAlign: 'center' }}>
+                            {b.name}
+                          </div>
+                        )}
+                      </div>
+                      <span style={{ fontSize: '0.82rem', fontWeight: 600, color: '#475569', marginTop: '10px', textAlign: 'center' }}>{b.name}</span>
                     </div>
                   ))}
                 </div>
