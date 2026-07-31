@@ -5678,7 +5678,7 @@ export default function Storefront() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '0.85rem', alignItems: 'flex-start', textAlign: 'left' }}>
                 <a href="https://www.teragroup.co.th/about-us/" target="_blank" rel="noopener noreferrer" style={{ color: '#94A3B8', opacity: 0.8, textDecoration: 'none' }}>เกี่ยวกับ Tera Group</a>
                 <a href="#careers" style={{ color: '#94A3B8', opacity: 0.8, textDecoration: 'none' }} onClick={(e) => { e.preventDefault(); showToast('ร่วมงานกับเรา'); }}>ร่วมงานกับเรา</a>
-                <a href="#news" style={{ color: '#94A3B8', opacity: 0.8, textDecoration: 'none' }} onClick={(e) => { e.preventDefault(); showToast('ข่าวสารองค์กร'); }}>ข่าวสาร</a>
+                <a href="https://www.teragroup.co.th/blog/" target="_blank" rel="noopener noreferrer" style={{ color: '#94A3B8', opacity: 0.8, textDecoration: 'none' }}>ข่าวสาร</a>
                 <a href="#partners" style={{ color: '#94A3B8', opacity: 0.8, textDecoration: 'none' }} onClick={(e) => { e.preventDefault(); showToast('พันธมิตรทางธุรกิจ'); }}>พันธมิตรธุรกิจ</a>
               </div>
             </div>
