@@ -3722,25 +3722,12 @@ export default function Storefront() {
                             </>
                           )}
 
-                          {/* Real-time status indicator & simulation */}
+                          {/* Real-time status indicator */}
                           <div className="card" style={{ marginTop: '20px', textAlign: 'center', maxWidth: '240px' }}>
-                            <div className="flex items-center gap-sm" style={{ justifyContent: 'center', fontSize: '0.8rem', color: 'var(--success)', marginBottom: '10px' }}>
+                            <div className="flex items-center gap-sm" style={{ justifyContent: 'center', fontSize: '0.85rem', color: 'var(--success)', fontWeight: 600 }}>
                               <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: 'var(--success)', display: 'inline-block', animation: 'pulseGlowGreen 1.5s infinite' }}></span>
-                              <span>กำลังรอการสแกนชำระเงิน...</span>
+                              <span>กำลังรอการแนบสลิปชำระเงิน...</span>
                             </div>
-                            <button
-                              onClick={async () => {
-                                try {
-                                  await apiRequest(`/api/v1/payments/${createdOrderId}/simulate-webhook`, 'POST');
-                                  showToast('จำลองส่งข้อมูลสำเร็จ! ระบบรับเงินเรียลไทม์แล้ว');
-                                } catch (err: any) {
-                                  showToast(err.message);
-                                }
-                              }}
-                              className="btn btn-primary btn-sm btn-block"
-                            >
-                              <CheckCircle size={14} /> จำลองการสแกนจ่ายสำเร็จ
-                            </button>
                           </div>
                         </>
                       ) : (

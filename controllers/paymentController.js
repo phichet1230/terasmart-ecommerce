@@ -122,26 +122,26 @@ exports.uploadSlip = async (req, res) => {
     const fileBuffer = fs.readFileSync(req.file.path);
     const fileHash = crypto.createHash('md5').update(fileBuffer).digest('hex');
 
-    // 2. รับค่าพารามิเตอร์ AI & Engine จากระบบตรวจจับสลิปอัตโนมัติ (ถ้าส่งมาใน req.body หรือผ่าน API Microservice)
-    const bodyVerifiedAmount = req.body && req.body.ai_verified_amount ? parseFloat(req.body.ai_verified_amount) : null;
-    const bodyVerifiedStatus = req.body && req.body.ai_verified_status ? req.body.ai_verified_status : null;
+    // 2. รับค่าพารามิเตอร์ส่งเสริมจาก req.body (ถ้ามี)
     const qrRef = (req.body && (req.body.qr_ref || req.body.qr_code_ref)) ? (req.body.qr_ref || req.body.qr_code_ref) : null;
-    const ocrRawText = (req.body && req.body.ocr_raw_text) ? req.body.ocr_raw_text : null;
     const qrPayload = (req.body && req.body.qr_payload) ? req.body.qr_payload : null;
 
-    let verifiedAmount = parseFloat(order.total_price);
+    // 🔴 ZERO TRUST INITIALIZATION: ไม่อนุญาตให้ผ่านเป็นอันขาดจนกว่าจะมีหลักฐานการโอนเงินของธนาคารที่ชัดเจน
+    let verifiedAmount = null;
     let verifiedDatetime = new Date();
     let slipTxRef = qrRef || fileHash;
     let receiverName = 'บจก. เทอรา สมาร์ท อีคอมเมิร์ซ';
-    let isAuthenticBankSlip = true;
-    let verifiedStatus = bodyVerifiedStatus || 'MATCHED';
+    let isAuthenticBankSlip = false;
+    let verifiedStatus = 'MATCHED';
+    let ocrRawText = '';
 
-    // 3. ตรวจสอบว่ามีการตั้งค่า Bank Verification API (SlipOK / EasySlip / OpenSlip) ใน .env หรือไม่
+    const expectedAmount = parseFloat(order.total_price);
+
+    // 3. ตรวจสอบว่ามีการตั้งค่า Bank Verification API (SlipOK / EasySlip) ใน .env หรือไม่
     const slipOkApiKey = process.env.SLIPOK_API_KEY;
     const easySlipApiKey = process.env.EASYSLIP_API_KEY;
 
     if (slipOkApiKey && (qrPayload || qrRef)) {
-      // ทำงานเชื่อมต่อกับ API ตรวจสอบสลิปของ SlipOK
       try {
         const response = await fetch('https://api.slipok.com/api/line/apikey/' + (process.env.SLIPOK_BRANCH_ID || ''), {
           method: 'POST',
@@ -149,7 +149,7 @@ exports.uploadSlip = async (req, res) => {
             'x-authorization': slipOkApiKey,
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify({ data: qrPayload || qrRef, amount: parseFloat(order.total_price) })
+          body: JSON.stringify({ data: qrPayload || qrRef, amount: expectedAmount })
         });
         const resData = await response.json();
         if (resData.success && resData.data) {
@@ -163,7 +163,6 @@ exports.uploadSlip = async (req, res) => {
         console.warn('SlipOK API Verification Notice:', apiErr.message);
       }
     } else if (easySlipApiKey && (qrPayload || qrRef)) {
-      // ทำงานเชื่อมต่อกับ API ตรวจสอบสลิปของ EasySlip
       try {
         const response = await fetch('https://developer.easyslip.com/api/v1/verify', {
           method: 'POST',
@@ -179,66 +178,86 @@ exports.uploadSlip = async (req, res) => {
           slipTxRef = resData.data.transRef;
           receiverName = resData.data.receiver && resData.data.receiver.account ? resData.data.receiver.account.name.th : receiverName;
           verifiedDatetime = new Date(resData.data.date);
+          isAuthenticBankSlip = true;
         }
       } catch (apiErr) {
         console.warn('EasySlip API Verification Notice:', apiErr.message);
       }
-    } else {
-      // 4. In-Process Engine: ถอดรหัส EMVCo Bank QR Payload และถอดข้อความ OCR จากสลิป
-      let hasDetectedBankData = false;
+    }
 
-      if (qrPayload && typeof qrPayload === 'string') {
-        // ถอด Tag 54 (Amount) และ Tag 62/05 (Transaction Ref) จากสเปกมาตรฐาน EMVCo PromptPay QR
-        try {
-          let index = 0;
-          while (index < qrPayload.length) {
-            const tag = qrPayload.substring(index, index + 2);
-            const len = parseInt(qrPayload.substring(index + 2, index + 4), 10);
-            if (isNaN(len)) break;
-            const val = qrPayload.substring(index + 4, index + 4 + len);
-            if (tag === '54') { verifiedAmount = parseFloat(val); hasDetectedBankData = true; }
-            if (tag === '62' || tag === '05') slipTxRef = val;
-            index += 4 + len;
-          }
-        } catch (e) {
-          console.warn('EMVCo QR Payload parse error:', e.message);
+    // 4. หากไม่ได้เปิดใช้ Bank API ให้รัน Server-Side Tesseract OCR สแกนถอดข้อความภาษาไทย+อังกฤษจากไฟล์ภาพจริงโดยตรง
+    if (!isAuthenticBankSlip) {
+      try {
+        const Tesseract = require('tesseract.js');
+        const ocrResult = await Tesseract.recognize(req.file.path, 'tha+eng', {
+          logger: () => {}
+        });
+        ocrRawText = (ocrResult && ocrResult.data && ocrResult.data.text) ? ocrResult.data.text : '';
+      } catch (ocrErr) {
+        console.warn('Server-Side Tesseract OCR Error:', ocrErr.message);
+      }
+
+      if (req.body && req.body.ocr_raw_text) {
+        ocrRawText += '\n' + req.body.ocr_raw_text;
+      }
+
+      const normalizedText = ocrRawText.replace(/\s+/g, ' ');
+
+      // 🔍 ตรวจคำสำคัญของสลิปโอนเงินธนาคารไทย (Thai Banking Slip Keywords Audit)
+      const thaiBankKeywords = [
+        'โอนเงินสำเร็จ', 'โอนสำเร็จ', 'รายการสำเร็จ', 'ชำระเงินสำเร็จ', 'โอนเงิน',
+        'TRANSFER SUCCESSFUL', 'SUCCESSFUL TRANSFER', 'TRANSACTION SUCCESSFUL',
+        'กสิกรไทย', 'KBANK', 'K-PLUS', 'ไทยพาณิชย์', 'SCB', 'กรุงไทย', 'KRUNGTHAI',
+        'กรุงเทพ', 'BUALUANG', 'TTB', 'ทหารไทย', 'GSB', 'ออมสิน', 'BAY', 'กรุงศรี',
+        'PROMPTPAY', 'พร้อมเพย์', 'จำนวนเงิน', 'ยอดโอน', 'ผู้โอน', 'ผู้รับโอน', 'ค่าธรรมเนียม',
+        'REF', 'TRANSACTION ID', 'ACCOUNT NO'
+      ];
+
+      let bankKeywordMatches = 0;
+      for (const kw of thaiBankKeywords) {
+        if (normalizedText.toUpperCase().includes(kw.toUpperCase())) {
+          bankKeywordMatches++;
         }
       }
 
-      if (ocrRawText && typeof ocrRawText === 'string') {
-        // ถอดตัวเลขยอดเงินด้วย Regex จากข้อความ OCR ของสลิปธนาคารไทย (KBank, SCB, Krungthai, Bangkok Bank, TTB, GSB ฯลฯ)
-        const amountMatch = ocrRawText.match(/(?:จำนวนเงิน|ยอดโอน|จำนวนเงินที่โอน|Amount)[:\s]*([\d,]+\.\d{2})/i) ||
-                            ocrRawText.match(/([\d,]+\.\d{2})[\s]*(?:บาท|THB)/i);
-        if (amountMatch && amountMatch[1]) {
-          const parsedAmount = parseFloat(amountMatch[1].replace(/,/g, ''));
-          if (!isNaN(parsedAmount) && parsedAmount > 0 && parsedAmount < 1000000) {
-            verifiedAmount = parsedAmount;
-            hasDetectedBankData = true;
+      // หากไม่พบคำสำคัญทางการเงินอย่างน้อย 2 คำ = ไม่ใช่สลิปโอนเงินธนาคารเด็ดขาด!
+      if (bankKeywordMatches >= 2) {
+        isAuthenticBankSlip = true;
+
+        // 💰 สกัดถอดตัวเลขยอดโอนเงินจากข้อความ OCR (Exact Amount Extractor)
+        const amountMatch1 = normalizedText.match(/(?:จำนวนเงิน|ยอดโอน|จำนวนเงินที่โอน|ยอดชำระ|AMOUNT|TOTAL)[:\s]*฿?\s*([\d,]+\.\d{2})/i);
+        const amountMatch2 = normalizedText.match(/([\d,]+\.\d{2})\s*(?:บาท|THB)/i);
+
+        if (amountMatch1 && amountMatch1[1]) {
+          verifiedAmount = parseFloat(amountMatch1[1].replace(/,/g, ''));
+        } else if (amountMatch2 && amountMatch2[1]) {
+          verifiedAmount = parseFloat(amountMatch2[1].replace(/,/g, ''));
+        } else {
+          // ค้นหาตัวเลขทศนิยมทุกตำแหน่งที่ตรงกับยอดคำสั่งซื้อ
+          const allDecimals = normalizedText.match(/\b\d{1,6}\.\d{2}\b/g);
+          if (allDecimals) {
+            for (const dec of allDecimals) {
+              const val = parseFloat(dec);
+              if (Math.abs(val - expectedAmount) < 0.01) {
+                verifiedAmount = val;
+                break;
+              }
+            }
           }
         }
-      }
-
-      if (bodyVerifiedAmount && !isNaN(bodyVerifiedAmount)) {
-        verifiedAmount = bodyVerifiedAmount;
-        hasDetectedBankData = true;
-      }
-
-      // หากไม่พบข้อมูลธนาคาร/QR/OCR หรือเป็นภาพสุ่มทั่วไปที่ไม่ใช่สลิปโอนเงิน ห้ามให้ผ่านการชำระเงินเด็ดขาด!
-      if (!hasDetectedBankData) {
-        isAuthenticBankSlip = false;
       }
     }
 
     // ==========================================
-    // ⚙️ ดำเนินการตรวจสอบสลิปอย่างละเอียด (5 Security Verification Audit Rules)
+    // ⚙️ ดำเนินการตรวจสอบสลิปอย่างละเอียด (6 Enterprise Verification Rules)
     // ==========================================
 
-    // กฎข้อที่ 1: ตรวจสอบความสมบูรณ์และลายเซ็นธนาคาร (Bank Signature & Authenticity Check)
+    // กฎข้อที่ 1: ตรวจสอบความสมบูรณ์ว่าเป็นสลิปโอนเงินจริงหรือไม่ (Authentic Bank Slip Check)
     if (!isAuthenticBankSlip) {
       if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
       return res.status(400).json({
         status: 'error',
-        message: 'ชำระเงินไม่สำเร็จ: รูปภาพที่แนบไม่ใช่สลิปโอนเงินของธนาคาร หรือไม่สามารถอ่านข้อมูลการโอนเงินได้'
+        message: 'ชำระเงินไม่สำเร็จ: รูปภาพที่แนบไม่ใช่สลิปโอนเงินของธนาคาร หรือระบบไม่พบข้อมูลธุรกรรมการโอนเงินที่ถูกต้อง (กรุณาแนบสลิปโอนเงินจริงเท่านั้น)'
       });
     }
 
@@ -265,12 +284,12 @@ exports.uploadSlip = async (req, res) => {
     }
 
     // กฎข้อที่ 4: ตรวจสอบความถูกต้องของยอดเงินโอนจริงกับยอดออเดอร์ (Financial Amount Precision Match)
-    const expectedAmount = parseFloat(order.total_price);
-    if (Math.abs(verifiedAmount - expectedAmount) > 0.01) {
+    if (verifiedAmount === null || isNaN(verifiedAmount) || Math.abs(verifiedAmount - expectedAmount) > 0.01) {
       fs.unlinkSync(req.file.path);
+      const displayAmount = verifiedAmount ? `${verifiedAmount.toFixed(2)} บาท` : 'อ่านยอดเงินไม่ชัดเจน';
       return res.status(400).json({
         status: 'error',
-        message: `ชำระเงินไม่สำเร็จ: ยอดโอนในสลิปไม่ตรงกับยอดเรียกเก็บ (ยอดสลิป: ${verifiedAmount.toFixed(2)} บาท, ยอดที่ต้องจ่าย: ${expectedAmount.toFixed(2)} บาท)`
+        message: `ชำระเงินไม่สำเร็จ: ยอดโอนในสลิปไม่ตรงกับยอดคำสั่งซื้อ (ยอดสลิป: ${displayAmount}, ยอดที่ต้องชำระ: ${expectedAmount.toFixed(2)} บาท)`
       });
     }
 
