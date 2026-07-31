@@ -6,7 +6,9 @@ const { protect } = require('../middlewares/authMiddleware');
 router.use(protect);
 
 router.post('/', orderController.createOrder);
+router.post('', orderController.createOrder);
 router.get('/', orderController.getMyOrders);
+router.get('', orderController.getMyOrders);
 router.get('/:id', orderController.getOrderDetail);
 router.put('/:id/cancel', orderController.cancelOrder);
 

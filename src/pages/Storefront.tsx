@@ -430,14 +430,41 @@ export default function Storefront() {
     }
     
     let response: Response;
+    let targetUrl = url;
     try {
-      response = await fetch(url, options);
+      response = await fetch(targetUrl, options);
+
+      // If relative API call got 404 HTML, fallback directly to backend server on port 5000
+      const ct = response.headers.get('content-type');
+      if (response.status === 404 && targetUrl.startsWith('/api') && (!ct || !ct.includes('application/json'))) {
+        try {
+          const fallbackUrl = `http://localhost:5000${targetUrl}`;
+          const fallbackRes = await fetch(fallbackUrl, options);
+          if (fallbackRes.ok || fallbackRes.headers.get('content-type')?.includes('application/json')) {
+            response = fallbackRes;
+            targetUrl = fallbackUrl;
+          }
+        } catch (fbErr) {
+          console.warn('Fallback fetch failed:', fbErr);
+        }
+      }
     } catch (err: any) {
-      console.error('Fetch error for:', url, err);
-      throw new Error('ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้ กรุณาตรวจสอบการเชื่อมต่อ');
+      if (targetUrl.startsWith('/api')) {
+        try {
+          const fallbackUrl = `http://localhost:5000${targetUrl}`;
+          response = await fetch(fallbackUrl, options);
+          targetUrl = fallbackUrl;
+        } catch (fbErr) {
+          console.error('Fetch error for:', url, err);
+          throw new Error('ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้ กรุณาตรวจสอบการเชื่อมต่อ');
+        }
+      } else {
+        console.error('Fetch error for:', url, err);
+        throw new Error('ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้ กรุณาตรวจสอบการเชื่อมต่อ');
+      }
     }
 
-    const isAuthRequest = url.includes('/api/v1/auth/login') || url.includes('/api/v1/auth/register');
+    const isAuthRequest = targetUrl.includes('/api/v1/auth/login') || targetUrl.includes('/api/v1/auth/register');
 
     const contentType = response.headers.get('content-type');
     if (contentType && contentType.includes('application/json')) {
@@ -449,7 +476,7 @@ export default function Storefront() {
           setUser(null);
           throw new Error('เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่อีกครั้ง');
         }
-        console.error('API Error Response:', url, response.status, data);
+        console.error('API Error Response:', targetUrl, response.status, data);
         throw new Error(data.message || `ไม่สามารถทำรายการได้ (รหัส: ${response.status})`);
       }
       return data;
@@ -460,9 +487,9 @@ export default function Storefront() {
         setUser(null);
         throw new Error('เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่อีกครั้ง');
       }
-      console.error('API Non-JSON Response:', url, response.status);
+      console.error('API Non-JSON Response:', targetUrl, response.status);
       if (response.status === 404) {
-        throw new Error(`ไม่พบข้อมูลที่ต้องการในระบบ (${url})`);
+        throw new Error(`ไม่พบข้อมูลที่ต้องการในระบบ (${targetUrl})`);
       }
       throw new Error(`ระบบขัดข้องชั่วคราว (HTTP ${response.status})`);
     }
