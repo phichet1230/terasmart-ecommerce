@@ -28,10 +28,7 @@ app.use(cookieParser()); // อ่าน Cookie ได้
 app.use(express.static('dist')); // ให้บริการไฟล์ HTML/CSS/JS หน้าบ้านที่คอมไพล์แล้วจาก React/Vite
 app.use('/uploads', express.static('uploads')); // ให้บริการไฟล์สลิปชำระเงินที่อัปโหลดเข้ามา
 
-// Routes (เดี๋ยวเราจะมาเพิ่มตรงนี้)
-app.get('/', (req, res) => {
-  res.send('TeraSmart API is running...');
-});
+// Routes
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, '0.0.0.0', () => {
