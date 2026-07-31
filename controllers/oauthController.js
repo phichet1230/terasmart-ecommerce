@@ -29,12 +29,11 @@ function generateSafeUsername(baseName) {
 
 // Helper to dynamically get the exact callback URL based on incoming request host
 function getCallbackUrl(req, envVarName, defaultPath) {
-  const envUrl = process.env[envVarName];
-  if (envUrl && !envUrl.includes('ngrok-free.dev') && !envUrl.includes('serveousercontent.com') && !envUrl.includes('your_')) {
-    return envUrl;
-  }
   const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'http';
-  const host = req.headers['x-forwarded-host'] || req.headers.host;
+  let host = req.headers['x-forwarded-host'] || req.headers.host || 'localhost:5000';
+  if (host.includes('5173')) {
+    host = host.replace('5173', '5000');
+  }
   return `${protocol}://${host}${defaultPath}`;
 }
 
@@ -440,7 +439,7 @@ async function handleSocialLogin(req, res, idColumn, socialId, email, name, pict
   // 4. Generate JWT
   const token = jwt.sign(
     { id: user.id, role: user.role },
-    process.env.JWT_SECRET,
+    process.env.JWT_SECRET || 'tera_group_secret_key_2024',
     { expiresIn: '1d' }
   );
 
