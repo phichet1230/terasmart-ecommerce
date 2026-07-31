@@ -618,9 +618,56 @@ export default function Storefront() {
     try {
       const res = await apiRequest('/api/v1/addresses');
       setAddresses(res.data);
-      const defaultAddr = res.data.find((a: Address) => a.is_default);
+      const defaultAddr = res.data.find((a: Address) => a.is_default) || res.data[0];
       if (defaultAddr) {
         setSelectedAddressId(defaultAddr.id);
+        setReceiverName(defaultAddr.receiver_name || user?.username || '');
+        setNewAddress({
+          province: defaultAddr.province || '',
+          district: defaultAddr.district || '',
+          subdistrict: defaultAddr.sub_district || (defaultAddr as any).subdistrict || '',
+          postalCode: defaultAddr.postal_code || (defaultAddr as any).postalCode || '',
+          detail: defaultAddr.address_detail || (defaultAddr as any).detail || '',
+          phone: defaultAddr.phone || ''
+        });
+      } else if (user) {
+        const rName = (user.username || 'ลูกค้า').replace(/[0-9]/g, '') || 'Phichet Srikongka';
+        let rPhone = (user.phone || '0812345678').replace(/[^0-9]/g, '');
+        if (rPhone.length !== 10) rPhone = '0812345678';
+        const rDetail = '123 ม.1 ถ.เพชรเกษม';
+        const rProv = 'สตูล';
+        const rDist = 'ท่าแพ';
+        const rSub = 'ท่าแพ';
+        const rZip = '91150';
+
+        setReceiverName(rName);
+        setNewAddress({
+          province: rProv,
+          district: rDist,
+          subdistrict: rSub,
+          postalCode: rZip,
+          detail: rDetail,
+          phone: rPhone
+        });
+
+        try {
+          const saved = await apiRequest('/api/v1/addresses', 'POST', {
+            receiver_name: rName,
+            phone: rPhone,
+            address_detail: rDetail,
+            sub_district: rSub,
+            district: rDist,
+            province: rProv,
+            postal_code: rZip,
+            is_default: true
+          });
+          if (saved.data && saved.data.id) {
+            setSelectedAddressId(saved.data.id);
+            setAddresses([saved.data]);
+          }
+        } catch (e) {
+          console.error('Auto create initial address error:', e);
+        }
       }
     } catch (err: any) {
       console.error(err);
@@ -1179,26 +1226,37 @@ export default function Storefront() {
       if (defaultAddr) {
         addressIdToUse = defaultAddr.id;
         setSelectedAddressId(defaultAddr.id);
-      } else if (newAddress.detail && newAddress.province) {
-        try {
-          const savedAddr = await apiRequest('/api/v1/addresses', 'POST', {
-            receiver_name: receiverName || user?.username || 'ลูกค้า',
-            phone: newAddress.phone || user?.phone || '0812345678',
-            address_detail: newAddress.detail,
-            sub_district: newAddress.subdistrict || 'เมือง',
-            district: newAddress.district || 'เมือง',
-            province: newAddress.province,
-            postal_code: newAddress.postalCode || '10000',
-            is_default: true
-          });
-          if (savedAddr.data && savedAddr.data.id) {
-            addressIdToUse = savedAddr.data.id;
-            setSelectedAddressId(savedAddr.data.id);
-            fetchAddresses();
-          }
-        } catch (addrErr: any) {
-          console.error('Auto save address error:', addrErr);
+      }
+    }
+
+    if (!addressIdToUse) {
+      const rName = (receiverName || user?.username || 'ลูกค้า').replace(/[0-9]/g, '') || 'Phichet Srikongka';
+      let rPhone = (newAddress.phone || user?.phone || '0812345678').replace(/[^0-9]/g, '');
+      if (rPhone.length !== 10) rPhone = '0812345678';
+      const rDetail = newAddress.detail || '123 ม.1 ถ.เพชรเกษม';
+      const rProv = newAddress.province || 'สตูล';
+      const rDist = newAddress.district || 'ท่าแพ';
+      const rSub = newAddress.subdistrict || 'ท่าแพ';
+      const rZip = newAddress.postalCode || '91150';
+
+      try {
+        const savedAddr = await apiRequest('/api/v1/addresses', 'POST', {
+          receiver_name: rName,
+          phone: rPhone,
+          address_detail: rDetail,
+          sub_district: rSub,
+          district: rDist,
+          province: rProv,
+          postal_code: rZip,
+          is_default: true
+        });
+        if (savedAddr.data && savedAddr.data.id) {
+          addressIdToUse = savedAddr.data.id;
+          setSelectedAddressId(savedAddr.data.id);
+          fetchAddresses();
         }
+      } catch (addrErr: any) {
+        console.error('Auto save address error:', addrErr);
       }
     }
 
