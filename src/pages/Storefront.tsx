@@ -1397,18 +1397,36 @@ export default function Storefront() {
 
     try {
       const token = localStorage.getItem('tera_token');
-      const response = await fetch(`/api/v1/payments/${createdOrderId}/upload`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        },
-        body: formData
-      });
+      const headers: any = {};
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      let targetUrl = `/api/v1/payments/${createdOrderId}/upload`;
+      let response: Response;
+
+      try {
+        response = await fetch(targetUrl, { method: 'POST', headers, body: formData });
+        const ct = response.headers.get('content-type');
+        if (response.status === 404 && targetUrl.startsWith('/api') && (!ct || !ct.includes('application/json'))) {
+          const fallbackUrl = `http://localhost:5000${targetUrl}`;
+          const fallbackRes = await fetch(fallbackUrl, { method: 'POST', headers, body: formData });
+          if (fallbackRes.ok || fallbackRes.headers.get('content-type')?.includes('application/json')) {
+            response = fallbackRes;
+            targetUrl = fallbackUrl;
+          }
+        }
+      } catch (fetchErr) {
+        const fallbackUrl = `http://localhost:5000${targetUrl}`;
+        response = await fetch(fallbackUrl, { method: 'POST', headers, body: formData });
+        targetUrl = fallbackUrl;
+      }
+
       const res = await response.json();
       setIsPaymentLoading(false);
 
-      if (res.status === 'error') {
-        showToast(res.message);
+      if (!response.ok || res.status === 'error') {
+        showToast(res.message || `อัปโหลดสลิปไม่สำเร็จ (รหัส: ${response.status})`);
         return;
       }
 
@@ -1418,7 +1436,7 @@ export default function Storefront() {
       fetchOrders();
     } catch (err: any) {
       setIsPaymentLoading(false);
-      showToast('ระบบเครือข่ายผิดพลาด กรุณาลองใหม่อีกครั้ง');
+      showToast(err.message || 'ระบบเครือข่ายผิดพลาด กรุณาลองใหม่อีกครั้ง');
     }
   };
 
