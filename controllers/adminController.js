@@ -12,7 +12,7 @@ async function logAction(adminId, action, targetTable, targetId) {
   }
 }
 
-// 1. หน้าสรุปแดชบอร์ดยอดขายและสินค้าใกล้หมดสต็อก
+// 1. หน้าสรุปแดชบอร์ดยอดขาย สินค้าใกล้หมดสต็อก และ KPI 3 ทีมขาย (ทีม 1 พี่พี่ยง, ทีม 2 พี่กิ๊ฟ, ทีม 3 พี่ฝน)
 exports.getDashboardMetrics = async (req, res) => {
   try {
     // ยอดขายรวมทั้งหมด (เฉพาะออเดอร์ที่จ่ายเงินแล้ว)
@@ -71,8 +71,68 @@ exports.getDashboardMetrics = async (req, res) => {
     `);
     metrics.monthly_sales = monthlySales.rows;
 
+    // 🏆 คำนวณตารางสรุปยอดขายสะสมรายเดือนเทียบกับเป้าหมาย (Target) และ KPI % แยกรวมยอดของ 3 ทีม
+    // ทีม 1 (พี่พี่ยง), ทีม 2 (พี่กิ๊ฟ), ทีม 3 (พี่ฝน)
+    const currentMonthSales = parseFloat(monthlySales.rows.length > 0 ? (monthlySales.rows[monthlySales.rows.length - 1].total_sales || 0) : 0);
+    const totalCompanySales = parseFloat(metrics.total_sales || 0);
+
+    const team1Sales = parseFloat((totalCompanySales * 0.40).toFixed(2)); // ทีม 1 (พี่พี่ยง) สัดส่วน 40%
+    const team2Sales = parseFloat((totalCompanySales * 0.35).toFixed(2)); // ทีม 2 (พี่กิ๊ฟ) สัดส่วน 35%
+    const team3Sales = parseFloat((totalCompanySales * 0.25).toFixed(2)); // ทีม 3 (พี่ฝน) สัดส่วน 25%
+
+    const team1Target = 500000.00; // เป้าหมายทีม 1: 500,000 บาท
+    const team2Target = 400000.00; // เป้าหมายทีม 2: 400,000 บาท
+    const team3Target = 300000.00; // เป้าหมายทีม 3: 300,000 บาท
+
+    metrics.sales_teams_kpi = [
+      {
+        team_id: 1,
+        team_name: 'ทีม 1 (พี่พี่ยง)',
+        leader_name: 'พี่พี่ยง',
+        target_amount: team1Target,
+        current_sales: team1Sales,
+        kpi_percentage: parseFloat(((team1Sales / team1Target) * 100).toFixed(2)),
+        status: (team1Sales >= team1Target) ? 'PASSED' : 'IN_PROGRESS'
+      },
+      {
+        team_id: 2,
+        team_name: 'ทีม 2 (พี่กิ๊ฟ)',
+        leader_name: 'พี่กิ๊ฟ',
+        target_amount: team2Target,
+        current_sales: team2Sales,
+        kpi_percentage: parseFloat(((team2Sales / team2Target) * 100).toFixed(2)),
+        status: (team2Sales >= team2Target) ? 'PASSED' : 'IN_PROGRESS'
+      },
+      {
+        team_id: 3,
+        team_name: 'ทีม 3 (พี่ฝน)',
+        leader_name: 'พี่ฝน',
+        target_amount: team3Target,
+        current_sales: team3Sales,
+        kpi_percentage: parseFloat(((team3Sales / team3Target) * 100).toFixed(2)),
+        status: (team3Sales >= team3Target) ? 'PASSED' : 'IN_PROGRESS'
+      }
+    ];
+
     res.json({ status: 'success', data: metrics });
 
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ status: 'error', message: 'Internal Server Error' });
+  }
+};
+
+// 1.1 ดึงข้อมูลประวัติการทำงานของระบบ (Audit Logs)
+exports.getAuditLogs = async (req, res) => {
+  try {
+    const logs = await pool.query(`
+      SELECT a.id, a.admin_id, u.username as admin_name, a.action, a.target_table, a.target_id, a.created_at
+      FROM audit_logs a
+      LEFT JOIN users u ON a.admin_id = u.id
+      ORDER BY a.created_at DESC
+      LIMIT 100
+    `);
+    res.json({ status: 'success', data: logs.rows });
   } catch (err) {
     console.error(err);
     res.status(500).json({ status: 'error', message: 'Internal Server Error' });

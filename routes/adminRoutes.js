@@ -5,6 +5,7 @@ const { protect, restrictTo } = require('../middlewares/authMiddleware');
 
 // 1. แดชบอร์ดข้อมูลภาพรวมสรุป (admin, accounting)
 router.get('/dashboard', protect, restrictTo('admin', 'accounting'), adminController.getDashboardMetrics);
+router.get('/audit-logs', protect, restrictTo('admin'), adminController.getAuditLogs);
 
 // 2. จัดการคำสั่งซื้อ (admin, accounting)
 router.get('/orders', protect, restrictTo('admin', 'accounting'), adminController.getAllOrders);
