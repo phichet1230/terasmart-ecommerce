@@ -906,6 +906,10 @@ export default function Storefront() {
       return;
     }
     if (!selectedVariant) return;
+    if (selectedVariant.stock_quantity <= 0) {
+      showToast('ไม่สามารถเพิ่มลงตะกร้าได้เนื่องจากสินค้าหมดชั่วคราว');
+      return;
+    }
     try {
       await apiRequest('/api/v1/cart/add', 'POST', {
         variant_id: selectedVariant.id,
@@ -1133,11 +1137,21 @@ export default function Storefront() {
       return;
     }
     if (directItem) {
+      if (directItem.variant.stock_quantity <= 0) {
+        showToast('ไม่สามารถสั่งซื้อหรือชำระเงินได้เนื่องจากสินค้าหมดชั่วคราว');
+        return;
+      }
       setCheckoutDirectItem(directItem);
     } else {
       setCheckoutDirectItem(null);
-      if (cartItems.filter(i => i.selected).length === 0) {
+      const selectedCartItems = cartItems.filter(i => i.selected !== false);
+      if (selectedCartItems.length === 0) {
         showToast('กรุณาเลือกสินค้าอย่างน้อย 1 ชิ้นในตะกร้า');
+        return;
+      }
+      const outOfStockItem = selectedCartItems.find(i => i.stock_quantity <= 0);
+      if (outOfStockItem) {
+        showToast(`ไม่สามารถชำระเงินได้เนื่องจาก '${outOfStockItem.name}' หมดชั่วคราว (กรุณาลบออกก่อน)`);
         return;
       }
     }
@@ -2274,65 +2288,91 @@ export default function Storefront() {
                           </div>
 
                           {/* Action Buttons Row */}
-                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                            <button 
-                              type="button"
-                              onClick={addToCart}
-                              style={{ 
-                                display: 'flex', 
-                                alignItems: 'center', 
-                                justifyContent: 'center', 
-                                gap: '8px', 
-                                padding: '14px 20px', 
-                                borderRadius: '10px', 
-                                border: '1.5px solid #FF6300', 
-                                backgroundColor: '#FEE9E9', 
-                                color: '#FF6300', 
-                                fontWeight: 700, 
-                                fontSize: '1.05rem', 
-                                cursor: 'pointer',
-                                transition: 'all 0.2s ease'
-                              }}
-                            >
-                              <img 
-                                src="/checkout_images/output-onlinepngtools 1.svg" 
-                                alt="Add to Cart" 
-                                onError={(e) => {
-                                  (e.target as HTMLImageElement).src = '/cart_add_icon.svg';
+                          {selectedVariant && selectedVariant.stock_quantity > 0 ? (
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                              <button 
+                                type="button"
+                                onClick={addToCart}
+                                style={{ 
+                                  display: 'flex', 
+                                  alignItems: 'center', 
+                                  justifyContent: 'center', 
+                                  gap: '8px', 
+                                  padding: '14px 20px', 
+                                  borderRadius: '10px', 
+                                  border: '1.5px solid #FF6300', 
+                                  backgroundColor: '#FEE9E9', 
+                                  color: '#FF6300', 
+                                  fontWeight: 700, 
+                                  fontSize: '1.05rem', 
+                                  cursor: 'pointer',
+                                  transition: 'all 0.2s ease'
                                 }}
-                                style={{ width: '22px', height: '22px', objectFit: 'contain' }} 
-                              />
-                              <span>เพิ่มลงตะกร้า</span>
-                            </button>
+                              >
+                                <img 
+                                  src="/checkout_images/output-onlinepngtools 1.svg" 
+                                  alt="Add to Cart" 
+                                  onError={(e) => {
+                                    (e.target as HTMLImageElement).src = '/cart_add_icon.svg';
+                                  }}
+                                  style={{ width: '22px', height: '22px', objectFit: 'contain' }} 
+                                />
+                                <span>เพิ่มลงตะกร้า</span>
+                              </button>
+                              <button 
+                                type="button"
+                                onClick={() => {
+                                  if (selectedVariant) {
+                                    const varToUse = selectedVariant;
+                                    setSelectedProduct(null);
+                                    triggerCheckout({ variant: varToUse, product: selectedProduct, qty: detailQty });
+                                  }
+                                }}
+                                style={{ 
+                                  display: 'flex', 
+                                  alignItems: 'center', 
+                                  justifyContent: 'center', 
+                                  gap: '8px', 
+                                  padding: '14px 20px', 
+                                  borderRadius: '10px', 
+                                  border: 'none', 
+                                  backgroundColor: '#FF3201', 
+                                  color: '#FFFFFF', 
+                                  fontWeight: 700, 
+                                  fontSize: '1.05rem', 
+                                  cursor: 'pointer',
+                                  boxShadow: '0 4px 12px rgba(255, 50, 1, 0.35)',
+                                  transition: 'all 0.2s ease'
+                                }}
+                              >
+                                <span>สั่งซื้อสินค้า</span>
+                              </button>
+                            </div>
+                          ) : (
                             <button 
                               type="button"
-                              onClick={() => {
-                                if (selectedVariant) {
-                                  const varToUse = selectedVariant;
-                                  setSelectedProduct(null);
-                                  triggerCheckout({ variant: varToUse, product: selectedProduct, qty: detailQty });
-                                }
-                              }}
+                              disabled
                               style={{ 
+                                width: '100%',
                                 display: 'flex', 
                                 alignItems: 'center', 
                                 justifyContent: 'center', 
                                 gap: '8px', 
-                                padding: '14px 20px', 
+                                padding: '16px 20px', 
                                 borderRadius: '10px', 
                                 border: 'none', 
-                                backgroundColor: '#FF3201', 
+                                backgroundColor: '#94A3B8', 
                                 color: '#FFFFFF', 
                                 fontWeight: 700, 
                                 fontSize: '1.05rem', 
-                                cursor: 'pointer',
-                                boxShadow: '0 4px 12px rgba(255, 50, 1, 0.35)',
-                                transition: 'all 0.2s ease'
+                                cursor: 'not-allowed',
+                                boxShadow: 'none'
                               }}
                             >
-                              <span>สั่งซื้อสินค้า</span>
+                              <XCircle size={22} />
+                              <span>สินค้าหมดชั่วคราว (ไม่สามารถสั่งซื้อได้)</span>
                             </button>
-                          </div>
+                          )}
 
                         </div>
                       </div>
@@ -2932,6 +2972,11 @@ export default function Storefront() {
                           <div>
                             <div style={{ fontSize: '13px', fontWeight: 600, color: '#000000', lineHeight: 1.4 }}>{item.name}</div>
                             <div style={{ fontSize: '12px', color: '#64748B', marginTop: '2px' }}>รุ่น: {item.variant_name}</div>
+                            {item.stock_quantity <= 0 && (
+                              <div style={{ fontSize: '11px', color: '#DC2626', fontWeight: 700, marginTop: '4px', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                                <XCircle size={13} /> สินค้าหมดชั่วคราว (กรุณาลบออก)
+                              </div>
+                            )}
                           </div>
 
                           {/* Quantity selector matching Figma lighter background */}
@@ -3049,28 +3094,41 @@ export default function Storefront() {
                   </div>
 
                   {/* Primary CTA Checkout Button - Text ONLY (No Icon) */}
-                  <button 
-                    className="btn btn-primary" 
-                    disabled={cartItems.length === 0 || cartItems.filter(i => i.selected !== false).length === 0} 
-                    onClick={() => triggerCheckout()}
-                    style={{ 
-                      width: '100%', 
-                      height: '48px', 
-                      background: cartItems.length > 0 && cartItems.some(i => i.selected !== false) ? '#FF3201' : '#989391', 
-                      boxShadow: '0px 2px 4.1px rgba(0, 0, 0, 0.25)', 
-                      borderRadius: '10px', 
-                      border: 'none',
-                      color: '#FFFFFF',
-                      fontSize: '15px',
-                      fontWeight: 600,
-                      cursor: cartItems.length > 0 && cartItems.some(i => i.selected !== false) ? 'pointer' : 'not-allowed',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center'
-                    }}
-                  >
-                    <span>ดำเนินการสั่งซื้อสินค้า</span>
-                  </button>
+                  {(() => {
+                    const selectedItems = cartItems.filter(i => i.selected !== false);
+                    const hasSelectedOutOfStock = selectedItems.some(i => i.stock_quantity <= 0);
+                    const isCheckoutDisabled = cartItems.length === 0 || selectedItems.length === 0 || hasSelectedOutOfStock;
+
+                    return (
+                      <button 
+                        className="btn btn-primary" 
+                        disabled={isCheckoutDisabled} 
+                        onClick={() => triggerCheckout()}
+                        style={{ 
+                          width: '100%', 
+                          height: '48px', 
+                          background: isCheckoutDisabled ? '#989391' : '#FF3201', 
+                          boxShadow: isCheckoutDisabled ? 'none' : '0px 2px 4.1px rgba(0, 0, 0, 0.25)', 
+                          borderRadius: '10px', 
+                          border: 'none',
+                          color: '#FFFFFF',
+                          fontSize: '14px',
+                          fontWeight: 600,
+                          cursor: isCheckoutDisabled ? 'not-allowed' : 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          padding: '0 12px'
+                        }}
+                      >
+                        <span>
+                          {hasSelectedOutOfStock 
+                            ? 'มีสินค้าหมดในรายการ กรุณาลบออก' 
+                            : 'ดำเนินการสั่งซื้อสินค้า'}
+                        </span>
+                      </button>
+                    );
+                  })()}
                 </div>
 
                 </div>

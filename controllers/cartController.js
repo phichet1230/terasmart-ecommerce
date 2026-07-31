@@ -13,6 +13,10 @@ exports.addToCart = async (req, res) => {
     }
     const variant = variantResult.rows[0];
 
+    if (variant.stock_quantity <= 0) {
+      return res.status(400).json({ status: 'error', message: `สินค้า ${variant.variant_name} หมดชั่วคราว ไม่สามารถสั่งซื้อหรือเพิ่มลงตะกร้าได้` });
+    }
+
     // ค้นหาว่า user คนนี้มีตะกร้าหรือยัง ถ้าไม่มีให้สร้างใหม่
     let cart = await pool.query('SELECT id FROM carts WHERE user_id = $1', [user_id]);
     
