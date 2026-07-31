@@ -38,12 +38,11 @@ function getCallbackUrl(req, envVarName, defaultPath) {
   return `${protocol}://${host}${defaultPath}`;
 }
 
-// Helper to redirect to the modern React Storefront frontend (port 5173) instead of old static index.html
+// Helper to redirect to the React Storefront frontend on the current active origin/host
 function getFrontendRedirectUrl(req, queryString) {
   const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'http';
-  const host = req.headers['x-forwarded-host'] || req.headers.host || 'localhost:5173';
-  const targetHost = host.includes('5000') ? host.replace('5000', '5173') : host;
-  return `${protocol}://${targetHost}/?${queryString}`;
+  const host = req.headers['x-forwarded-host'] || req.headers.host || 'localhost:5000';
+  return `${protocol}://${host}/?${queryString}`;
 }
 
 // Redirect endpoints

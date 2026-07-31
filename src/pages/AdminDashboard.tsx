@@ -801,8 +801,12 @@ export default function AdminDashboard() {
       setIsAuthorized(true);
       if (localUser.role === 'stock') {
         setActiveTab('products');
-      } else if (localUser.role === 'accounting') {
+      } else if (localUser.role === 'accounting' || localUser.role === 'shipping') {
         setActiveTab('orders');
+      } else if (localUser.role === 'sales') {
+        setActiveTab('customers');
+      } else if (localUser.role === 'marketing') {
+        setActiveTab('banners');
       } else {
         setActiveTab('dashboard');
       }
@@ -1252,29 +1256,41 @@ export default function AdminDashboard() {
         </div>
 
         <nav className="admin-nav">
-          <button className={activeTab === 'dashboard' ? 'active' : ''} onClick={() => setActiveTab('dashboard')}>
-            <BarChart2 size={16} /> สรุปภาพรวมแดชบอร์ด
-          </button>
-          
-          <button className={activeTab === 'employees' ? 'active' : ''} onClick={() => setActiveTab('employees')}>
-            <Briefcase size={16} /> พนักงาน & แผนกหลังบ้าน
-          </button>
+          {(!admin?.role || admin.role === 'admin') && (
+            <>
+              <button className={activeTab === 'dashboard' ? 'active' : ''} onClick={() => setActiveTab('dashboard')}>
+                <BarChart2 size={16} /> สรุปภาพรวมแดชบอร์ด
+              </button>
+              
+              <button className={activeTab === 'employees' ? 'active' : ''} onClick={() => setActiveTab('employees')}>
+                <Briefcase size={16} /> พนักงาน & แผนกหลังบ้าน
+              </button>
+            </>
+          )}
 
-          <button className={activeTab === 'orders' ? 'active' : ''} onClick={() => setActiveTab('orders')}>
-            <ShoppingBag size={16} /> การสั่งซื้อ & จัดส่งพัสดุ
-          </button>
+          {(!admin?.role || admin.role === 'admin' || admin.role === 'accounting' || admin.role === 'shipping') && (
+            <button className={activeTab === 'orders' ? 'active' : ''} onClick={() => setActiveTab('orders')}>
+              <ShoppingBag size={16} /> การสั่งซื้อ & จัดส่งพัสดุ
+            </button>
+          )}
 
-          <button className={activeTab === 'products' ? 'active' : ''} onClick={() => setActiveTab('products')}>
-            <Package size={16} /> คลังสินค้า & สต็อก
-          </button>
+          {(!admin?.role || admin.role === 'admin' || admin.role === 'stock') && (
+            <button className={activeTab === 'products' ? 'active' : ''} onClick={() => setActiveTab('products')}>
+              <Package size={16} /> คลังสินค้า & สต็อก
+            </button>
+          )}
 
-          <button className={activeTab === 'customers' ? 'active' : ''} onClick={() => setActiveTab('customers')}>
-            <Users size={16} /> สมาชิก & บริการลูกค้า
-          </button>
+          {(!admin?.role || admin.role === 'admin' || admin.role === 'sales') && (
+            <button className={activeTab === 'customers' ? 'active' : ''} onClick={() => setActiveTab('customers')}>
+              <Users size={16} /> สมาชิก & บริการลูกค้า
+            </button>
+          )}
 
-          <button className={activeTab === 'banners' ? 'active' : ''} onClick={() => setActiveTab('banners')}>
-            <Sparkles size={16} /> สื่อแบรนเนอร์ & การตลาด
-          </button>
+          {(!admin?.role || admin.role === 'admin' || admin.role === 'marketing') && (
+            <button className={activeTab === 'banners' ? 'active' : ''} onClick={() => setActiveTab('banners')}>
+              <Sparkles size={16} /> สื่อแบรนเนอร์ & การตลาด
+            </button>
+          )}
         </nav>
 
         <div className="admin-sidebar-footer">
