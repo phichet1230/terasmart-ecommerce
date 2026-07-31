@@ -433,6 +433,7 @@ export default function Storefront() {
     try {
       response = await fetch(url, options);
     } catch (err: any) {
+      console.error('Fetch error for:', url, err);
       throw new Error('ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้ กรุณาตรวจสอบการเชื่อมต่อ');
     }
 
@@ -448,6 +449,7 @@ export default function Storefront() {
           setUser(null);
           throw new Error('เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่อีกครั้ง');
         }
+        console.error('API Error Response:', url, response.status, data);
         throw new Error(data.message || `ไม่สามารถทำรายการได้ (รหัส: ${response.status})`);
       }
       return data;
@@ -458,8 +460,9 @@ export default function Storefront() {
         setUser(null);
         throw new Error('เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่อีกครั้ง');
       }
+      console.error('API Non-JSON Response:', url, response.status);
       if (response.status === 404) {
-        throw new Error('ไม่พบข้อมูลที่ต้องการในระบบ');
+        throw new Error(`ไม่พบข้อมูลที่ต้องการในระบบ (${url})`);
       }
       throw new Error(`ระบบขัดข้องชั่วคราว (HTTP ${response.status})`);
     }
