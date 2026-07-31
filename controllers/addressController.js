@@ -91,7 +91,11 @@ exports.deleteAddress = async (req, res) => {
       return res.status(404).json({ status: 'error', message: 'ไม่พบที่อยู่นี้' });
     }
 
-    await pool.query('DELETE FROM addresses WHERE id = $1', [id]);
+    // ปลดภาระผูกพัน Foreign Key จากประวัติตารางคำสั่งซื้อ (orders)
+    await pool.query('UPDATE orders SET address_id = NULL WHERE address_id = $1', [id]);
+
+    // ดำเนินการลบที่อยู่จากตาราง addresses
+    await pool.query('DELETE FROM addresses WHERE id = $1 AND user_id = $2', [id, req.user.id]);
 
     // หากลบที่อยู่ default ให้ตั้งค่าที่อยู่ที่เหลือเป็น default ให้อัตโนมัติ
     if (check.rows[0].is_default) {

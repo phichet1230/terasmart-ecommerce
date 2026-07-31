@@ -118,7 +118,7 @@ CREATE TABLE orders (
     tax_amount DECIMAL(10, 2),
     status VARCHAR(50) DEFAULT 'pending',
     is_email_sent BOOLEAN DEFAULT FALSE,
-    address_id INTEGER REFERENCES addresses(id),
+    address_id INTEGER REFERENCES addresses(id) ON DELETE SET NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
