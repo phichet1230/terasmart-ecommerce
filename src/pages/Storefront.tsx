@@ -1244,9 +1244,15 @@ export default function Storefront() {
       }
 
       const res = await apiRequest('/api/v1/orders', 'POST', payload);
-      const order = res.data;
-      setCreatedOrderId(order.id);
-      setCreatedOrderTotal(parseFloat(order.total_price));
+      const orderData = res.data?.id ? res.data : (res.data?.data || res.data || {});
+      const realOrderId = orderData.id || res.data?.id || res.data?.data?.id;
+
+      if (!realOrderId) {
+        throw new Error('ไม่สามารถดึงรหัสคำสั่งซื้อได้');
+      }
+
+      setCreatedOrderId(realOrderId);
+      setCreatedOrderTotal(parseFloat(orderData.total_price || res.data?.total_price || 0));
       showToast('สร้างคำสั่งซื้อสำเร็จ! กรุณาชำระเงิน');
       
       fetchOrders();
@@ -1254,9 +1260,14 @@ export default function Storefront() {
       fetchProducts();
 
       if (paymentMethod === 'qr') {
-        const qrRes = await apiRequest(`/api/v1/payments/${order.id}/qr`, 'POST');
-        setQrCodeData(qrRes.data.qr_image);
-        setQrExpireTimer(300); 
+        try {
+          const qrRes = await apiRequest(`/api/v1/payments/${realOrderId}/qr`, 'POST');
+          const qrImage = qrRes.data?.qr_image || qrRes.qr_image || qrRes.data;
+          setQrCodeData(qrImage);
+          setQrExpireTimer(300); 
+        } catch (qrErr: any) {
+          console.warn('QR generation notice:', qrErr.message);
+        }
       }
 
       setActiveTab('payment');
