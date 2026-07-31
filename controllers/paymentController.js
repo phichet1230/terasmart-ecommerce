@@ -160,6 +160,7 @@ exports.uploadSlip = async (req, res) => {
     let isAuthenticBankSlip = false;
     let detectedBankBrand = null;
     let qrScannedPayload = null;
+    let scannedQrText = null;
     let isEmvcoQrValid = false;
     let ocrRawText = '';
     let extractedSlipDate = null;
