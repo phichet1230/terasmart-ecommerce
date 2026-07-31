@@ -193,6 +193,7 @@ exports.uploadSlip = async (req, res) => {
         const qrCode = jsQR(rgbaData, width, height);
         if (qrCode && qrCode.data) {
           qrScannedPayload = qrCode.data;
+          scannedQrText = qrCode.data;
           // ต้อง validate ด้วย parseEMVCoQR (CRC16 + TLV)
           const emvcoResult = parseEMVCoQR(qrScannedPayload);
           if (emvcoResult.isValid && emvcoResult.isChecksumValid) {
@@ -240,13 +241,20 @@ exports.uploadSlip = async (req, res) => {
       console.warn('Tesseract OCR Warning:', ocrErr.message);
     }
 
-    // แปลงตัวเลขไทย (๐-๙) → อารบิก (0-9)
+    // แปลงตัวเลขไทย (๐-๙) → อารบิก (0-9) และปรับแต่งอักขระสระไทยจาก Tesseract OCR
     const thaiDigits = ['๐','๑','๒','๓','๔','๕','๖','๗','๘','๙'];
-    let normalizedText = ocrRawText;
+    let normalizedText = ocrRawText || '';
     thaiDigits.forEach((digit, index) => {
       normalizedText = normalizedText.replace(new RegExp(digit, 'g'), index.toString());
     });
-    normalizedText = normalizedText.replace(/\s+/g, ' ');
+    // Normalization for Tesseract OCR Thai Sara Am / Sara Aa misreads
+    normalizedText = normalizedText
+      .replace(/\u0E4D\u0E45/g, 'ำ')
+      .replace(/\u0E4D/g, '')
+      .replace(/สาเร็จ/g, 'สำเร็จ')
+      .replace(/จานวน/g, 'จำนวน')
+      .replace(/ทารายการ/g, 'ทำรายการ')
+      .replace(/\s+/g, ' ');
 
     // ═══════════════════════════════════════════════════
     // GATE 4A: Slip Structural Authentication
@@ -271,8 +279,9 @@ exports.uploadSlip = async (req, res) => {
     }
 
     const successMarkers = [
-      'โอนเงินสำเร็จ', 'โอนสำเร็จ', 'รายการสำเร็จ', 'ชำระเงินสำเร็จ',
-      'TRANSFER SUCCESSFUL', 'SUCCESSFUL TRANSFER', 'TRANSACTION SUCCESSFUL'
+      'โอนเงินสำเร็จ', 'โอนสำเร็จ', 'รายการสำเร็จ', 'ชำระเงินสำเร็จ', 'สำเร็จ', 'สาเร็จ',
+      'โอนเงินเรียบร้อย', 'ชำระเงินเรียบร้อย', 'ทำรายการสำเร็จ', 'ทำรายการเรียบร้อย',
+      'TRANSFER SUCCESSFUL', 'SUCCESSFUL TRANSFER', 'TRANSACTION SUCCESSFUL', 'SUCCESSFUL'
     ];
     hasSuccessMarker = successMarkers.some(m => normalizedText.toUpperCase().includes(m.toUpperCase()));
 
