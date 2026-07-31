@@ -185,6 +185,8 @@ exports.uploadSlip = async (req, res) => {
       }
     } else {
       // 4. In-Process Engine: ถอดรหัส EMVCo Bank QR Payload และถอดข้อความ OCR จากสลิป
+      let hasDetectedBankData = false;
+
       if (qrPayload && typeof qrPayload === 'string') {
         // ถอด Tag 54 (Amount) และ Tag 62/05 (Transaction Ref) จากสเปกมาตรฐาน EMVCo PromptPay QR
         try {
@@ -194,7 +196,7 @@ exports.uploadSlip = async (req, res) => {
             const len = parseInt(qrPayload.substring(index + 2, index + 4), 10);
             if (isNaN(len)) break;
             const val = qrPayload.substring(index + 4, index + 4 + len);
-            if (tag === '54') verifiedAmount = parseFloat(val);
+            if (tag === '54') { verifiedAmount = parseFloat(val); hasDetectedBankData = true; }
             if (tag === '62' || tag === '05') slipTxRef = val;
             index += 4 + len;
           }
@@ -211,12 +213,19 @@ exports.uploadSlip = async (req, res) => {
           const parsedAmount = parseFloat(amountMatch[1].replace(/,/g, ''));
           if (!isNaN(parsedAmount) && parsedAmount > 0 && parsedAmount < 1000000) {
             verifiedAmount = parsedAmount;
+            hasDetectedBankData = true;
           }
         }
       }
 
       if (bodyVerifiedAmount && !isNaN(bodyVerifiedAmount)) {
         verifiedAmount = bodyVerifiedAmount;
+        hasDetectedBankData = true;
+      }
+
+      // หากไม่พบข้อมูลธนาคาร/QR/OCR หรือเป็นภาพสุ่มทั่วไปที่ไม่ใช่สลิปโอนเงิน ห้ามให้ผ่านการชำระเงินเด็ดขาด!
+      if (!hasDetectedBankData) {
+        isAuthenticBankSlip = false;
       }
     }
 
@@ -226,10 +235,10 @@ exports.uploadSlip = async (req, res) => {
 
     // กฎข้อที่ 1: ตรวจสอบความสมบูรณ์และลายเซ็นธนาคาร (Bank Signature & Authenticity Check)
     if (!isAuthenticBankSlip) {
-      fs.unlinkSync(req.file.path);
+      if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
       return res.status(400).json({
         status: 'error',
-        message: 'ชำระเงินไม่สำเร็จ: ตรวจพบสลิปปลอมแปลง หรือไม่มีข้อมูลการโอนเงินจริงในระบบธนาคาร'
+        message: 'ชำระเงินไม่สำเร็จ: รูปภาพที่แนบไม่ใช่สลิปโอนเงินของธนาคาร หรือไม่สามารถอ่านข้อมูลการโอนเงินได้'
       });
     }
 

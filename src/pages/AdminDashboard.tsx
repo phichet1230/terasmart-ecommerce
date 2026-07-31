@@ -1596,6 +1596,26 @@ export default function AdminDashboard() {
                               <button className="btn btn-secondary btn-small" onClick={() => setPrintingOrderLabel(ord)} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                                 <Printer size={12} /> ใบแปะพัสดุ
                               </button>
+
+                              {ord.status !== 'cancelled' && ord.status !== 'delivered' && (
+                                <button 
+                                  className="btn btn-danger btn-small" 
+                                  style={{ background: '#DC2626', color: '#fff', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                                  onClick={async () => {
+                                    if (window.confirm(`คุณแน่ใจหรือไม่ว่าต้องการปฏิเสธสลิป / ยกเลิกคำสั่งซื้อ #${ord.id.slice(0, 8)}? ระบบจะทำการคืนสต็อกสินค้าให้อัตโนมัติ`)) {
+                                      try {
+                                        await apiRequest(`/api/v1/admin/orders/${ord.id}/status`, 'PUT', { status: 'cancelled' });
+                                        showToast('ปฏิเสธสลิปและยกเลิกคำสั่งซื้อเรียบร้อยแล้ว (คืนสต็อกสินค้าเรียบร้อย)');
+                                        loadOrders();
+                                      } catch (err: any) {
+                                        showToast(err.message);
+                                      }
+                                    }
+                                  }}
+                                >
+                                  <XCircle size={12} /> ปฏิเสธสลิป
+                                </button>
+                              )}
                             </div>
                           </td>
                         </tr>

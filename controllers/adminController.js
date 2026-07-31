@@ -189,6 +189,24 @@ exports.updateOrderStatus = async (req, res) => {
         "UPDATE payments SET payment_status = 'completed', paid_at = CURRENT_TIMESTAMP WHERE order_id = $1",
         [orderId]
       );
+    } else if (status === 'cancelled' || status === 'failed' || status === 'rejected') {
+      // 2.1 ถ้าปฏิเสธสลิป / ยกเลิกออเดอร์ ให้อัปเดต payments เป็น failed และคืนสต็อกสินค้ากลับเข้าตาราง product_variants
+      await pool.query(
+        "UPDATE payments SET payment_status = 'failed' WHERE order_id = $1",
+        [orderId]
+      );
+
+      // คืนจำนวนสต็อกสินค้า
+      const orderItems = await pool.query(
+        'SELECT variant_id, quantity FROM order_items WHERE order_id = $1',
+        [orderId]
+      );
+      for (const item of orderItems.rows) {
+        await pool.query(
+          'UPDATE product_variants SET stock_quantity = stock_quantity + $1 WHERE id = $2',
+          [item.quantity, item.variant_id]
+        );
+      }
     }
 
     // 3. ถ้าเป็นกำลังส่ง (shipping) หรือส่งแล้ว (delivered) ให้ลงข้อมูลในตาราง shipping
@@ -340,7 +358,8 @@ exports.createProduct = async (req, res) => {
     }
 
     // บันทึกสินค้าหลัก
-    let { category_id, name, slug, short_description, description, image_url, images, spec_table, category_name, price, variants } = req.body;
+    let images = req.body.images;
+    let spec_table = req.body.spec_table;
 
     let imagesJson = '[]';
     if (images) {

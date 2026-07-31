@@ -5,7 +5,7 @@ import {
   ShoppingBag, User, LogOut, CheckCircle, Clock, Trash2, 
   MapPin, CreditCard, X, Sparkles, ShieldCheck, Users, Headphones,
   Eye, EyeOff, Upload, Truck, Phone, Unlock, BarChart2, Key, RefreshCw, ShoppingCart, Search, ExternalLink,
-  ChevronLeft, ChevronRight, Zap, Lock, Mail
+  ChevronLeft, ChevronRight, Zap, Lock, Mail, XCircle
 } from 'lucide-react';
 
 interface Variant {
@@ -1611,12 +1611,18 @@ export default function Storefront() {
 
             {user ? (
               <div className="user-avatar-btn" onClick={() => setActiveTab('profile')} title="โปรไฟล์ของคุณ">
-                <div className="user-avatar-circle">
+                <div className="user-avatar-circle" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#FF3201', color: '#fff', fontWeight: 700, borderRadius: '50%', overflow: 'hidden' }}>
                   {user.profile_image ? (
-                    <img src={user.profile_image} alt={user.username} />
-                  ) : (
-                    user.username.charAt(0).toUpperCase()
-                  )}
+                    <img 
+                      src={user.profile_image} 
+                      alt={user.username} 
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      onError={(e) => {
+                        (e.target as HTMLElement).style.display = 'none';
+                      }}
+                    />
+                  ) : null}
+                  <span style={{ fontSize: '0.9rem' }}>{user.username.charAt(0).toUpperCase()}</span>
                 </div>
               </div>
             ) : (
@@ -2146,7 +2152,7 @@ export default function Storefront() {
                               {selectedProduct.name}
                             </h1>
 
-                            {/* Badges Bar (รับประกัน 2 ปี | ส่งฟรี | มีสินค้าพร้อมส่ง) */}
+                            {/* Badges Bar (รับประกัน 2 ปี | ส่งฟรี | มีสินค้าพร้อมส่ง หรือ สินค้าหมด) */}
                             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginBottom: '16px' }}>
                               <div style={{ background: '#EAE9E9', borderRadius: '8px', border: '1px solid #A6A6A6', padding: '4px 12px', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', fontWeight: 700, color: 'rgba(0,0,0,0.75)' }}>
                                 <ShieldCheck size={16} style={{ color: '#059669' }} />
@@ -2156,10 +2162,17 @@ export default function Storefront() {
                                 <Truck size={16} style={{ color: '#2563EB' }} />
                                 <span>ส่งฟรี</span>
                               </div>
-                              <div style={{ background: '#EAE9E9', borderRadius: '8px', border: '1px solid #A6A6A6', padding: '4px 12px', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', fontWeight: 700, color: 'rgba(0,0,0,0.75)' }}>
-                                <CheckCircle size={16} style={{ color: '#FF3201' }} />
-                                <span>มีสินค้าพร้อมส่ง</span>
-                              </div>
+                              {selectedVariant && selectedVariant.stock_quantity > 0 ? (
+                                <div style={{ background: '#EAE9E9', borderRadius: '8px', border: '1px solid #A6A6A6', padding: '4px 12px', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', fontWeight: 700, color: 'rgba(0,0,0,0.75)' }}>
+                                  <CheckCircle size={16} style={{ color: '#FF3201' }} />
+                                  <span>มีสินค้าพร้อมส่ง ({selectedVariant.stock_quantity} ชิ้น)</span>
+                                </div>
+                              ) : (
+                                <div style={{ background: '#FEE2E2', borderRadius: '8px', border: '1px solid #EF4444', padding: '4px 12px', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', fontWeight: 700, color: '#DC2626' }}>
+                                  <XCircle size={16} />
+                                  <span>สินค้าหมดชั่วคราว</span>
+                                </div>
+                              )}
                             </div>
 
                             {/* Price Display */}
