@@ -1219,56 +1219,13 @@ export default function Storefront() {
   };
 
   const submitOrder = async () => {
-    let addressIdToUse = selectedAddressId;
-
-    if (!addressIdToUse) {
-      const defaultAddr = addresses.find(a => a.is_default) || addresses[0];
-      if (defaultAddr) {
-        addressIdToUse = defaultAddr.id;
-        setSelectedAddressId(defaultAddr.id);
-      }
-    }
-
-    if (!addressIdToUse) {
-      const rName = (receiverName || user?.username || 'ลูกค้า').replace(/[0-9]/g, '') || 'Phichet Srikongka';
-      let rPhone = (newAddress.phone || user?.phone || '0812345678').replace(/[^0-9]/g, '');
-      if (rPhone.length !== 10) rPhone = '0812345678';
-      const rDetail = newAddress.detail || '123 ม.1 ถ.เพชรเกษม';
-      const rProv = newAddress.province || 'สตูล';
-      const rDist = newAddress.district || 'ท่าแพ';
-      const rSub = newAddress.subdistrict || 'ท่าแพ';
-      const rZip = newAddress.postalCode || '91150';
-
-      try {
-        const savedAddr = await apiRequest('/api/v1/addresses', 'POST', {
-          receiver_name: rName,
-          phone: rPhone,
-          address_detail: rDetail,
-          sub_district: rSub,
-          district: rDist,
-          province: rProv,
-          postal_code: rZip,
-          is_default: true
-        });
-        if (savedAddr.data && savedAddr.data.id) {
-          addressIdToUse = savedAddr.data.id;
-          setSelectedAddressId(savedAddr.data.id);
-          fetchAddresses();
-        }
-      } catch (addrErr: any) {
-        console.error('Auto save address error:', addrErr);
-      }
-    }
-
-    if (!addressIdToUse) {
-      showToast('กรุณากรอกที่อยู่และเบอร์โทรศัพท์สำหรับจัดส่งให้ครบถ้วน');
-      return;
-    }
+    const addressIdToUse = selectedAddressId || (addresses.find(a => a.is_default) || addresses[0])?.id || null;
 
     try {
-      const payload: any = {
-        address_id: addressIdToUse
-      };
+      const payload: any = {};
+      if (addressIdToUse) {
+        payload.address_id = addressIdToUse;
+      }
 
 
       if (checkoutDirectItem) {
