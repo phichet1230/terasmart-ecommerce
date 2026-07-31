@@ -90,6 +90,7 @@ interface Order {
   tracking_number?: string | null;
   shipping_status?: string | null;
   shipping_updated_at?: string | null;
+  cancel_reason?: string | null;
   items?: any[];
   shipping?: {
     courier_name: string;
@@ -1610,19 +1611,35 @@ export default function Storefront() {
             </div>
 
             {user ? (
-              <div className="user-avatar-btn" onClick={() => setActiveTab('profile')} title="โปรไฟล์ของคุณ">
-                <div className="user-avatar-circle" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#FF3201', color: '#fff', fontWeight: 700, borderRadius: '50%', overflow: 'hidden' }}>
+              <div className="user-avatar-btn" onClick={() => setActiveTab('profile')} title="โปรไฟล์ของคุณ" style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+                <div className="user-avatar-circle" style={{ 
+                  width: '36px', 
+                  height: '36px', 
+                  minWidth: '36px', 
+                  minHeight: '36px', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center', 
+                  background: '#FFFFFF', 
+                  color: '#FF3201', 
+                  fontWeight: 800, 
+                  borderRadius: '50%', 
+                  overflow: 'hidden', 
+                  border: '2px solid #FFFFFF', 
+                  boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
+                  position: 'relative'
+                }}>
                   {user.profile_image ? (
                     <img 
                       src={user.profile_image} 
                       alt={user.username} 
-                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', inset: 0 }}
                       onError={(e) => {
                         (e.target as HTMLElement).style.display = 'none';
                       }}
                     />
                   ) : null}
-                  <span style={{ fontSize: '0.9rem' }}>{user.username.charAt(0).toUpperCase()}</span>
+                  <span style={{ fontSize: '1rem', color: '#FF3201', fontWeight: 800 }}>{user.username.charAt(0).toUpperCase()}</span>
                 </div>
               </div>
             ) : (
@@ -2654,59 +2671,103 @@ export default function Storefront() {
                             ไม่พบสินค้าตรงกับตัวกรองที่เลือก
                           </div>
                         ) : (
-                          filterProducts().map((prod) => (
-                            <div 
-                              key={prod.id}
-                              onClick={() => openProductDetail(prod)}
-                              style={{
-                                background: '#FFFFFF',
-                                boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.1)',
-                                borderRadius: '11px',
-                                padding: '16px',
-                                display: 'flex',
-                                flexDirection: 'column',
-                                cursor: 'pointer',
-                                border: '1px solid #E2E8F0',
-                                transition: 'transform 0.2s ease, box-shadow 0.2s ease'
-                              }}
-                            >
-                              {/* Product Image */}
-                              <div style={{ width: '100%', height: '220px', borderRadius: '8px', overflow: 'hidden', background: '#F8FAFC', marginBottom: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                <ProductImage name={prod.name} imageUrl={prod.image_url} />
-                              </div>
-
-                              {/* Product Title */}
-                              <div style={{ fontSize: '14px', fontFamily: "'IBM Plex Sans Thai', sans-serif", fontWeight: 600, color: '#0F172A', marginBottom: '12px', minHeight: '40px', lineHeight: '1.4', overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
-                                {prod.name}
-                              </div>
-
-                              {/* Footer: Price & Order Button */}
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto', paddingTop: '10px', borderTop: '1px solid #F1F5F9' }}>
-                                <div style={{ fontSize: '18px', color: '#FF3201', fontFamily: "'Rubik', 'IBM Plex Sans Thai', sans-serif", fontWeight: 700 }}>
-                                  ฿ {parseFloat(prod.price).toLocaleString()}
-                                </div>
-                                
-                                <button 
-                                  type="button"
-                                  onClick={(e) => { e.stopPropagation(); openProductDetail(prod); }}
-                                  style={{
-                                    background: '#FF3201',
+                          filterProducts().map((prod) => {
+                            const isOutOfStock = !prod.variants || prod.variants.length === 0 || prod.variants.every((v: any) => v.stock_quantity <= 0);
+                            return (
+                              <div 
+                                key={prod.id}
+                                onClick={() => openProductDetail(prod)}
+                                style={{
+                                  background: '#FFFFFF',
+                                  boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.1)',
+                                  borderRadius: '11px',
+                                  padding: '16px',
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  cursor: 'pointer',
+                                  border: isOutOfStock ? '1px solid #FECACA' : '1px solid #E2E8F0',
+                                  position: 'relative',
+                                  transition: 'transform 0.2s ease, box-shadow 0.2s ease'
+                                }}
+                              >
+                                {/* Out of stock badge on card */}
+                                {isOutOfStock && (
+                                  <div style={{
+                                    position: 'absolute',
+                                    top: '12px',
+                                    right: '12px',
+                                    background: '#DC2626',
                                     color: '#FFFFFF',
-                                    border: 'none',
-                                    borderRadius: '5px',
-                                    padding: '6px 16px',
-                                    fontSize: '15px',
-                                    fontFamily: "'IBM Plex Sans Thai', sans-serif",
-                                    fontWeight: 600,
-                                    cursor: 'pointer',
-                                    boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.15)'
-                                  }}
-                                >
-                                  สั่งซื้อ
-                                </button>
+                                    fontSize: '0.72rem',
+                                    fontWeight: 700,
+                                    padding: '3px 8px',
+                                    borderRadius: '6px',
+                                    zIndex: 2,
+                                    boxShadow: '0 2px 6px rgba(220, 38, 38, 0.3)'
+                                  }}>
+                                    สินค้าหมด
+                                  </div>
+                                )}
+
+                                {/* Product Image */}
+                                <div style={{ width: '100%', height: '220px', borderRadius: '8px', overflow: 'hidden', background: '#F8FAFC', marginBottom: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: isOutOfStock ? 0.75 : 1 }}>
+                                  <ProductImage name={prod.name} imageUrl={prod.image_url} />
+                                </div>
+
+                                {/* Product Title */}
+                                <div style={{ fontSize: '14px', fontFamily: "'IBM Plex Sans Thai', sans-serif", fontWeight: 600, color: isOutOfStock ? '#64748B' : '#0F172A', marginBottom: '12px', minHeight: '40px', lineHeight: '1.4', overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+                                  {prod.name}
+                                </div>
+
+                                {/* Footer: Price & Order Button */}
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto', paddingTop: '10px', borderTop: '1px solid #F1F5F9' }}>
+                                  <div style={{ fontSize: '18px', color: isOutOfStock ? '#94A3B8' : '#FF3201', fontFamily: "'Rubik', 'IBM Plex Sans Thai', sans-serif", fontWeight: 700 }}>
+                                    ฿ {parseFloat(prod.price).toLocaleString()}
+                                  </div>
+                                  
+                                  {isOutOfStock ? (
+                                    <button 
+                                      type="button"
+                                      disabled
+                                      onClick={(e) => e.stopPropagation()}
+                                      style={{
+                                        background: '#94A3B8',
+                                        color: '#FFFFFF',
+                                        border: 'none',
+                                        borderRadius: '5px',
+                                        padding: '6px 14px',
+                                        fontSize: '13px',
+                                        fontFamily: "'IBM Plex Sans Thai', sans-serif",
+                                        fontWeight: 600,
+                                        cursor: 'not-allowed'
+                                      }}
+                                    >
+                                      สินค้าหมด
+                                    </button>
+                                  ) : (
+                                    <button 
+                                      type="button"
+                                      onClick={(e) => { e.stopPropagation(); openProductDetail(prod); }}
+                                      style={{
+                                        background: '#FF3201',
+                                        color: '#FFFFFF',
+                                        border: 'none',
+                                        borderRadius: '5px',
+                                        padding: '6px 16px',
+                                        fontSize: '15px',
+                                        fontFamily: "'IBM Plex Sans Thai', sans-serif",
+                                        fontWeight: 600,
+                                        cursor: 'pointer',
+                                        boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.15)'
+                                      }}
+                                    >
+                                      สั่งซื้อ
+                                    </button>
+                                  )}
+                                </div>
                               </div>
-                            </div>
-                          ))
+                            );
+                          })
                         )}
                       </div>
 
@@ -3837,7 +3898,25 @@ export default function Storefront() {
                                   </div>
                                 )}
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                  <span className={`status-badge ${ord.status}`}>{ord.status === 'pending' ? 'รอชำระเงิน' : ord.status === 'paid' ? 'ชำระเงินแล้ว' : ord.status === 'shipping' ? 'กำลังจัดส่ง' : 'สำเร็จ'}</span>
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                    <span className={`status-badge ${ord.status === 'cancelled' ? 'cancelled' : ord.status}`}>
+                                      {ord.status === 'pending' 
+                                        ? 'รอชำระเงิน' 
+                                        : ord.status === 'paid' 
+                                        ? 'ชำระเงินแล้ว' 
+                                        : ord.status === 'shipping' 
+                                        ? 'กำลังจัดส่ง' 
+                                        : ord.status === 'cancelled' 
+                                        ? 'ปฏิเสธสลิป / ยกเลิกคำสั่งซื้อ' 
+                                        : 'สำเร็จ'}
+                                    </span>
+                                    {ord.status === 'cancelled' && (
+                                      <div style={{ fontSize: '0.78rem', color: '#EF4444', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
+                                        <XCircle size={13} /> {ord.cancel_reason || 'สลิปถูกปฏิเสธโดยเจ้าหน้าที่ (กรุณาติดต่อสอบถามหรือสั่งซื้อใหม่)'}
+                                      </div>
+                                    )}
+                                  </div>
+
                                   <div style={{ display: 'flex', gap: '8px' }}>
                                     {ord.status === 'pending' && (
                                       <button 
@@ -3860,6 +3939,15 @@ export default function Storefront() {
                                         }}
                                       >
                                         <X size={13} style={{ marginRight: '3px' }} /> ยกเลิกคำสั่งซื้อ
+                                      </button>
+                                    )}
+                                    {ord.status === 'cancelled' && (
+                                      <button 
+                                        className="btn btn-secondary btn-sm" 
+                                        style={{ width: 'auto', padding: '6px 10px', fontSize: '0.78rem', color: '#2563EB', borderColor: '#BFDBFE', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '4px' }} 
+                                        onClick={() => handleReorder(ord)}
+                                      >
+                                        <RefreshCw size={13} /> สั่งซื้ออีกครั้ง
                                       </button>
                                     )}
                                     <button className="btn btn-secondary btn-sm" style={{ width: 'auto' }} onClick={() => handleOpenTracking(ord)}>

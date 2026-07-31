@@ -181,16 +181,12 @@ exports.updateOrderStatus = async (req, res) => {
     }
 
     // 1. อัปเดตสถานะหลักใน orders
-    await pool.query('UPDATE orders SET status = $1 WHERE id = $2', [status, orderId]);
-
-    // 2. ถ้าเปลี่ยนสถานะเป็นชำระเงินแล้ว ให้ไปอัปเดต payments เป็น completed
-    if (status === 'paid') {
+    if (status === 'cancelled' || status === 'failed' || status === 'rejected') {
       await pool.query(
-        "UPDATE payments SET payment_status = 'completed', paid_at = CURRENT_TIMESTAMP WHERE order_id = $1",
+        "UPDATE orders SET status = 'cancelled', cancel_reason = COALESCE(cancel_reason, 'ปฏิเสธสลิปโดยเจ้าหน้าที่ (สลิปไม่ถูกต้อง / ไม่พบยอดเงินโอน)'), cancelled_at = CURRENT_TIMESTAMP WHERE id = $1",
         [orderId]
       );
-    } else if (status === 'cancelled' || status === 'failed' || status === 'rejected') {
-      // 2.1 ถ้าปฏิเสธสลิป / ยกเลิกออเดอร์ ให้อัปเดต payments เป็น failed และคืนสต็อกสินค้ากลับเข้าตาราง product_variants
+      // ให้อัปเดต payments เป็น failed และคืนสต็อกสินค้ากลับเข้าตาราง product_variants
       await pool.query(
         "UPDATE payments SET payment_status = 'failed' WHERE order_id = $1",
         [orderId]
@@ -207,6 +203,16 @@ exports.updateOrderStatus = async (req, res) => {
           [item.quantity, item.variant_id]
         );
       }
+    } else {
+      await pool.query('UPDATE orders SET status = $1 WHERE id = $2', [status, orderId]);
+    }
+
+    // 2. ถ้าเปลี่ยนสถานะเป็นชำระเงินแล้ว ให้ไปอัปเดต payments เป็น completed
+    if (status === 'paid') {
+      await pool.query(
+        "UPDATE payments SET payment_status = 'completed', paid_at = CURRENT_TIMESTAMP WHERE order_id = $1",
+        [orderId]
+      );
     }
 
     // 3. ถ้าเป็นกำลังส่ง (shipping) หรือส่งแล้ว (delivered) ให้ลงข้อมูลในตาราง shipping
