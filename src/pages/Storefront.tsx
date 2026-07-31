@@ -890,7 +890,8 @@ export default function Storefront() {
 
     setSelectedProduct(fullProduct);
     if (fullProduct.variants && fullProduct.variants.length > 0) {
-      setSelectedVariant(fullProduct.variants[0]);
+      const inStockVar = fullProduct.variants.find(v => v.stock_quantity > 0);
+      setSelectedVariant(inStockVar || fullProduct.variants[0]);
     } else {
       setSelectedVariant(null);
     }
@@ -1191,6 +1192,20 @@ export default function Storefront() {
       showToast('กรุณาเลือกที่อยู่สำหรับจัดส่ง');
       return;
     }
+
+    if (checkoutDirectItem && checkoutDirectItem.variant.stock_quantity <= 0) {
+      showToast(`ไม่สามารถชำระเงินได้เนื่องจากสินค้า '${checkoutDirectItem.variant.variant_name}' หมดชั่วคราว (สต็อกปัจจุบัน: 0)`);
+      return;
+    }
+    if (!checkoutDirectItem) {
+      const selectedCartItems = cartItems.filter(i => i.selected !== false);
+      const outOfStockItem = selectedCartItems.find(i => i.stock_quantity <= 0);
+      if (outOfStockItem) {
+        showToast(`ไม่สามารถชำระเงินได้เนื่องจากสินค้า '${outOfStockItem.name}' หมดชั่วคราว (สต็อกปัจจุบัน: 0)`);
+        return;
+      }
+    }
+
     try {
       const payload: any = {
         address_id: selectedAddressId
@@ -2216,30 +2231,46 @@ export default function Storefront() {
                               </div>
                             )}
 
-                            {/* Variants selector (if available) */}
-                            {selectedProduct.variants && selectedProduct.variants.length > 1 && (
+                            {/* Variants selector */}
+                            {selectedProduct.variants && selectedProduct.variants.length > 0 && (
                               <div style={{ marginBottom: '16px' }}>
                                 <div style={{ fontSize: '0.9rem', fontWeight: 700, color: '#475569', marginBottom: '8px' }}>ตัวเลือกรุ่นสินค้า:</div>
                                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                                  {selectedProduct.variants.map((v) => (
-                                    <button
-                                      key={v.id}
-                                      type="button"
-                                      onClick={() => setSelectedVariant(v)}
-                                      style={{
-                                        padding: '6px 14px',
-                                        borderRadius: '8px',
-                                        border: selectedVariant?.id === v.id ? '2px solid #FF3201' : '1px solid #CBD5E1',
-                                        background: selectedVariant?.id === v.id ? '#FFF5F3' : '#FFFFFF',
-                                        color: selectedVariant?.id === v.id ? '#FF3201' : '#334155',
-                                        fontWeight: 700,
-                                        fontSize: '0.85rem',
-                                        cursor: 'pointer'
-                                      }}
-                                    >
-                                      {v.variant_name} ({parseFloat(v.price).toFixed(2)} ฿)
-                                    </button>
-                                  ))}
+                                  {selectedProduct.variants.map((v) => {
+                                    const isVarOutOfStock = v.stock_quantity <= 0;
+                                    const isSelected = selectedVariant?.id === v.id;
+                                    return (
+                                      <button
+                                        key={v.id}
+                                        type="button"
+                                        onClick={() => setSelectedVariant(v)}
+                                        style={{
+                                          padding: '6px 14px',
+                                          borderRadius: '8px',
+                                          border: isSelected 
+                                            ? (isVarOutOfStock ? '2px solid #EF4444' : '2px solid #FF3201') 
+                                            : '1px solid #CBD5E1',
+                                          background: isSelected 
+                                            ? (isVarOutOfStock ? '#FEF2F2' : '#FFF5F3') 
+                                            : (isVarOutOfStock ? '#F8FAFC' : '#FFFFFF'),
+                                          color: isSelected 
+                                            ? (isVarOutOfStock ? '#DC2626' : '#FF3201') 
+                                            : (isVarOutOfStock ? '#94A3B8' : '#334155'),
+                                          fontWeight: 700,
+                                          fontSize: '0.85rem',
+                                          cursor: 'pointer',
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          gap: '6px'
+                                        }}
+                                      >
+                                        <span>{v.variant_name} ({parseFloat(v.price).toFixed(2)} ฿)</span>
+                                        {isVarOutOfStock && (
+                                          <span style={{ fontSize: '0.72rem', background: '#EF4444', color: '#FFF', padding: '1px 6px', borderRadius: '4px' }}>หมด</span>
+                                        )}
+                                      </button>
+                                    );
+                                  })}
                                 </div>
                               </div>
                             )}
@@ -3626,28 +3657,53 @@ export default function Storefront() {
                       </div>
 
                       {/* Confirm & Pay CTA Button */}
-                      <button 
-                        type="button"
-                        onClick={submitOrder}
-                        style={{
-                          width: '100%',
-                          height: '48px',
-                          background: '#FF3201',
-                          boxShadow: '0px 2px 4.1px rgba(0, 0, 0, 0.25)',
-                          borderRadius: '10px',
-                          border: 'none',
-                          color: '#FFFFFF',
-                          fontSize: '15px',
-                          fontWeight: 600,
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          transition: 'all 0.2s ease'
-                        }}
-                      >
-                        ยืนยันรายการและโอนเงิน
-                      </button>
+                      {(() => {
+                        const isDirectOutOfStock = checkoutDirectItem && checkoutDirectItem.variant.stock_quantity <= 0;
+                        const isCartOutOfStock = !checkoutDirectItem && cartItems.some(i => i.selected !== false && i.stock_quantity <= 0);
+                        const isOutOfStock = isDirectOutOfStock || isCartOutOfStock;
+                        const outOfStockName = isDirectOutOfStock 
+                          ? checkoutDirectItem?.variant.variant_name 
+                          : cartItems.find(i => i.selected !== false && i.stock_quantity <= 0)?.name;
+
+                        return (
+                          <div>
+                            {isOutOfStock && (
+                              <div style={{ background: '#FEE2E2', border: '1.5px solid #EF4444', borderRadius: '12px', padding: '12px 14px', color: '#DC2626', fontSize: '13px', fontWeight: 700, marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <XCircle size={18} style={{ flexShrink: 0 }} />
+                                <span>มีสินค้า '{outOfStockName}' ที่สต็อกหมดชั่วคราว (0 ชิ้น) ไม่สามารถชำระเงินได้</span>
+                              </div>
+                            )}
+                            <button 
+                              type="button"
+                              disabled={isOutOfStock}
+                              onClick={submitOrder}
+                              style={{
+                                width: '100%',
+                                height: '48px',
+                                background: isOutOfStock ? '#94A3B8' : '#FF3201',
+                                boxShadow: isOutOfStock ? 'none' : '0px 2px 4.1px rgba(0, 0, 0, 0.25)',
+                                borderRadius: '10px',
+                                border: 'none',
+                                color: '#FFFFFF',
+                                fontSize: '14px',
+                                fontWeight: 600,
+                                cursor: isOutOfStock ? 'not-allowed' : 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                padding: '0 12px',
+                                transition: 'all 0.2s ease'
+                              }}
+                            >
+                              <span>
+                                {isOutOfStock 
+                                  ? 'สินค้าในคำสั่งซื้อหมดชั่วคราว (ไม่สามารถชำระเงินได้)' 
+                                  : 'ยืนยันรายการและโอนเงิน'}
+                              </span>
+                            </button>
+                          </div>
+                        );
+                      })()}
 
                     </div>
                   </div>
