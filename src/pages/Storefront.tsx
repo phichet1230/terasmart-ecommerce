@@ -1652,16 +1652,24 @@ export default function Storefront() {
             >
               สินค้า
             </button>
-            <button className="nav-btn" onClick={() => showToast('ติดต่อสอบถามฝ่ายขาย: 02-123-4567')}>ติดต่อเรา</button>
-            <button 
-              className={`nav-btn ${activeTab === 'about' ? 'active' : ''}`} 
-              onClick={() => { 
-                setActiveTab('about'); 
-                window.scrollTo({ top: 0, behavior: 'smooth' }); 
-              }}
+            <a 
+              href="https://www.teragroup.co.th/contact-us-th/" 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className="nav-btn" 
+              style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}
+            >
+              ติดต่อเรา
+            </a>
+            <a 
+              href="https://www.teragroup.co.th/about-us/" 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className="nav-btn" 
+              style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}
             >
               เกี่ยวกับเรา
-            </button>
+            </a>
             <button 
               className={`nav-btn ${activeTab === 'orders' || (activeTab === 'profile' && profileSubTab === 'orders') ? 'active' : ''}`} 
               onClick={() => { 
@@ -5648,7 +5656,7 @@ export default function Storefront() {
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', textAlign: 'left' }}>
               <h4 style={{ color: '#FFFFFF', fontSize: '1.05rem', fontWeight: 700, margin: '0 0 16px 0', padding: 0, textAlign: 'left' }}>บริการลูกค้า</h4>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '0.85rem', alignItems: 'flex-start', textAlign: 'left' }}>
-                <a href="#contact" style={{ color: '#94A3B8', opacity: 0.8, textDecoration: 'none' }} onClick={(e) => { e.preventDefault(); showToast('ติดต่อฝ่ายขาย: 02-123-4567'); }}>ติดต่อเรา</a>
+                <a href="https://www.teragroup.co.th/contact-us-th/" target="_blank" rel="noopener noreferrer" style={{ color: '#94A3B8', opacity: 0.8, textDecoration: 'none' }}>ติดต่อเรา</a>
                 <a href="#faq" style={{ color: '#94A3B8', opacity: 0.8, textDecoration: 'none' }} onClick={(e) => { e.preventDefault(); showToast('คำถามที่พบบ่อย'); }}>คำถามที่พบบ่อย</a>
                 <a href="#returns" style={{ color: '#94A3B8', opacity: 0.8, textDecoration: 'none' }} onClick={(e) => { e.preventDefault(); showToast('นโยบายการรับประกันสินค้า'); }}>นโยบายการคืนสินค้า</a>
                 <a href="#orders" style={{ color: '#94A3B8', opacity: 0.8, textDecoration: 'none' }} onClick={(e) => { 
@@ -5668,7 +5676,7 @@ export default function Storefront() {
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', textAlign: 'left' }}>
               <h4 style={{ color: '#FFFFFF', fontSize: '1.05rem', fontWeight: 700, margin: '0 0 16px 0', padding: 0, textAlign: 'left' }}>เกี่ยวกับเรา</h4>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '0.85rem', alignItems: 'flex-start', textAlign: 'left' }}>
-                <a href="#about" style={{ color: '#94A3B8', opacity: 0.8, textDecoration: 'none' }} onClick={(e) => { e.preventDefault(); showToast('บริษัท เทอรา กรุ้ป จำกัด - ผู้นำเครื่องจักรอุตสาหกรรม'); }}>เกี่ยวกับ Tera E-Commerce</a>
+                <a href="https://www.teragroup.co.th/about-us/" target="_blank" rel="noopener noreferrer" style={{ color: '#94A3B8', opacity: 0.8, textDecoration: 'none' }}>เกี่ยวกับ Tera Group</a>
                 <a href="#careers" style={{ color: '#94A3B8', opacity: 0.8, textDecoration: 'none' }} onClick={(e) => { e.preventDefault(); showToast('ร่วมงานกับเรา'); }}>ร่วมงานกับเรา</a>
                 <a href="#news" style={{ color: '#94A3B8', opacity: 0.8, textDecoration: 'none' }} onClick={(e) => { e.preventDefault(); showToast('ข่าวสารองค์กร'); }}>ข่าวสาร</a>
                 <a href="#partners" style={{ color: '#94A3B8', opacity: 0.8, textDecoration: 'none' }} onClick={(e) => { e.preventDefault(); showToast('พันธมิตรทางธุรกิจ'); }}>พันธมิตรธุรกิจ</a>
