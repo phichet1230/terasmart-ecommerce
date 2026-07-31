@@ -2443,35 +2443,59 @@ export default function Storefront() {
                             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.88rem', border: '1px solid #555555' }}>
                               <thead>
                                 <tr style={{ background: '#EAEAEA' }}>
-                                  <th style={{ padding: '10px 16px', textAlign: 'center', fontWeight: 700, color: '#0F172A', border: '1px solid #555555', width: '32%' }}>หัวข้อข้อมูล</th>
-                                  <th style={{ padding: '10px 16px', textAlign: 'center', fontWeight: 700, color: '#0F172A', border: '1px solid #555555' }}>รายละเอียดทางเทคนิค (Details)</th>
+                                  <th style={{ padding: '10px 16px', textAlign: 'center', fontWeight: 700, color: '#0F172A', border: '1px solid #555555', width: '32%' }}>
+                                    {selectedProduct.spec_headers?.[0] || 'หัวข้อข้อมูล'}
+                                  </th>
+                                  <th style={{ padding: '10px 16px', textAlign: 'center', fontWeight: 700, color: '#0F172A', border: '1px solid #555555' }}>
+                                    {selectedProduct.spec_headers?.[1] || 'รายละเอียดทางเทคนิค (Details)'}
+                                  </th>
+                                  {selectedProduct.spec_headers?.[2] && (
+                                    <th style={{ padding: '10px 16px', textAlign: 'center', fontWeight: 700, color: '#0F172A', border: '1px solid #555555', width: '25%' }}>
+                                      {selectedProduct.spec_headers[2]}
+                                    </th>
+                                  )}
                                 </tr>
                               </thead>
                               <tbody>
-                                {[
-                                  { label: 'แบรนด์', val: 'TERA (TERA GROUP)' },
-                                  { label: 'ชื่อรุ่น', val: 'SI4VS5.2-101-110-1100' },
-                                  { label: 'ประเภทสินค้า', val: 'ปั๊มน้ำบาดาลโซล่าเซลล์บัสเลส\nSolar Brushless Submersible Pump' },
-                                  { label: 'กำลังไฟฟ้า', val: '1,100 วัตต์ (1100 W) / 1.5 แรงม้า (1.5 HP)' },
-                                  { label: 'แรงดันไฟฟ้าใช้งาน', val: '80 - 210 VDC (Optimal input voltage: 110V)' },
-                                  { label: 'กระแสไฟฟ้าสูงสุด', val: '< 17 A' },
-                                  { label: 'ความเร็วรอบมอเตอร์', val: '0 - 4,000 รอบ/นาที (r/min)' },
-                                  { label: 'ขนาดท่อส่งน้ำ', val: '1 1/4 นิ้ว (1.25 นิ้ว)' },
-                                  { label: 'ระยะสูบส่งสูง', val: '0 - 84 - 101 เมตร' },
-                                  { label: 'ปริมาณน้ำสูงสุด', val: '5.2 - 2 - 0 ลูกบาศก์เมตร/ชั่วโมง (m³/h)' },
-                                  { label: 'ระดับการป้องกัน', val: 'IP68' },
-                                  { label: 'ฉนวนกันความร้อน', val: 'Class F' },
-                                  { label: 'มาตรฐานรับรอง', val: 'CE Approved' },
-                                  { label: 'น้ำหนักสินค้า', val: 'น้ำหนักสุทธิ (N.W.): 11.2 KG / น้ำหนักรวมกล่อง (G.W.): 13.2 KG' },
-                                  { label: 'ขนาดบรรจุภัณฑ์', val: '979 x 145 x 240 มม' },
-                                  { label: 'ระยะการรับประกัน', val: '2 ปีเต็ม (2 YEARS WARRANTY)' },
-                                  { label: 'ข้อควรระวัง', val: 'ใช้ร่วมกับกระแสไฟจากแผงโซล่าเซลล์เท่านั้น' }
-                                ].map((row, idx) => (
-                                  <tr key={idx} style={{ backgroundColor: '#FFFFFF' }}>
-                                    <td style={{ padding: '8px 16px', textAlign: 'center', fontWeight: 600, color: '#334155', border: '1px solid #555555', whiteSpace: 'nowrap' }}>{row.label}</td>
-                                    <td style={{ padding: '8px 16px', textAlign: 'left', color: '#0F172A', border: '1px solid #555555', whiteSpace: 'pre-line', lineHeight: 1.4 }}>{row.val}</td>
-                                  </tr>
-                                ))}
+                                {(() => {
+                                  const tableRows = (selectedProduct.spec_table && selectedProduct.spec_table.length > 0)
+                                    ? selectedProduct.spec_table
+                                    : [
+                                        { col1: 'แบรนด์', col2: 'TERA (TERA GROUP)' },
+                                        { col1: 'ชื่อรุ่น', col2: 'SI4VS5.2-101-110-1100' },
+                                        { col1: 'ประเภทสินค้า', col2: 'ปั๊มน้ำบาดาลโซล่าเซลล์บัสเลส\nSolar Brushless Submersible Pump' },
+                                        { col1: 'กำลังไฟฟ้า', col2: '1,100 วัตต์ (1100 W) / 1.5 แรงม้า (1.5 HP)' },
+                                        { col1: 'แรงดันไฟฟ้าใช้งาน', col2: '80 - 210 VDC (Optimal input voltage: 110V)' },
+                                        { col1: 'กระแสไฟฟ้าสูงสุด', col2: '< 17 A' },
+                                        { col1: 'ความเร็วรอบมอเตอร์', col2: '0 - 4,000 รอบ/นาที (r/min)' },
+                                        { col1: 'ขนาดท่อส่งน้ำ', col2: '1 1/4 นิ้ว (1.25 นิ้ว)' },
+                                        { col1: 'ระยะสูบส่งสูง', col2: '0 - 84 - 101 เมตร' },
+                                        { col1: 'ปริมาณน้ำสูงสุด', col2: '5.2 - 2 - 0 ลูกบาศก์เมตร/ชั่วโมง (m³/h)' },
+                                        { col1: 'ระดับการป้องกัน', col2: 'IP68' },
+                                        { col1: 'ฉนวนกันความร้อน', col2: 'Class F' },
+                                        { col1: 'มาตรฐานรับรอง', col2: 'CE Approved' },
+                                        { col1: 'น้ำหนักสินค้า', col2: 'น้ำหนักสุทธิ (N.W.): 11.2 KG / น้ำหนักรวมกล่อง (G.W.): 13.2 KG' },
+                                        { col1: 'ขนาดบรรจุภัณฑ์', col2: '979 x 145 x 240 มม' },
+                                        { col1: 'ระยะการรับประกัน', col2: '2 ปีเต็ม (2 YEARS WARRANTY)' },
+                                        { col1: 'ข้อควรระวัง', col2: 'ใช้ร่วมกับกระแสไฟจากแผงโซล่าเซลล์เท่านั้น' }
+                                      ];
+
+                                  return tableRows.map((row: any, idx: number) => {
+                                    const col1 = row.col1 || row.label || '';
+                                    const col2 = row.col2 || row.val || row.value || '';
+                                    const col3 = row.col3 || '';
+
+                                    return (
+                                      <tr key={idx} style={{ backgroundColor: idx % 2 === 0 ? '#FFFFFF' : '#FAFAFA' }}>
+                                        <td style={{ padding: '8px 16px', textAlign: 'center', fontWeight: 600, color: '#334155', border: '1px solid #555555', whiteSpace: 'nowrap' }}>{col1}</td>
+                                        <td style={{ padding: '8px 16px', textAlign: 'left', color: '#0F172A', border: '1px solid #555555', whiteSpace: 'pre-line', lineHeight: 1.4 }}>{col2}</td>
+                                        {selectedProduct.spec_headers?.[2] && (
+                                          <td style={{ padding: '8px 16px', textAlign: 'center', color: '#475569', border: '1px solid #555555' }}>{col3}</td>
+                                        )}
+                                      </tr>
+                                    );
+                                  });
+                                })()}
                               </tbody>
                             </table>
                           </div>
@@ -2493,12 +2517,21 @@ export default function Storefront() {
                               ข้อแนะนำเพิ่มเติม
                             </div>
                             <ul style={{ margin: 0, paddingLeft: 0, listStyle: 'none', fontSize: '0.88rem', color: '#334155', lineHeight: 1.85 }}>
-                              <li>• ห้ามดัดแปลง แก้ไขสินค้า หรือนำไปใช้งานผิดประเภท</li>
-                              <li>• ห้ามใช้สารเคมีที่มีฤทธิ์เป็นกรด และด่างทำความสะอาด</li>
-                              <li>• จัดเก็บในที่แห้ง และพ้นมือเด็ก</li>
-                              <li>• ห้ามจัดเก็บใกล้ความร้อน และเปลวไฟ</li>
-                              <li>• ห้ามใช้งานร่วมกับอุปกรณ์ที่ไม่ได้มาตรฐาน</li>
-                              <li>• หากสินค้าชำรุดเสียหาย ควรส่งให้ช่างเป็นผู้ซ่อม</li>
+                              {(() => {
+                                const adviceList = (selectedProduct.advice_list && selectedProduct.advice_list.length > 0)
+                                  ? selectedProduct.advice_list
+                                  : [
+                                      'ห้ามดัดแปลง แก้ไขสินค้า หรือนำไปใช้งานผิดประเภท',
+                                      'ห้ามใช้สารเคมีที่มีฤทธิ์เป็นกรด และด่างทำความสะอาด',
+                                      'จัดเก็บในที่แห้ง และพ้นมือเด็ก',
+                                      'ห้ามจัดเก็บใกล้ความร้อน และเปลวไฟ',
+                                      'ห้ามใช้งานร่วมกับอุปกรณ์ที่ไม่ได้มาตรฐาน',
+                                      'หากสินค้าชำรุดเสียหาย ควรส่งให้ช่างเป็นผู้ซ่อม'
+                                    ];
+                                return adviceList.map((item: string, idx: number) => (
+                                  <li key={idx}>• {item}</li>
+                                ));
+                              })()}
                             </ul>
                           </div>
 
