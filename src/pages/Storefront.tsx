@@ -1235,8 +1235,8 @@ export default function Storefront() {
         };
       } else {
         payload.selected_cart_item_ids = cartItems
-          .filter(i => i.selected)
-          .map(item => item.cart_item_id);
+          .filter(i => i.selected !== false)
+          .map(item => (item as any).id || item.cart_item_id);
       }
 
       if (activeCoupon) {
