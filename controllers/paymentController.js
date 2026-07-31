@@ -212,7 +212,7 @@ exports.uploadSlip = async (req, res) => {
     });
     normalizedText = normalizedText.replace(/\s+/g, ' ');
 
-    // Layer 4: Thai Banking Authentication & Bank Brand Classifier
+    // Layer 4: Thai Banking Authentication & Strict Slip Structural Classifier
     const bankBrandMap = [
       { name: 'ธนาคารกสิกรไทย (KBank / K PLUS)', keywords: ['กสิกรไทย', 'KBANK', 'K-PLUS', 'K PLUS'] },
       { name: 'ธนาคารไทยพาณิชย์ (SCB / SCB EASY)', keywords: ['ไทยพาณิชย์', 'SCB', 'SCB EASY', 'EASY APP'] },
@@ -229,31 +229,35 @@ exports.uploadSlip = async (req, res) => {
       if (b.keywords.some(kw => normalizedText.toUpperCase().includes(kw.toUpperCase()))) {
         detectedBankBrand = b.name;
         foundBankBrand = true;
-        trustScore += 25;
         break;
       }
     }
 
-    // คำสำคัญยืนยันสถานะธุรกรรมทางการเงิน
-    const transactionMarkers = [
-      'โอนเงินสำเร็จ', 'โอนสำเร็จ', 'รายการสำเร็จ', 'ชำระเงินสำเร็จ', 'โอนเงิน',
-      'TRANSFER SUCCESSFUL', 'SUCCESSFUL TRANSFER', 'TRANSACTION SUCCESSFUL',
-      'จำนวนเงิน', 'ยอดโอน', 'ยอดชำระ', 'ผู้โอน', 'ผู้รับโอน', 'ค่าธรรมเนียม',
-      'REF NO', 'TRANSACTION ID', 'ACCOUNT NO'
+    // 1. ตรวจสอบเครื่องหมายการทำรายการโอนเงินสำเร็จ (Transfer Success Marker)
+    const successMarkers = [
+      'โอนเงินสำเร็จ', 'โอนสำเร็จ', 'รายการสำเร็จ', 'ชำระเงินสำเร็จ',
+      'TRANSFER SUCCESSFUL', 'SUCCESSFUL TRANSFER', 'TRANSACTION SUCCESSFUL'
     ];
+    const hasSuccessMarker = successMarkers.some(marker => normalizedText.toUpperCase().includes(marker.toUpperCase()));
 
-    let transactionMarkerCount = 0;
-    transactionMarkers.forEach(marker => {
-      if (normalizedText.toUpperCase().includes(marker.toUpperCase())) {
-        transactionMarkerCount++;
+    // 2. ตรวจสอบป้ายกำกับรายละเอียดธุรกรรม (Transaction Metadata Labels - ต้องพบอย่างน้อย 2 รายการ)
+    const metadataLabels = [
+      'ผู้โอน', 'FROM', 'ผู้รับโอน', 'TO', 'จำนวนเงิน', 'AMOUNT', 'เลขที่รายการ', 'รหัสอ้างอิง', 'REF NO', 'TRANSACTION ID'
+    ];
+    let metadataLabelMatches = 0;
+    metadataLabels.forEach(label => {
+      if (normalizedText.toUpperCase().includes(label.toUpperCase())) {
+        metadataLabelMatches++;
       }
     });
 
-    if (transactionMarkerCount >= 1) trustScore += 25;
-
-    // กฎยืนยันสลิปจริง: ต้องพบแบรนด์ธนาคาร + สัญลักษณ์ธุรกรรม หรือมีคำสำคัญทางการเงินรวมเกิน 2 รายการ
-    if (foundBankBrand || transactionMarkerCount >= 2 || qrScannedPayload) {
+    // 🔴 STRICT ZERO-TRUST AUTHENTICATION RULE:
+    // ต้องมี: (แบรนด์ธนาคาร + เครื่องหมายโอนสำเร็จ + ป้ายกำกับธุรกรรมอย่างน้อย 2 รายการ) หรือสแกนพบ EMVCo QR Code บนรูปสลิป
+    if ((foundBankBrand && hasSuccessMarker && metadataLabelMatches >= 2) || qrScannedPayload) {
       isAuthenticBankSlip = true;
+      trustScore += 50;
+    } else {
+      isAuthenticBankSlip = false;
     }
 
     // Layer 5: Enterprise Receiver Account & Company Name Verification
@@ -283,17 +287,6 @@ exports.uploadSlip = async (req, res) => {
         verifiedAmount = parseFloat(amountMatch1[1].replace(/,/g, ''));
       } else if (amountMatch2 && amountMatch2[1]) {
         verifiedAmount = parseFloat(amountMatch2[1].replace(/,/g, ''));
-      } else {
-        const allDecimals = normalizedText.match(/\b\d{1,6}\.\d{2}\b/g);
-        if (allDecimals) {
-          for (const dec of allDecimals) {
-            const val = parseFloat(dec);
-            if (Math.abs(val - expectedAmount) < 0.01) {
-              verifiedAmount = val;
-              break;
-            }
-          }
-        }
       }
     }
 
@@ -316,7 +309,7 @@ exports.uploadSlip = async (req, res) => {
       if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
       return res.status(400).json({
         status: 'error',
-        message: 'ชำระเงินไม่สำเร็จ: รูปภาพที่แนบไม่ใช่สลิปโอนเงินของธนาคาร (ระบบตรวจไม่พบองค์ประกอบธุรกรรมการโอนเงินที่ถูกต้อง)'
+        message: 'ชำระเงินไม่สำเร็จ: รูปภาพที่แนบไม่ใช่สลิปโอนเงินของธนาคาร (ระบบตรวจไม่พบองค์ประกอบหลักของสลิป เช่น ชื่อธนาคาร เครื่องหมายโอนเงินสำเร็จ และป้ายกำกับธุรกรรม)'
       });
     }
 
