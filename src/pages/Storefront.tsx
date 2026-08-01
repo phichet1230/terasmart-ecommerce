@@ -4452,9 +4452,31 @@ export default function Storefront() {
                           </span>
                         </div>
 
-                        {/* Test Accounts Footer */}
-                        <div style={{ marginTop: '6px', padding: '8px', background: 'rgba(255, 50, 1, 0.05)', borderRadius: '10px', fontSize: '0.72rem', color: '#475569', textAlign: 'center' }}>
-                          <strong>Test Login:</strong> admin@terasmart.com / admin1234
+                        {/* Interactive Demo Staff Role Login Buttons */}
+                        <div style={{ marginTop: '12px', paddingTop: '10px', borderTop: '1px dashed #CBD5E1', textAlign: 'center' }}>
+                          <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
+                            ⚡ ปุ่มลัดล็อกอินตามสิทธิ์แผนก (Demo Role Login)
+                          </div>
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px' }}>
+                            <button type="button" onClick={() => { setLoginEmail('admin@terasmart.com'); setLoginPassword('Password123!'); }} style={{ padding: '6px 4px', fontSize: '0.7rem', borderRadius: '6px', background: '#0F172A', color: '#FFF', border: 'none', cursor: 'pointer', fontWeight: 600 }}>
+                              🛡️ Admin
+                            </button>
+                            <button type="button" onClick={() => { setLoginEmail('stock@terasmart.com'); setLoginPassword('Password123!'); }} style={{ padding: '6px 4px', fontSize: '0.7rem', borderRadius: '6px', background: '#2563EB', color: '#FFF', border: 'none', cursor: 'pointer', fontWeight: 600 }}>
+                              📦 คลังสินค้า
+                            </button>
+                            <button type="button" onClick={() => { setLoginEmail('sales@terasmart.com'); setLoginPassword('Password123!'); }} style={{ padding: '6px 4px', fontSize: '0.7rem', borderRadius: '6px', background: '#D97706', color: '#FFF', border: 'none', cursor: 'pointer', fontWeight: 600 }}>
+                              👥 ฝ่ายขาย
+                            </button>
+                            <button type="button" onClick={() => { setLoginEmail('shipping@terasmart.com'); setLoginPassword('Password123!'); }} style={{ padding: '6px 4px', fontSize: '0.7rem', borderRadius: '6px', background: '#059669', color: '#FFF', border: 'none', cursor: 'pointer', fontWeight: 600 }}>
+                              🚚 จัดส่ง
+                            </button>
+                            <button type="button" onClick={() => { setLoginEmail('marketing@terasmart.com'); setLoginPassword('Password123!'); }} style={{ padding: '6px 4px', fontSize: '0.7rem', borderRadius: '6px', background: '#9333EA', color: '#FFF', border: 'none', cursor: 'pointer', fontWeight: 600 }}>
+                              🎨 การตลาด
+                            </button>
+                            <button type="button" onClick={() => { setLoginEmail('accounting@terasmart.com'); setLoginPassword('Password123!'); }} style={{ padding: '6px 4px', fontSize: '0.7rem', borderRadius: '6px', background: '#DC2626', color: '#FFF', border: 'none', cursor: 'pointer', fontWeight: 600 }}>
+                              💰 บัญชี
+                            </button>
+                          </div>
                         </div>
                       </form>
                     ) : (
