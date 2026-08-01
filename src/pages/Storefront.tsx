@@ -1054,11 +1054,22 @@ export default function Storefront() {
         order_amount: sub,
         orderItems: itemsToValidate
       });
-      const disc = parseFloat(res.data.discount_amount || 0);
-      setActiveCoupon(res.data);
+      
+      const discVal = parseFloat(res.data.discount_value || 0);
+      let disc = 0;
+      if (res.data.discount_type === 'percentage') {
+        disc = parseFloat((sub * (discVal / 100)).toFixed(2));
+      } else if (res.data.discount_type === 'fixed') {
+        disc = parseFloat(Math.min(sub, discVal).toFixed(2));
+      } else {
+        disc = parseFloat(res.data.discount_amount || 0);
+      }
+
+      const updatedCoupon = { ...res.data, discount_amount: disc };
+      setActiveCoupon(updatedCoupon);
       setAppliedCartDiscount(disc);
       setAppliedCouponCode(res.data.code);
-      showToast(`เปิดใช้งานส่วนลดโค้ด ${res.data.code} สำเร็จ! (-${disc.toFixed(2)} ฿)`);
+      showToast(`เปิดใช้งานโค้ดส่วนลด ${res.data.code} สำเร็จ! (-${disc.toFixed(2)} ฿)`);
     } catch (err: any) {
       showToast(err.message);
     }
@@ -1082,8 +1093,19 @@ export default function Storefront() {
         order_amount: sub,
         orderItems: itemsToValidate
       });
-      const disc = parseFloat(res.data.discount_amount || 0);
-      setActiveCoupon(res.data);
+
+      const discVal = parseFloat(res.data.discount_value || 0);
+      let disc = 0;
+      if (res.data.discount_type === 'percentage') {
+        disc = parseFloat((sub * (discVal / 100)).toFixed(2));
+      } else if (res.data.discount_type === 'fixed') {
+        disc = parseFloat(Math.min(sub, discVal).toFixed(2));
+      } else {
+        disc = parseFloat(res.data.discount_amount || 0);
+      }
+
+      const updatedCoupon = { ...res.data, discount_amount: disc };
+      setActiveCoupon(updatedCoupon);
       setAppliedCartDiscount(disc);
       setAppliedCouponCode(res.data.code);
       showToast(`เปิดใช้งานโค้ดส่วนลด ${code} สำเร็จ! (-${disc.toFixed(2)} ฿)`);
@@ -1292,14 +1314,15 @@ export default function Storefront() {
 
   const calculateDiscount = () => {
     if (!activeCoupon) return appliedCartDiscount || 0;
+    const sub = calculateSubtotal();
+    const discVal = parseFloat(activeCoupon.discount_value || 0);
+    if (activeCoupon.discount_type === 'percentage') {
+      return parseFloat((sub * (discVal / 100)).toFixed(2));
+    } else if (activeCoupon.discount_type === 'fixed') {
+      return parseFloat(Math.min(sub, discVal).toFixed(2));
+    }
     if (activeCoupon.discount_amount !== undefined && activeCoupon.discount_amount !== null && !isNaN(parseFloat(activeCoupon.discount_amount))) {
       return parseFloat(activeCoupon.discount_amount);
-    }
-    const sub = calculateSubtotal();
-    if (activeCoupon.discount_type === 'percentage') {
-      return parseFloat((sub * (parseFloat(activeCoupon.discount_value || 0) / 100)).toFixed(2));
-    } else if (activeCoupon.discount_type === 'fixed') {
-      return parseFloat(Math.min(sub, parseFloat(activeCoupon.discount_value || 0)).toFixed(2));
     }
     return 0;
   };
