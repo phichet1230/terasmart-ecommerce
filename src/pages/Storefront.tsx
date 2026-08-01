@@ -628,11 +628,25 @@ export default function Storefront() {
       const res = await apiRequest('/api/v1/products');
       const mappedProducts = (res.data || []).map((p: any) => {
         const localMatch = localSaved.find((sp: Product) => sp.id === p.id || sp.slug === p.slug);
+        const pVars = (p.variants && p.variants.length > 0) ? p.variants : (localMatch?.variants || []);
+        
+        let calcPrice = '0';
+        if (pVars.length > 0) {
+          if (pVars.length === 1) {
+            calcPrice = pVars[0].price;
+          } else {
+            const numPrices = pVars.map((v: any) => parseFloat(v.price)).filter((n: number) => !isNaN(n));
+            calcPrice = numPrices.length > 0 ? Math.min(...numPrices).toString() : pVars[0].price;
+          }
+        } else {
+          calcPrice = p.price || p.min_price || localMatch?.price || '0';
+        }
+
         return {
           ...(localMatch || {}),
           ...p,
-          price: p.variants && p.variants.length > 0 ? p.variants[0].price : (p.price || p.min_price || localMatch?.price || '0'),
-          variants: p.variants && p.variants.length > 0 ? p.variants : (localMatch?.variants || []),
+          price: calcPrice,
+          variants: pVars,
           spec_table: p.spec_table || localMatch?.spec_table,
           spec_headers: p.spec_headers || localMatch?.spec_headers,
           detail_image_1: p.detail_image_1 || localMatch?.detail_image_1,
@@ -997,6 +1011,15 @@ export default function Storefront() {
           };
         }
       } catch (e) {}
+    }
+
+    if (fullProduct.variants && fullProduct.variants.length > 0) {
+      if (fullProduct.variants.length === 1) {
+        fullProduct.price = fullProduct.variants[0].price;
+      } else {
+        const numPrices = fullProduct.variants.map((v: any) => parseFloat(v.price)).filter((n: number) => !isNaN(n));
+        fullProduct.price = numPrices.length > 0 ? Math.min(...numPrices).toString() : fullProduct.variants[0].price;
+      }
     }
 
     setSelectedProduct(fullProduct);

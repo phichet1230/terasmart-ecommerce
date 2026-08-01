@@ -905,11 +905,23 @@ export default function AdminDashboard() {
       const apiData = res.data || [];
       const merged = apiData.map((p: any) => {
         const match = localSaved.find(sp => sp.id === p.id || sp.slug === p.slug);
+        const pVars = (p.variants && p.variants.length > 0) ? p.variants : (match?.variants || []);
+        let calcPrice = 0;
+        if (pVars.length > 0) {
+          if (pVars.length === 1) {
+            calcPrice = parseFloat(pVars[0].price);
+          } else {
+            const numPrices = pVars.map((v: any) => parseFloat(v.price)).filter((n: number) => !isNaN(n));
+            calcPrice = numPrices.length > 0 ? Math.min(...numPrices) : parseFloat(pVars[0].price);
+          }
+        } else {
+          calcPrice = parseFloat(p.price || match?.price || 0);
+        }
         return {
           ...(match || {}),
           ...p,
-          price: p.price || (p.variants && p.variants.length > 0 ? p.variants[0].price : match?.price || 0),
-          variants: p.variants && p.variants.length > 0 ? p.variants : (match?.variants || [])
+          price: calcPrice,
+          variants: pVars
         };
       });
       const localOnly = localSaved.filter(sp => !merged.some((p: any) => p.id === sp.id));

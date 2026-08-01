@@ -76,7 +76,11 @@ exports.getAllProducts = async (req, res) => {
       });
       products.forEach(p => {
         p.variants = varsByProduct[p.id] || [];
-        p.price = p.min_price || (p.variants.length > 0 ? p.variants[0].price : '0');
+        if (p.variants.length > 0) {
+          p.price = p.variants.length === 1 ? p.variants[0].price : (p.min_price || p.variants[0].price);
+        } else {
+          p.price = p.price || '0';
+        }
       });
     }
 
@@ -163,6 +167,15 @@ exports.getProductDetail = async (req, res) => {
     });
     product.total_stock = totalStock;
     product.is_out_of_stock = isOutOfStock;
+
+    if (product.variants && product.variants.length > 0) {
+      if (product.variants.length === 1) {
+        product.price = product.variants[0].price;
+      } else {
+        const prices = product.variants.map(v => parseFloat(v.price)).filter(p => !isNaN(p));
+        product.price = prices.length > 0 ? Math.min(...prices).toString() : product.variants[0].price;
+      }
+    }
 
     // 3. ดึงสินค้าที่เกี่ยวข้อง (Related Products) ในหมวดหมู่เดียวกัน (ดึงมา 4 รายการ)
     const relatedResult = await pool.query(
