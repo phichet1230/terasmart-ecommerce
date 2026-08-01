@@ -520,7 +520,7 @@ export default function Storefront() {
           setEditUsername(oauthUser.username);
           setEditPhone(oauthUser.phone || '');
           
-          if (['admin', 'stock', 'accounting'].includes(oauthUser.role)) {
+          if (['admin', 'stock', 'accounting', 'shipping', 'sales', 'marketing'].includes(oauthUser.role)) {
             navigate('/admin');
           }
           return;
@@ -535,7 +535,7 @@ export default function Storefront() {
     if (token && storedUser) {
       try {
         const parsed = JSON.parse(storedUser);
-        if (['admin', 'stock', 'accounting'].includes(parsed.role)) {
+        if (['admin', 'stock', 'accounting', 'shipping', 'sales', 'marketing'].includes(parsed.role)) {
           navigate('/admin');
           return;
         }
@@ -838,7 +838,7 @@ export default function Storefront() {
       setUser(userData);
       setEditUsername(userData.username);
       setEditPhone(userData.phone || '');
-      if (['admin', 'stock', 'accounting'].includes(userData.role)) {
+      if (['admin', 'stock', 'accounting', 'shipping', 'sales', 'marketing'].includes(userData.role)) {
         navigate('/admin');
       } else {
         setActiveTab('catalog');
@@ -1753,9 +1753,9 @@ export default function Storefront() {
               </button>
             )}
 
-            {user && user.role === 'admin' && (
+            {user && ['admin', 'stock', 'accounting', 'shipping', 'sales', 'marketing'].includes(user.role) && (
               <button className="nav-btn" style={{ background: '#0F172A', color: '#fff', fontSize: '0.8rem', padding: '4px 10px', borderRadius: '4px' }} onClick={() => navigate('/admin')}>
-                Admin
+                ระบบหลังบ้าน
               </button>
             )}
           </div>
