@@ -5,7 +5,7 @@ import {
   ShoppingBag, User, LogOut, CheckCircle, Clock, Trash2, 
   MapPin, CreditCard, X, Sparkles, ShieldCheck, Users, Headphones,
   Eye, EyeOff, Upload, Truck, Phone, Unlock, BarChart2, Key, RefreshCw, ShoppingCart, Search, ExternalLink,
-  ChevronLeft, ChevronRight, Zap, Lock, Mail
+  ChevronLeft, ChevronRight, Zap, Lock, Mail, Tag
 } from 'lucide-react';
 
 interface Variant {
@@ -1048,7 +1048,27 @@ export default function Storefront() {
         }))
       });
       setActiveCoupon(res.data);
+      setAppliedCartDiscount(parseFloat(res.data.discount_amount || 0));
       showToast(`เปิดใช้งานส่วนลดโค้ดสำเร็จ! (-${parseFloat(res.data.discount_amount).toFixed(2)} ฿)`);
+    } catch (err: any) {
+      showToast(err.message);
+    }
+  };
+
+  const quickApplyCoupon = async (code: string) => {
+    setPromoCode(code);
+    try {
+      const res = await apiRequest('/api/v1/coupons/validate', 'POST', {
+        code: code,
+        orderItems: cartItems.filter(i => i.selected).map(item => ({
+          variant_id: item.variant_id,
+          price: item.price,
+          quantity: item.quantity
+        }))
+      });
+      setActiveCoupon(res.data);
+      setAppliedCartDiscount(parseFloat(res.data.discount_amount || 0));
+      showToast(`เปิดใช้งานโค้ดส่วนลด ${code} สำเร็จ! (-${parseFloat(res.data.discount_amount).toFixed(2)} ฿)`);
     } catch (err: any) {
       showToast(err.message);
     }
@@ -1056,6 +1076,7 @@ export default function Storefront() {
 
   const removePromoCode = () => {
     setActiveCoupon(null);
+    setAppliedCartDiscount(0);
     setPromoCode('');
     showToast('ยกเลิกการใช้คูปองส่วนลดแล้ว');
   };
@@ -3649,9 +3670,59 @@ export default function Storefront() {
                             />
                           </button>
                         </div>
-                        {activeCoupon && (
-                          <div style={{ fontSize: '12px', color: '#059669', fontWeight: 600, marginTop: '4px' }}>
-                            ✓ ส่วนลดคูปอง {activeCoupon.code || 'PROMO100'} (-100 ฿)
+                        {activeCoupon ? (
+                          <div style={{ fontSize: '12px', color: '#059669', fontWeight: 600, marginTop: '6px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <span>✓ ใช้ส่วนลดโค้ด <strong>{activeCoupon.code}</strong> (-{parseFloat(activeCoupon.discount_amount || '0').toFixed(2)} ฿)</span>
+                            <button 
+                              type="button" 
+                              onClick={removePromoCode}
+                              style={{ background: 'none', border: 'none', color: '#EF4444', fontSize: '11px', cursor: 'pointer', textDecoration: 'underline', fontWeight: 600 }}
+                            >
+                              ยกเลิกใช้โค้ด
+                            </button>
+                          </div>
+                        ) : (
+                          <div style={{ marginTop: '8px' }}>
+                            <div style={{ fontSize: '0.74rem', fontWeight: 700, color: '#475569', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                              <Tag size={12} style={{ color: '#FF3201' }} /> โค้ดส่วนลดที่แนะนำ (คลิกเพื่อใช้งาน):
+                            </div>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
+                              <button 
+                                type="button" 
+                                onClick={() => quickApplyCoupon('WELCOME10')} 
+                                style={{ padding: '3px 8px', fontSize: '0.7rem', borderRadius: '12px', background: '#FFEDD5', color: '#C2410C', border: '1px solid #FDBA74', cursor: 'pointer', fontWeight: 700 }}
+                              >
+                                🎟️ WELCOME10 (ลด 10%)
+                              </button>
+                              <button 
+                                type="button" 
+                                onClick={() => quickApplyCoupon('TERASUPER')} 
+                                style={{ padding: '3px 8px', fontSize: '0.7rem', borderRadius: '12px', background: '#DCFCE7', color: '#15803D', border: '1px solid #86EFAC', cursor: 'pointer', fontWeight: 700 }}
+                              >
+                                🎟️ TERASUPER (ลด 100฿)
+                              </button>
+                              <button 
+                                type="button" 
+                                onClick={() => quickApplyCoupon('SPECIAL20')} 
+                                style={{ padding: '3px 8px', fontSize: '0.7rem', borderRadius: '12px', background: '#F3E8FF', color: '#7E22CE', border: '1px solid #D8B4FE', cursor: 'pointer', fontWeight: 700 }}
+                              >
+                                🎟️ SPECIAL20 (ลด 20%)
+                              </button>
+                              <button 
+                                type="button" 
+                                onClick={() => quickApplyCoupon('TERA500')} 
+                                style={{ padding: '3px 8px', fontSize: '0.7rem', borderRadius: '12px', background: '#DBEAFE', color: '#1D4ED8', border: '1px solid #93C5FD', cursor: 'pointer', fontWeight: 700 }}
+                              >
+                                🎟️ TERA500 (ลด 500฿)
+                              </button>
+                              <button 
+                                type="button" 
+                                onClick={() => quickApplyCoupon('FREEVIP')} 
+                                style={{ padding: '3px 8px', fontSize: '0.7rem', borderRadius: '12px', background: '#FCE7F3', color: '#BE185D', border: '1px solid #F9A8D4', cursor: 'pointer', fontWeight: 700 }}
+                              >
+                                🎟️ FREEVIP (ลด 1,000฿)
+                              </button>
+                            </div>
                           </div>
                         )}
                       </div>
