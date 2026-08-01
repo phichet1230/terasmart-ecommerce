@@ -1038,18 +1038,27 @@ export default function Storefront() {
 
   const applyPromoCode = async () => {
     if (promoCode.trim() === '') return;
+    const sub = calculateSubtotal();
     try {
+      const itemsToValidate = checkoutDirectItem
+        ? [{ variant_id: checkoutDirectItem.variant.id, price: checkoutDirectItem.variant.price, quantity: checkoutDirectItem.qty }]
+        : cartItems.filter(i => i.selected).map(item => ({
+            variant_id: item.variant_id,
+            price: item.price,
+            quantity: item.quantity
+          }));
+
       const res = await apiRequest('/api/v1/coupons/validate', 'POST', {
         code: promoCode,
-        orderItems: cartItems.filter(i => i.selected).map(item => ({
-          variant_id: item.variant_id,
-          price: item.price,
-          quantity: item.quantity
-        }))
+        subtotal: sub,
+        order_amount: sub,
+        orderItems: itemsToValidate
       });
+      const disc = parseFloat(res.data.discount_amount || 0);
       setActiveCoupon(res.data);
-      setAppliedCartDiscount(parseFloat(res.data.discount_amount || 0));
-      showToast(`เปิดใช้งานส่วนลดโค้ดสำเร็จ! (-${parseFloat(res.data.discount_amount).toFixed(2)} ฿)`);
+      setAppliedCartDiscount(disc);
+      setAppliedCouponCode(res.data.code);
+      showToast(`เปิดใช้งานส่วนลดโค้ด ${res.data.code} สำเร็จ! (-${disc.toFixed(2)} ฿)`);
     } catch (err: any) {
       showToast(err.message);
     }
@@ -1057,18 +1066,27 @@ export default function Storefront() {
 
   const quickApplyCoupon = async (code: string) => {
     setPromoCode(code);
+    const sub = calculateSubtotal();
     try {
+      const itemsToValidate = checkoutDirectItem
+        ? [{ variant_id: checkoutDirectItem.variant.id, price: checkoutDirectItem.variant.price, quantity: checkoutDirectItem.qty }]
+        : cartItems.filter(i => i.selected).map(item => ({
+            variant_id: item.variant_id,
+            price: item.price,
+            quantity: item.quantity
+          }));
+
       const res = await apiRequest('/api/v1/coupons/validate', 'POST', {
         code: code,
-        orderItems: cartItems.filter(i => i.selected).map(item => ({
-          variant_id: item.variant_id,
-          price: item.price,
-          quantity: item.quantity
-        }))
+        subtotal: sub,
+        order_amount: sub,
+        orderItems: itemsToValidate
       });
+      const disc = parseFloat(res.data.discount_amount || 0);
       setActiveCoupon(res.data);
-      setAppliedCartDiscount(parseFloat(res.data.discount_amount || 0));
-      showToast(`เปิดใช้งานโค้ดส่วนลด ${code} สำเร็จ! (-${parseFloat(res.data.discount_amount).toFixed(2)} ฿)`);
+      setAppliedCartDiscount(disc);
+      setAppliedCouponCode(res.data.code);
+      showToast(`เปิดใช้งานโค้ดส่วนลด ${code} สำเร็จ! (-${disc.toFixed(2)} ฿)`);
     } catch (err: any) {
       showToast(err.message);
     }
@@ -1077,6 +1095,7 @@ export default function Storefront() {
   const removePromoCode = () => {
     setActiveCoupon(null);
     setAppliedCartDiscount(0);
+    setAppliedCouponCode('');
     setPromoCode('');
     showToast('ยกเลิกการใช้คูปองส่วนลดแล้ว');
   };
@@ -1272,8 +1291,17 @@ export default function Storefront() {
   };
 
   const calculateDiscount = () => {
-    if (!activeCoupon) return 0;
-    return parseFloat(activeCoupon.discount_amount);
+    if (!activeCoupon) return appliedCartDiscount || 0;
+    if (activeCoupon.discount_amount !== undefined && activeCoupon.discount_amount !== null && !isNaN(parseFloat(activeCoupon.discount_amount))) {
+      return parseFloat(activeCoupon.discount_amount);
+    }
+    const sub = calculateSubtotal();
+    if (activeCoupon.discount_type === 'percentage') {
+      return parseFloat((sub * (parseFloat(activeCoupon.discount_value || 0) / 100)).toFixed(2));
+    } else if (activeCoupon.discount_type === 'fixed') {
+      return parseFloat(Math.min(sub, parseFloat(activeCoupon.discount_value || 0)).toFixed(2));
+    }
+    return 0;
   };
 
   const calculateTotal = () => {
@@ -3110,23 +3138,27 @@ export default function Storefront() {
                     <div style={{ display: 'flex', width: '100%', height: '35px', background: '#FFFFFF', boxShadow: '0px 4px 4px rgba(0, 0, 0, 0.25) inset', borderRadius: '10px', border: '1px rgba(0, 0, 0, 0.25) solid', overflow: 'hidden' }}>
                       <input 
                         type="text" 
-                        value={cartCouponInput} 
-                        onChange={(e) => setCartCouponInput(e.target.value)} 
+                        value={promoCode || cartCouponInput} 
+                        onChange={(e) => {
+                          setCartCouponInput(e.target.value);
+                          setPromoCode(e.target.value);
+                        }} 
                         placeholder="ใส่โค้ดส่วนลดตรงนี่ >>" 
-                        style={{ flex: 1, border: 'none', outline: 'none', padding: '0 12px', fontSize: '13px', fontWeight: 600, color: '#000000', opacity: cartCouponInput ? 1 : 0.6 }} 
+                        disabled={!!activeCoupon}
+                        style={{ flex: 1, border: 'none', outline: 'none', padding: '0 12px', fontSize: '13px', fontWeight: 600, color: '#000000', opacity: (promoCode || cartCouponInput) ? 1 : 0.6 }} 
                       />
                       <button 
+                        type="button"
                         onClick={() => {
-                          if (!cartCouponInput.trim()) {
-                            showToast('กรุณากรอกโค้ดส่วนลด');
-                            return;
-                          }
-                          if (cartCouponInput.toUpperCase() === 'TERA100' || cartCouponInput.toUpperCase() === 'PROMO100') {
-                            setAppliedCartDiscount(100);
-                            setAppliedCouponCode(cartCouponInput.toUpperCase());
-                            showToast('ใช้โค้ดส่วนลด 100 บาทสำเร็จ!');
+                          if (activeCoupon) {
+                            removePromoCode();
                           } else {
-                            showToast('โค้ดส่วนลดไม่ถูกต้อง');
+                            const codeToUse = cartCouponInput.trim() || promoCode.trim();
+                            if (!codeToUse) {
+                              showToast('กรุณากรอกโค้ดส่วนลด');
+                              return;
+                            }
+                            quickApplyCoupon(codeToUse);
                           }
                         }}
                         style={{ width: '53px', height: '100%', background: '#D9D9D9', border: 'none', borderLeft: '1px rgba(0, 0, 0, 0.25) solid', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
@@ -3141,9 +3173,12 @@ export default function Storefront() {
                         />
                       </button>
                     </div>
-                    {appliedCouponCode && (
-                      <div style={{ fontSize: '12px', color: '#059669', fontWeight: 600, marginTop: '4px' }}>
-                        ✓ ส่วนลดคูปอง {appliedCouponCode} (-100 ฿)
+                    {(activeCoupon || appliedCouponCode) && (
+                      <div style={{ fontSize: '12px', color: '#059669', fontWeight: 600, marginTop: '4px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span>✓ ส่วนลดคูปอง {activeCoupon?.code || appliedCouponCode} (-{calculateDiscount().toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ฿)</span>
+                        <button type="button" onClick={removePromoCode} style={{ background: 'none', border: 'none', color: '#EF4444', fontSize: '11px', cursor: 'pointer', textDecoration: 'underline' }}>
+                          ยกเลิก
+                        </button>
                       </div>
                     )}
                   </div>
@@ -3672,7 +3707,7 @@ export default function Storefront() {
                         </div>
                         {activeCoupon ? (
                           <div style={{ fontSize: '12px', color: '#059669', fontWeight: 600, marginTop: '6px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                            <span>✓ ใช้ส่วนลดโค้ด <strong>{activeCoupon.code}</strong> (-{parseFloat(activeCoupon.discount_amount || '0').toFixed(2)} ฿)</span>
+                            <span>✓ ใช้ส่วนลดโค้ด <strong>{activeCoupon.code}</strong> (-{calculateDiscount().toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ฿)</span>
                             <button 
                               type="button" 
                               onClick={removePromoCode}
@@ -3743,10 +3778,19 @@ export default function Storefront() {
                           </span>
                         </div>
 
+                        {calculateDiscount() > 0 && (
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ fontSize: '15px', fontWeight: 400, color: '#059669' }}>ส่วนลดคูปอง ({activeCoupon?.code || appliedCouponCode}) :</span>
+                            <span style={{ fontSize: '15px', fontWeight: 600, color: '#059669', fontFamily: 'Rubik' }}>
+                              - ฿ {calculateDiscount().toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </span>
+                          </div>
+                        )}
+
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #F0F0F0', paddingTop: '12px' }}>
                           <span style={{ fontSize: '15px', fontWeight: 600, color: '#000000' }}>ยอดรวมสุทธิ :</span>
                           <span style={{ fontSize: '15px', fontWeight: 600, color: '#FF3201', fontFamily: 'Rubik' }}>
-                            ฿ {Math.max(0, calculateSubtotal() - appliedCartDiscount + calculateTax()).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            ฿ {calculateTotal().toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </span>
                         </div>
                       </div>
