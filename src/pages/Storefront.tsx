@@ -341,11 +341,15 @@ export default function Storefront() {
   // Global Toasts
   const [toasts, setToasts] = useState<string[]>([]);
 
-  // Init - Fetch details
+  // Init - Fetch details & real-time polling
   useEffect(() => {
     checkUserSession();
     fetchCategories();
     fetchProducts();
+    const interval = setInterval(() => {
+      fetchProducts();
+    }, 4000);
+    return () => clearInterval(interval);
   }, []);
 
   // Fetch addresses & orders when user is verified
@@ -627,7 +631,8 @@ export default function Storefront() {
         return {
           ...(localMatch || {}),
           ...p,
-          price: p.min_price || p.price || '0',
+          price: p.variants && p.variants.length > 0 ? p.variants[0].price : (p.price || p.min_price || localMatch?.price || '0'),
+          variants: p.variants && p.variants.length > 0 ? p.variants : (localMatch?.variants || []),
           spec_table: p.spec_table || localMatch?.spec_table,
           spec_headers: p.spec_headers || localMatch?.spec_headers,
           detail_image_1: p.detail_image_1 || localMatch?.detail_image_1,
@@ -640,6 +645,22 @@ export default function Storefront() {
       const mergedList = [...mappedProducts, ...localOnly];
       const finalList = mergedList.length > 0 ? mergedList : (localSaved.length > 0 ? localSaved : defaultStorefrontProducts);
       setProducts(finalList);
+
+      setSelectedProduct((prev) => {
+        if (!prev) return null;
+        const updated = finalList.find((p: any) => p.id === prev.id || p.slug === prev.slug);
+        if (!updated) return prev;
+        
+        // Also keep selectedVariant updated real-time
+        setSelectedVariant((curVar) => {
+          if (!curVar || !updated.variants || updated.variants.length === 0) return updated.variants?.[0] || null;
+          const matchingVar = updated.variants.find((v: any) => v.id === curVar.id || v.sku === curVar.sku || v.variant_name === curVar.variant_name);
+          return matchingVar || updated.variants[0];
+        });
+
+        return { ...prev, ...updated };
+      });
+
       localStorage.setItem('tera_storefront_products', JSON.stringify(finalList));
     } catch (err: any) {
       const fallbackList = localSaved.length > 0 ? localSaved : defaultStorefrontProducts;
@@ -965,7 +986,7 @@ export default function Storefront() {
         const localMatch = savedList.find((sp) => sp.id === prod.id || sp.slug === prod.slug);
         if (localMatch) {
           fullProduct = {
-            ...localMatch,
+            ...(localMatch || {}),
             ...fullProduct,
             detail_image_1: fullProduct.detail_image_1 || localMatch.detail_image_1,
             detail_image_2: fullProduct.detail_image_2 || localMatch.detail_image_2,

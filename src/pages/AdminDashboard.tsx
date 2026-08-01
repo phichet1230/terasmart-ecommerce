@@ -902,12 +902,14 @@ export default function AdminDashboard() {
 
     try {
       const res = await apiRequest('/api/v1/admin/products');
-      const apiData = res.data;
+      const apiData = res.data || [];
       const merged = apiData.map((p: any) => {
         const match = localSaved.find(sp => sp.id === p.id || sp.slug === p.slug);
         return {
+          ...(match || {}),
           ...p,
-          ...(match || {})
+          price: p.price || (p.variants && p.variants.length > 0 ? p.variants[0].price : match?.price || 0),
+          variants: p.variants && p.variants.length > 0 ? p.variants : (match?.variants || [])
         };
       });
       const localOnly = localSaved.filter(sp => !merged.some((p: any) => p.id === sp.id));
@@ -1122,6 +1124,8 @@ export default function AdminDashboard() {
       } else {
         await apiRequest('/api/v1/admin/products', 'POST', payload);
       }
+      await loadProducts();
+      window.dispatchEvent(new Event('tera_products_updated'));
     } catch (err) {
       console.log('Saved to local storage fallback:', err);
     }

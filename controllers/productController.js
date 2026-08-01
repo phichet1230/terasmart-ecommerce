@@ -61,6 +61,24 @@ exports.getAllProducts = async (req, res) => {
     query += ` ORDER BY (CASE WHEN COALESCE(SUM(v.stock_quantity), 0) > 0 THEN 1 ELSE 0 END) DESC, COALESCE(SUM(oi.quantity), 0) DESC, p.id DESC LIMIT ${limitParam} OFFSET ${offsetParam}`;
     
     const productsResult = await pool.query(query, params);
+    const products = productsResult.rows;
+
+    if (products.length > 0) {
+      const pIds = products.map(p => p.id);
+      const varResult = await pool.query(
+        `SELECT * FROM product_variants WHERE product_id = ANY($1::int[]) ORDER BY id ASC`,
+        [pIds]
+      );
+      const varsByProduct = {};
+      varResult.rows.forEach(v => {
+        if (!varsByProduct[v.product_id]) varsByProduct[v.product_id] = [];
+        varsByProduct[v.product_id].push(v);
+      });
+      products.forEach(p => {
+        p.variants = varsByProduct[p.id] || [];
+        p.price = p.min_price || (p.variants.length > 0 ? p.variants[0].price : '0');
+      });
+    }
 
     // ดึงจำนวนแถวทั้งหมดสำหรับการคำนวณหน้า (Pagination Total count)
     let countQuery = `
@@ -89,8 +107,8 @@ exports.getAllProducts = async (req, res) => {
       total: totalCount,
       limit: parseInt(limit),
       offset: parseInt(offset),
-      results: productsResult.rows.length,
-      data: productsResult.rows
+      results: products.length,
+      data: products
     });
   } catch (err) {
     console.error(err);
