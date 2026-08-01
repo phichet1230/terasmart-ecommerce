@@ -348,6 +348,10 @@ export default function Storefront() {
     fetchProducts();
     const interval = setInterval(() => {
       fetchProducts();
+      const token = localStorage.getItem('tera_token');
+      if (token) {
+        fetchCart();
+      }
     }, 4000);
     return () => clearInterval(interval);
   }, []);
@@ -364,6 +368,13 @@ export default function Storefront() {
       setOrders([]);
     }
   }, [user]);
+
+  // Refresh cart when switching to cart tab
+  useEffect(() => {
+    if (user && activeTab === 'cart') {
+      fetchCart();
+    }
+  }, [activeTab, user]);
 
   // QR Code Expiry Timer
   useEffect(() => {
@@ -683,11 +694,31 @@ export default function Storefront() {
     }
   };
 
+  const getItemCurrentPrice = (variantId: number, fallbackPrice: string | number) => {
+    if (!products || products.length === 0) return parseFloat(fallbackPrice as any) || 0;
+    for (const p of products) {
+      if (p.variants && p.variants.length > 0) {
+        const v = p.variants.find((vItem: any) => vItem.id === variantId);
+        if (v && v.price !== undefined && v.price !== null) {
+          return parseFloat(v.price) || 0;
+        }
+      }
+    }
+    return parseFloat(fallbackPrice as any) || 0;
+  };
+
   const fetchCart = async () => {
     try {
       const res = await apiRequest('/api/v1/cart');
-      const items = res.data.map((item: any) => ({ ...item, selected: true }));
-      setCartItems(items);
+      setCartItems((prev) => {
+        return res.data.map((item: any) => {
+          const prevItem = prev.find(p => p.cart_item_id === item.cart_item_id);
+          return {
+            ...item,
+            selected: prevItem ? (prevItem.selected !== false) : true
+          };
+        });
+      });
     } catch (err: any) {
       console.error(err);
     }
@@ -1046,6 +1077,7 @@ export default function Storefront() {
         quantity: detailQty
       });
       showToast('เพิ่มสินค้าเข้าตะกร้าแล้ว!');
+      setCheckoutDirectItem(null);
       fetchCart();
       setSelectedProduct(null);
     } catch (err: any) {
@@ -1346,10 +1378,16 @@ export default function Storefront() {
   };
 
   const calculateSubtotal = () => {
-    if (checkoutDirectItem) {
-      return parseFloat(checkoutDirectItem.variant.price) * checkoutDirectItem.qty;
+    if (activeTab !== 'cart' && checkoutDirectItem) {
+      const curPrice = getItemCurrentPrice(checkoutDirectItem.variant.id, checkoutDirectItem.variant.price);
+      return curPrice * checkoutDirectItem.qty;
     }
-    return cartItems.filter(i => i.selected).reduce((acc, item) => acc + parseFloat(item.price) * item.quantity, 0);
+    const selectedItems = cartItems.filter(i => i.selected !== false);
+    return selectedItems.reduce((acc, item) => {
+      const itemPrice = getItemCurrentPrice(item.variant_id, item.price);
+      const itemQty = parseInt(item.quantity as any) || 1;
+      return acc + (itemPrice * itemQty);
+    }, 0);
   };
 
   const calculateTax = () => {
@@ -1848,7 +1886,7 @@ export default function Storefront() {
               />
             </div>
 
-            <div className="header-cart-icon-btn" onClick={() => setActiveTab('cart')} title="ดูตะกร้าสินค้า">
+            <div className="header-cart-icon-btn" onClick={() => { setCheckoutDirectItem(null); setActiveTab('cart'); }} title="ดูตะกร้าสินค้า">
               <ShoppingCart size={24} color="#ffffff" />
               {cartItems.length > 0 && <span className="cart-badge-dot">{cartItems.length}</span>}
             </div>
@@ -2684,20 +2722,25 @@ export default function Storefront() {
                                 </tr>
                               </thead>
                               <tbody>
-                                {[
-                                  { item: 'แผงโซลาร์เซลล์ Mono', spec: '500W (ใช้ออกแบบเซ็ต 3-4 แผง)', cat: 'Power' },
-                                  { item: 'สายไฟจุ่มน้ำ VCT 3 Core', spec: '3 X 2.5 mm² (ยาว 30m / 50m)', cat: 'Cable' },
-                                  { item: 'สลิงสแตนเลส 304', spec: 'หนา 4 mm (รับน้ำหนักปั๊ม)', cat: 'Rigging' },
-                                  { item: 'ฝาปิดปากบ่อบาดาล', spec: 'ขนาด 4 นิ้ว (ท่อออก 1 1/4")', cat: 'Hardware' },
-                                  { item: 'ชุดตู้ควบคุม DC กันฟ้าผ่า', spec: 'DC Surge + Breaker Box', cat: 'Safety' },
-                                  { item: 'ข้อต่อเกลียวนอก', spec: 'ทองเหลือง/สแตนเลส 1 1/4"', cat: 'Fitting' }
-                                ].map((acc, idx) => (
-                                  <tr key={idx} style={{ borderBottom: '1px solid #E2E8F0', backgroundColor: idx % 2 === 0 ? '#FFFFFF' : '#F8FAFC' }}>
-                                    <td style={{ padding: '10px 16px', fontWeight: 600, color: '#0F172A' }}>{acc.item}</td>
-                                    <td style={{ padding: '10px 16px', color: '#475569' }}>{acc.spec}</td>
-                                    <td style={{ padding: '10px 16px', fontWeight: 700, color: '#0763B3' }}>{acc.cat}</td>
-                                  </tr>
-                                ))}
+                                {(() => {
+                                  const accessories = (selectedProduct.accessories_list && selectedProduct.accessories_list.length > 0)
+                                    ? selectedProduct.accessories_list
+                                    : [
+                                        { item: 'แผงโซลาร์เซลล์ Mono', spec: '500W (ใช้ออกแบบเซ็ต 3-4 แผง)', cat: 'Power' },
+                                        { item: 'สายไฟจุ่มน้ำ VCT 3 Core', spec: '3 X 2.5 mm² (ยาว 30m / 50m)', cat: 'Cable' },
+                                        { item: 'สลิงสแตนเลส 304', spec: 'หนา 4 mm (รับน้ำหนักปั๊ม)', cat: 'Rigging' },
+                                        { item: 'ฝาปิดปากบ่อบาดาล', spec: 'ขนาด 4 นิ้ว (ท่อออก 1 1/4")', cat: 'Hardware' },
+                                        { item: 'ชุดตู้ควบคุม DC กันฟ้าผ่า', spec: 'DC Surge + Breaker Box', cat: 'Safety' },
+                                        { item: 'ข้อต่อเกลียวนอก', spec: 'ทองเหลือง/สแตนเลส 1 1/4"', cat: 'Fitting' }
+                                      ];
+                                  return accessories.map((acc: any, idx: number) => (
+                                    <tr key={idx} style={{ borderBottom: '1px solid #E2E8F0', backgroundColor: idx % 2 === 0 ? '#FFFFFF' : '#F8FAFC' }}>
+                                      <td style={{ padding: '10px 16px', fontWeight: 600, color: '#0F172A' }}>{acc.item}</td>
+                                      <td style={{ padding: '10px 16px', color: '#475569' }}>{acc.spec}</td>
+                                      <td style={{ padding: '10px 16px', fontWeight: 700, color: '#0763B3' }}>{acc.cat}</td>
+                                    </tr>
+                                  ));
+                                })()}
                               </tbody>
                             </table>
                           </div>
@@ -3156,7 +3199,7 @@ export default function Storefront() {
 
                           {/* Price */}
                           <div style={{ fontSize: '15px', fontWeight: 600, color: '#080808', minWidth: '90px', textAlign: 'right' }}>
-                            ฿ {(parseFloat(item.price) * item.quantity).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            ฿ {(getItemCurrentPrice(item.variant_id, item.price) * item.quantity).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </div>
 
                           {/* Delete item button */}
@@ -3722,7 +3765,7 @@ export default function Storefront() {
                                 จำนวน {checkoutDirectItem.qty} ชิ้น
                               </span>
                               <span style={{ fontSize: '12px', fontWeight: 600, color: '#000000', fontFamily: 'Rubik' }}>
-                                ฿ {(parseFloat(checkoutDirectItem.variant.price) * checkoutDirectItem.qty).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                ฿ {(getItemCurrentPrice(checkoutDirectItem.variant.id, checkoutDirectItem.variant.price) * checkoutDirectItem.qty).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                               </span>
                             </div>
                           </div>
@@ -3737,7 +3780,7 @@ export default function Storefront() {
                                   จำนวน {item.quantity} ชิ้น
                                 </span>
                                 <span style={{ fontSize: '12px', fontWeight: 600, color: '#000000', fontFamily: 'Rubik' }}>
-                                  ฿ {(parseFloat(item.price) * item.quantity).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                  ฿ {(getItemCurrentPrice(item.variant_id, item.price) * item.quantity).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                 </span>
                               </div>
                             </div>
