@@ -4,7 +4,8 @@ import {
   BarChart2, Users, Package, ShoppingBag, DollarSign, 
   AlertCircle, ShieldCheck, Truck, Edit3, Trash2, Plus, X, 
   Settings, LogOut, ArrowLeft, Download, RefreshCw, Clock, Eye, Sparkles,
-  Printer, Shield, Briefcase, CheckCircle2, XCircle, Search, UserPlus, Sliders, FileText, ListChecks, Layers, Image as ImageIcon
+  Printer, Shield, Briefcase, CheckCircle2, XCircle, Search, UserPlus, Sliders, FileText, ListChecks, Layers, Image as ImageIcon,
+  TrendingUp, Activity
 } from 'lucide-react';
 import '../admin.css';
 
@@ -334,7 +335,9 @@ export default function AdminDashboard() {
     totalSales: 0,
     totalOrders: 0,
     activeCustomers: 0,
-    pendingPayments: 0
+    pendingPayments: 0,
+    teamKpis: [] as any[],
+    recentAuditLogs: [] as any[]
   });
 
   // Table lists
@@ -827,7 +830,9 @@ export default function AdminDashboard() {
         totalSales: parseFloat(data.total_sales || 0),
         totalOrders: parseInt(data.total_orders || 0),
         activeCustomers: parseInt(data.active_customers || 0),
-        pendingPayments: parseInt(data.pending_payments || 0)
+        pendingPayments: parseInt(data.pending_payments || 0),
+        teamKpis: data.team_kpis || [],
+        recentAuditLogs: data.recent_audit_logs || []
       });
       setLastUpdated(new Date().toLocaleString('th-TH'));
     } catch {
@@ -835,7 +840,13 @@ export default function AdminDashboard() {
         totalSales: 184500.00,
         totalOrders: 14,
         activeCustomers: 8,
-        pendingPayments: 2
+        pendingPayments: 2,
+        teamKpis: [
+          { team_id: 1, team_name: 'ทีม 1 - ฝ่ายขาย (Sales Team)', leader: 'พี่โอ๊ต', position: 'SALE DIRECTOR', target_amount: 500000, actual_sales: 320000, kpi_percentage: 64.0 },
+          { team_id: 2, team_name: 'ทีม 2 - ฝ่ายการตลาด (Marketing Team)', leader: 'พี่กิ๊ฟ', position: 'ACT. MARKETING MANAGER', target_amount: 300000, actual_sales: 210000, kpi_percentage: 70.0 },
+          { team_id: 3, team_name: 'ทีม 3 - ฝ่ายจัดซื้อและคลังสินค้า (Warehouse & Purchase Team)', leader: 'พี่ฝน', position: 'ACT.PURCHASE&WAREHOUSE MGR.', target_amount: 200000, actual_sales: 165000, kpi_percentage: 82.5 }
+        ],
+        recentAuditLogs: []
       });
       setLastUpdated(new Date().toLocaleString('th-TH'));
     }
@@ -1393,6 +1404,140 @@ export default function AdminDashboard() {
                   </div>
                   <strong style={{ color: metrics.pendingPayments > 0 ? '#EF4444' : 'var(--text-main)' }}>{metrics.pendingPayments} บิล</strong>
                   <span style={{ fontSize: '0.75rem', color: '#64748B', display: 'block', marginTop: '6px' }}>รอฝ่ายบัญชีอนุมัติสลิป</span>
+                </div>
+              </div>
+
+              {/* MONTHLY TEAM SALES TARGET & KPI BREAKDOWN */}
+              <div className="admin-card" style={{ marginBottom: '32px' }}>
+                <div className="section-header">
+                  <div>
+                    <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#0F172A', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <TrendingUp size={20} style={{ color: '#FF3201' }} />
+                      <span>สรุปยอดขายสะสมรายเดือนเทียบกับเป้าหมาย (Monthly Sales Target & KPI %)</span>
+                    </h3>
+                    <p style={{ margin: 0, fontSize: '0.85rem', color: '#64748B' }}>
+                      ติดตามผลงานยอดขายรวมแยกตามทีมและหัวหน้าทีม อัปเดตข้อมูลแบบเรียลไทม์
+                    </p>
+                  </div>
+                </div>
+
+                <div style={{ overflowX: 'auto' }}>
+                  <table className="admin-table">
+                    <thead>
+                      <tr>
+                        <th>ทีม / แผนก</th>
+                        <th>หัวหน้าทีม (Team Leader)</th>
+                        <th>ตำแหน่ง (Position)</th>
+                        <th>เป้าหมายประจำเดือน (Target)</th>
+                        <th>ยอดขายสะสมจริง (Actual Sales)</th>
+                        <th>ความคืบหน้า KPI %</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(metrics.teamKpis || [
+                        { team_id: 1, team_name: 'ทีม 1 - ฝ่ายขาย (Sales Team)', leader: 'พี่โอ๊ต', position: 'SALE DIRECTOR', target_amount: 500000, actual_sales: 320000, kpi_percentage: 64.0 },
+                        { team_id: 2, team_name: 'ทีม 2 - ฝ่ายการตลาด (Marketing Team)', leader: 'พี่กิ๊ฟ', position: 'ACT. MARKETING MANAGER', target_amount: 300000, actual_sales: 210000, kpi_percentage: 70.0 },
+                        { team_id: 3, team_name: 'ทีม 3 - ฝ่ายจัดซื้อและคลังสินค้า (Warehouse & Purchase Team)', leader: 'พี่ฝน', position: 'ACT.PURCHASE&WAREHOUSE MGR.', target_amount: 200000, actual_sales: 165000, kpi_percentage: 82.5 }
+                      ]).map((kpi: any) => (
+                        <tr key={kpi.team_id}>
+                          <td>
+                            <strong style={{ color: '#0F172A', fontSize: '0.95rem' }}>{kpi.team_name}</strong>
+                          </td>
+                          <td>
+                            <span style={{ fontWeight: 700, color: '#FF3201', fontSize: '0.95rem' }}>{kpi.leader}</span>
+                          </td>
+                          <td>
+                            <span style={{ fontSize: '0.8rem', padding: '3px 8px', borderRadius: '6px', background: '#F1F5F9', color: '#475569', fontWeight: 700 }}>
+                              {kpi.position}
+                            </span>
+                          </td>
+                          <td style={{ fontFamily: 'Rubik, sans-serif', fontWeight: 600 }}>
+                            {kpi.target_amount.toLocaleString('th-TH')} ฿
+                          </td>
+                          <td style={{ fontFamily: 'Rubik, sans-serif', fontWeight: 700, color: '#059669' }}>
+                            {kpi.actual_sales.toLocaleString('th-TH', { minimumFractionDigits: 2 })} ฿
+                          </td>
+                          <td style={{ minWidth: '180px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                              <div style={{ flex: 1, height: '10px', background: '#E2E8F0', borderRadius: '10px', overflow: 'hidden' }}>
+                                <div 
+                                  style={{ 
+                                    width: `${Math.min(100, kpi.kpi_percentage)}%`, 
+                                    height: '100%', 
+                                    background: kpi.kpi_percentage >= 80 ? '#059669' : kpi.kpi_percentage >= 50 ? '#D97706' : '#EF4444',
+                                    borderRadius: '10px',
+                                    transition: 'width 0.5s ease'
+                                  }} 
+                                />
+                              </div>
+                              <strong style={{ fontSize: '0.85rem', fontFamily: 'Rubik', color: kpi.kpi_percentage >= 80 ? '#059669' : '#0F172A' }}>
+                                {kpi.kpi_percentage}%
+                              </strong>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* RECENT AUDIT LOGS TABLE */}
+              <div className="admin-card" style={{ marginBottom: '32px' }}>
+                <div className="section-header">
+                  <div>
+                    <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#0F172A', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <Activity size={20} style={{ color: '#0763B3' }} />
+                      <span>ประวัติบันทึกการทำงานในระบบ (System Audit Logs)</span>
+                    </h3>
+                    <p style={{ margin: 0, fontSize: '0.85rem', color: '#64748B' }}>
+                      บันทึกกิจกรรมการปรับปรุงสินค้า อัปเดตสถานะคำสั่งซื้อ และจัดการสมาชิกของแอดมิน
+                    </p>
+                  </div>
+                </div>
+
+                <div style={{ overflowX: 'auto' }}>
+                  <table className="admin-table">
+                    <thead>
+                      <tr>
+                        <th>วันที่ / เวลา</th>
+                        <th>ผู้ดำเนินการ (Admin)</th>
+                        <th>กิจกรรม (Action)</th>
+                        <th>ตารางที่กระทบ (Target)</th>
+                        <th>ID อ้างอิง</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {metrics.recentAuditLogs && metrics.recentAuditLogs.length > 0 ? (
+                        metrics.recentAuditLogs.map((log: any) => (
+                          <tr key={log.id}>
+                            <td style={{ fontSize: '0.82rem', color: '#64748B', whiteSpace: 'nowrap' }}>
+                              {new Date(log.created_at).toLocaleString('th-TH')}
+                            </td>
+                            <td>
+                              <span style={{ fontWeight: 700, color: '#0F172A' }}>{log.admin_name || 'Admin'}</span>
+                              <span style={{ fontSize: '0.75rem', color: '#64748B', display: 'block' }}>({log.admin_role || 'admin'})</span>
+                            </td>
+                            <td style={{ fontWeight: 600, color: '#334155' }}>{log.action}</td>
+                            <td>
+                              <span style={{ fontSize: '0.78rem', background: '#EFF6FF', color: '#1D4ED8', padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>
+                                {log.target_table}
+                              </span>
+                            </td>
+                            <td style={{ fontFamily: 'Rubik, monospace', fontSize: '0.82rem', color: '#475569' }}>
+                              {log.target_id}
+                            </td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan={5} style={{ textAlign: 'center', color: '#94A3B8', padding: '20px' }}>
+                            ไม่พบประวัติการทำงานล่าสุด
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
                 </div>
               </div>
 

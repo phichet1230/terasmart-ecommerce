@@ -71,6 +71,7 @@ exports.getDashboardMetrics = async (req, res) => {
     `);
     metrics.monthly_sales = monthlySales.rows;
 
+<<<<<<< Updated upstream
     // 🏆 คำนวณตารางสรุปยอดขายสะสมรายเดือนเทียบกับเป้าหมาย (Target) และ KPI % แยกรวมยอดของ 3 ทีม
     // ทีม 1 (พี่พี่ยง), ทีม 2 (พี่กิ๊ฟ), ทีม 3 (พี่ฝน)
     const currentMonthSales = parseFloat(monthlySales.rows.length > 0 ? (monthlySales.rows[monthlySales.rows.length - 1].total_sales || 0) : 0);
@@ -114,6 +115,66 @@ exports.getDashboardMetrics = async (req, res) => {
       }
     ];
 
+=======
+    // สรุปยอดขายเดือนปัจจุบันสำหรับคำนวณ KPI
+    const currentMonthSales = await pool.query(`
+      SELECT COALESCE(SUM(total_price), 0) as current_sales
+      FROM orders
+      WHERE status != 'pending' AND status != 'cancelled'
+        AND created_at >= DATE_TRUNC('month', CURRENT_DATE)
+    `);
+    const totalMonthSales = parseFloat(currentMonthSales.rows[0].current_sales || 0);
+
+    // KPI สรุปผลงานประจำเดือนตามทีม
+    const team1Target = 500000;
+    const team2Target = 300000;
+    const team3Target = 200000;
+
+    const team1Sales = totalMonthSales * 0.50;
+    const team2Sales = totalMonthSales * 0.30;
+    const team3Sales = totalMonthSales * 0.20;
+
+    metrics.team_kpis = [
+      {
+        team_id: 1,
+        team_name: 'ทีม 1 - ฝ่ายขาย (Sales Team)',
+        leader: 'พี่โอ๊ต',
+        position: 'SALE DIRECTOR',
+        target_amount: team1Target,
+        actual_sales: parseFloat(team1Sales.toFixed(2)),
+        kpi_percentage: parseFloat(Math.min(100, (team1Sales / team1Target) * 100).toFixed(1))
+      },
+      {
+        team_id: 2,
+        team_name: 'ทีม 2 - ฝ่ายการตลาด (Marketing Team)',
+        leader: 'พี่กิ๊ฟ',
+        position: 'ACT. MARKETING MANAGER',
+        target_amount: team2Target,
+        actual_sales: parseFloat(team2Sales.toFixed(2)),
+        kpi_percentage: parseFloat(Math.min(100, (team2Sales / team2Target) * 100).toFixed(1))
+      },
+      {
+        team_id: 3,
+        team_name: 'ทีม 3 - ฝ่ายจัดซื้อและคลังสินค้า (Warehouse & Purchase Team)',
+        leader: 'พี่ฝน',
+        position: 'ACT.PURCHASE&WAREHOUSE MGR.',
+        target_amount: team3Target,
+        actual_sales: parseFloat(team3Sales.toFixed(2)),
+        kpi_percentage: parseFloat(Math.min(100, (team3Sales / team3Target) * 100).toFixed(1))
+      }
+    ];
+
+    // ดึง Audit Logs ล่าสุด 10 รายการ
+    const recentAuditLogs = await pool.query(`
+      SELECT a.*, u.username as admin_name, u.role as admin_role
+      FROM audit_logs a
+      LEFT JOIN users u ON a.admin_id = u.id
+      ORDER BY a.created_at DESC
+      LIMIT 10
+    `);
+    metrics.recent_audit_logs = recentAuditLogs.rows;
+
+>>>>>>> Stashed changes
     res.json({ status: 'success', data: metrics });
 
   } catch (err) {
@@ -122,11 +183,19 @@ exports.getDashboardMetrics = async (req, res) => {
   }
 };
 
+<<<<<<< Updated upstream
 // 1.1 ดึงข้อมูลประวัติการทำงานของระบบ (Audit Logs)
 exports.getAuditLogs = async (req, res) => {
   try {
     const logs = await pool.query(`
       SELECT a.id, a.admin_id, u.username as admin_name, a.action, a.target_table, a.target_id, a.created_at
+=======
+// 12. ดึงข้อมูลประวัติการทำงานแอดมิน (Audit Logs)
+exports.getAuditLogs = async (req, res) => {
+  try {
+    const logs = await pool.query(`
+      SELECT a.*, u.username as admin_name, u.role as admin_role
+>>>>>>> Stashed changes
       FROM audit_logs a
       LEFT JOIN users u ON a.admin_id = u.id
       ORDER BY a.created_at DESC
