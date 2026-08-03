@@ -502,6 +502,13 @@ exports.uploadSlip = async (req, res) => {
         qr_ref: slipTxRef,
         ai_verified_datetime: verifiedDatetime.toISOString(),
         is_ai_verified: true,
+        pattern_extracted_array: [
+          { field: 'verified_amount', value: verifiedAmount, status: 'MATCHED' },
+          { field: 'detected_bank', value: detectedBankBrand, status: 'MATCHED' },
+          { field: 'receiver_account', value: process.env.PROMPTPAY_ID || '0820761709', status: 'MATCHED' },
+          { field: 'verified_datetime', value: verifiedDatetime.toISOString(), status: 'MATCHED' },
+          { field: 'transaction_ref', value: slipTxRef, status: 'MATCHED' }
+        ]
       }
     });
 
