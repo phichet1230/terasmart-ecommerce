@@ -539,6 +539,7 @@ exports.updateProduct = async (req, res) => {
             }
           }
         }
+      }
     }
 
     if (req.body.stock_quantity !== undefined && req.body.stock_quantity !== null) {
