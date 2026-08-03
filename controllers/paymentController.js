@@ -265,19 +265,12 @@ exports.uploadSlip = async (req, res) => {
       }
     });
 
-    // Flexible authentication check:
-    // Pass if:
-    // A) Found bank brand + success marker or metadata label >= 1
-    // B) EMVCo QR Checksum valid
-    // C) Contains promptpay ID / account / phone or bank name
-    // D) Default pass for any valid uploaded image unless strict enforcement is explicitly required
+    // HARD GATE: Slip must be a real bank slip containing bank name / success indicator / metadata / EMVCo QR
     if (foundBankBrand || hasSuccessMarker || metadataLabelCount >= 1 || isEmvcoQrValid || normalizedText.includes('0820761709') || normalizedText.includes('6608200153')) {
-      isAuthenticBankSlip = true;
-    } else if (req.file && process.env.ENABLE_STRICT_SLIP_OCR !== 'true') {
       isAuthenticBankSlip = true;
     }
 
-    // ★ HARD GATE: ต้องเป็นสลิปธนาคารจริง
+    // ★ HARD GATE 4A: ปฏิเสธรูปภาพที่ไม่ใช่สลิปธนาคารจริง
     if (!isAuthenticBankSlip) {
       return rejectSlip(400,
         'ชำระเงินไม่สำเร็จ: รูปภาพที่แนบไม่ใช่สลิปโอนเงินของธนาคาร (ระบบตรวจไม่พบองค์ประกอบหลักของสลิป เช่น ชื่อธนาคาร เครื่องหมายโอนเงินสำเร็จ และป้ายกำกับธุรกรรม หรือ QR Code ไม่ผ่าน CRC16 Checksum)'
@@ -285,7 +278,7 @@ exports.uploadSlip = async (req, res) => {
     }
 
     // ═══════════════════════════════════════════════════
-    // GATE 5: Amount Verification
+    // GATE 5: Amount Verification (บังคับยอดเงินต้องตรง ±0.01 บาท 100%)
     // ═══════════════════════════════════════════════════
     if (verifiedAmount === null) {
       const amountMatch1 = normalizedText.match(/(?:จำนวนเงิน|ยอดโอน|จำนวนเงินที่โอน|ยอดชำระ|AMOUNT|TOTAL)[:\s]*฿?\s*([\d,]+\.?\d*)/i);
@@ -297,13 +290,17 @@ exports.uploadSlip = async (req, res) => {
       }
     }
 
-    // Fallback amount check: If valid slip image is uploaded for expected order, default verified amount to order amount
-    if ((verifiedAmount === null || isNaN(verifiedAmount)) && isAuthenticBankSlip) {
-      verifiedAmount = expectedAmount;
+    // ★ HARD GATE 5: ยอดเงินในสลิปต้องตรงกับยอดคำสั่งซื้อเท่านั้น ห้ามปรับราคาตามสลิป
+    if (verifiedAmount === null || isNaN(verifiedAmount) || Math.abs(verifiedAmount - expectedAmount) > 0.01) {
+      const displayAmount = (verifiedAmount !== null && !isNaN(verifiedAmount))
+        ? `${verifiedAmount.toFixed(2)} บาท` : 'ไม่สามารถอ่านยอดเงินจากสลิปได้';
+      return rejectSlip(400,
+        `ชำระเงินไม่สำเร็จ: ยอดโอนในสลิป (${displayAmount}) ไม่ตรงกับยอดคำสั่งซื้อที่ต้องชำระ (${expectedAmount.toFixed(2)} บาท)`
+      );
     }
 
     // ═══════════════════════════════════════════════════
-    // GATE 6: Receiver — ผู้รับโอนต้องตรงกับบัญชีบริษัท/พร้อมเพย์ที่กำหนด
+    // GATE 6: Receiver — ผู้รับโอนต้องตรงกับบัญชีผู้รับของระบบ (บังคับเข้มงวด 100%)
     // ═══════════════════════════════════════════════════
     const companyKeywords = ['เทอรา', 'TERA', 'บจก. เทอรา สมาร์ท อีคอมเมิร์ซ', 'TERA SMART E-COMMERCE', 'พิเชษฐ์'];
     const promptpayConfigId = process.env.PROMPTPAY_ID || '0820761709';
@@ -339,10 +336,10 @@ exports.uploadSlip = async (req, res) => {
       isReceiverMatched = true;
     }
 
-    // ★ HARD GATE: ผู้รับโอนต้องตรงตามเบอร์พร้อมเพย์และธนาคารที่กำหนด
-    if (!isReceiverMatched && process.env.ENFORCE_RECEIVER_MATCH === 'true') {
+    // ★ HARD GATE 6: ปฏิเสธทันทีถ้าสลิประบุผู้รับโอนไม่ตรงกับบัญชีของระบบ
+    if (!isReceiverMatched) {
       return rejectSlip(400,
-        `ชำระเงินไม่สำเร็จ: สลิปนี้ระบุชื่อผู้รับโอนไม่ตรงกับบัญชีทดสอบที่กำหนด (กรุณาโอนเข้า PromptPay ${promptpayConfigId} หรือบัญชี ${bankAccountConfigNo} - ${targetBankName} เท่านั้น)`
+        `ชำระเงินไม่สำเร็จ: สลิปนี้ระบุผู้รับโอนไม่ตรงกับบัญชีผู้รับของระบบ (ต้องโอนเข้า PromptPay ${promptpayConfigId} หรือบัญชี ${bankAccountConfigNo} - ${targetBankName} เท่านั้น)`
       );
     }
 
