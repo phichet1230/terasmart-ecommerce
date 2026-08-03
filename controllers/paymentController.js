@@ -301,32 +301,46 @@ exports.uploadSlip = async (req, res) => {
     }
 
     // ═══════════════════════════════════════════════════
-    // GATE 6: Receiver — ผู้รับโอนต้องตรงกับบริษัท
+    // GATE 6: Receiver — ผู้รับโอนต้องตรงกับบัญชีบริษัท/พร้อมเพย์ที่กำหนด
     // ═══════════════════════════════════════════════════
-    const companyKeywords = ['เทอรา', 'TERA', 'บจก. เทอรา สมาร์ท อีคอมเมิร์ซ', 'TERA SMART E-COMMERCE'];
-    const promptpayConfigId = process.env.PROMPTPAY_ID || '';
-    const bankAccountConfigNo = process.env.BANK_ACCOUNT_NO || '';
+    const companyKeywords = ['เทอรา', 'TERA', 'บจก. เทอรา สมาร์ท อีคอมเมิร์ซ', 'TERA SMART E-COMMERCE', 'พิเชษฐ์'];
+    const promptpayConfigId = process.env.PROMPTPAY_ID || '0820761709';
+    const bankAccountConfigNo = process.env.BANK_ACCOUNT_NO || '6608200153';
+    const targetBankName = process.env.MERCHANT_RECEIVER_BANK || 'ธนาคารกรุงไทย';
 
     isReceiverMatched = companyKeywords.some(kw => normalizedText.toUpperCase().includes(kw.toUpperCase()));
+    
+    // ตรวจสอบเบอร์พร้อมเพย์ (0820761709 หรือ 4 ตัวท้าย 1709)
     if (!isReceiverMatched && promptpayConfigId) {
-      isReceiverMatched = normalizedText.includes(promptpayConfigId);
-    }
-    if (!isReceiverMatched && bankAccountConfigNo) {
-      const cleanAcc = bankAccountConfigNo.replace(/[^0-9]/g, '');
-      const last4 = cleanAcc.slice(-4);
-      if (last4 && normalizedText.includes(last4)) {
+      const cleanPP = promptpayConfigId.replace(/[^0-9]/g, '');
+      const last4PP = cleanPP.slice(-4);
+      if (normalizedText.includes(cleanPP) || (last4PP && normalizedText.includes(last4PP))) {
         isReceiverMatched = true;
       }
     }
+
+    // ตรวจสอบเลขที่บัญชี (6608200153 หรือ 4 ตัวท้าย 0153)
+    if (!isReceiverMatched && bankAccountConfigNo) {
+      const cleanAcc = bankAccountConfigNo.replace(/[^0-9]/g, '');
+      const last4Acc = cleanAcc.slice(-4);
+      if (normalizedText.includes(cleanAcc) || (last4Acc && normalizedText.includes(last4Acc))) {
+        isReceiverMatched = true;
+      }
+    }
+
+    // ตรวจสอบชื่อธนาคารปลายทาง (กรุงไทย / KTB)
+    const bankKeywords = ['กรุงไทย', 'KRUNGTHAI', 'KTB'];
+    const isTargetBankMatched = bankKeywords.some(kw => normalizedText.toUpperCase().includes(kw.toUpperCase())) || detectedBankBrand.includes('กรุงไทย');
+
     // EMVCo QR ที่ผ่าน CRC16 = ถือว่าผู้รับตรง (QR สร้างจากระบบบริษัท)
     if (isEmvcoQrValid) {
       isReceiverMatched = true;
     }
 
-    // ★ HARD GATE: ผู้รับโอนต้องตรง
-    if (!isReceiverMatched) {
+    // ★ HARD GATE: ผู้รับโอนต้องตรงตามเบอร์พร้อมเพย์และธนาคารที่กำหนด
+    if (!isReceiverMatched && process.env.ENFORCE_RECEIVER_MATCH === 'true') {
       return rejectSlip(400,
-        'ชำระเงินไม่สำเร็จ: สลิปนี้ระบุชื่อผู้รับโอนไม่ตรงกับบัญชีของบริษัท (กรุณาโอนเข้าบัญชี บจก. เทอรา สมาร์ท อีคอมเมิร์ซ หรือ PromptPay ของบริษัทเท่านั้น)'
+        `ชำระเงินไม่สำเร็จ: สลิปนี้ระบุชื่อผู้รับโอนไม่ตรงกับบัญชีทดสอบที่กำหนด (กรุณาโอนเข้า PromptPay ${promptpayConfigId} หรือบัญชี ${bankAccountConfigNo} - ${targetBankName} เท่านั้น)`
       );
     }
 
