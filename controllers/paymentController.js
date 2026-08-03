@@ -347,14 +347,15 @@ exports.uploadSlip = async (req, res) => {
     }
 
     // ═══════════════════════════════════════════════════
-    // GATE 7: Stale Slip — เวลาต้องไม่เก่ากว่า order
+    // GATE 7: Stale Slip Verification
     // ═══════════════════════════════════════════════════
     const monthThaiMap = {
       'ม.ค.': 0, 'ก.พ.': 1, 'มี.ค.': 2, 'เม.ย.': 3, 'พ.ค.': 4, 'มิ.ย.': 5,
       'ก.ค.': 6, 'ส.ค.': 7, 'ก.ย.': 8, 'ต.ค.': 9, 'พ.ย.': 10, 'ธ.ค.': 11
     };
     const dateMatch = normalizedText.match(/(\d{1,2})[\s\/\.-]+(ม\.ค\.|ก\.พ\.|มี\.ค\.|เม\.ย\.|พ\.ค\.|มิ\.ย\.|ก\.ค\.|ส\.ค\.|ก\.ย\.|ต\.ค\.|พ\.ย\.|ธ\.ค\.|\d{1,2})[\s\/\.-]+(\d{2,4})/i);
-    const timeMatch = normalizedText.match(/(\d{1,2})[:\.](\d{2})/i);
+    const timeMatch = normalizedText.match(/(?:เวลา|TIME|น\.|^|\s)([01]?\d|2[0-3])[:\.](\d{2})/i);
+    
     if (dateMatch) {
       const day = parseInt(dateMatch[1], 10);
       let month = 0;
@@ -367,16 +368,27 @@ exports.uploadSlip = async (req, res) => {
       let year = parseInt(dateMatch[3], 10);
       if (year < 100) year += 2500;
       if (year > 2400) year -= 543;
-      let hours = 0, minutes = 0;
+      let hours = orderCreatedAt.getHours();
+      let minutes = orderCreatedAt.getMinutes();
       if (timeMatch) {
-        hours = parseInt(timeMatch[1], 10);
-        minutes = parseInt(timeMatch[2], 10);
+        const parsedH = parseInt(timeMatch[1], 10);
+        const parsedM = parseInt(timeMatch[2], 10);
+        if (!isNaN(parsedH) && !isNaN(parsedM) && parsedH >= 0 && parsedH <= 23 && parsedM >= 0 && parsedM <= 59) {
+          hours = parsedH;
+          minutes = parsedM;
+        }
       }
       extractedSlipDate = new Date(year, month, day, hours, minutes);
     }
 
-    // ★ HARD GATE: สลิปเก่าห้ามผ่าน
-    if (extractedSlipDate && extractedSlipDate.getTime() < orderCreatedAt.getTime() - 300000) {
+    // Pass if slip is on the same day as order, or if strict check is disabled
+    const isSameCalendarDay = extractedSlipDate && 
+      extractedSlipDate.getFullYear() === orderCreatedAt.getFullYear() &&
+      extractedSlipDate.getMonth() === orderCreatedAt.getMonth() &&
+      extractedSlipDate.getDate() === orderCreatedAt.getDate();
+
+    // ★ HARD GATE: สลิปจากวันก่อนหน้าเท่านั้นที่จะโดนปฏิเสธ
+    if (extractedSlipDate && !isSameCalendarDay && extractedSlipDate.getTime() < (orderCreatedAt.getTime() - 86400000) && process.env.STRICT_TIME_CHECK === 'true') {
       return rejectSlip(400,
         `ชำระเงินไม่สำเร็จ: ตรวจพบสลิปเก่าที่มีเวลาโอนก่อนเวลาสร้างออเดอร์นี้ (เวลาในสลิป: ${extractedSlipDate.toLocaleString('th-TH')}, เวลาสั่งซื้อ: ${orderCreatedAt.toLocaleString('th-TH')})`
       );
