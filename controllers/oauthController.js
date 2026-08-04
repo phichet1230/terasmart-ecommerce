@@ -353,47 +353,37 @@ async function handleSocialLogin(req, res, idColumn, socialId, email, name, pict
       user = emailResult.rows[0];
       
       if (user) {
-        // Link the social ID to existing account and sync profile info
-        await pool.query(
-          `UPDATE users 
-           SET ${idColumn} = $1, 
-               profile_image = COALESCE($2, profile_image),
-               phone = COALESCE(phone, $3),
-               updated_at = CURRENT_TIMESTAMP 
-           WHERE id = $4`, 
-          [socialId, picture, phone, user.id]
-        );
-        user[idColumn] = socialId;
-        if (picture && !user.profile_image) user.profile_image = picture;
-        if (phone && !user.phone) user.phone = phone;
+        // Link the social ID to existing account if not already taken by another account
+        try {
+          await pool.query(
+            `UPDATE users 
+             SET ${idColumn} = COALESCE(${idColumn}, $1), 
+                 profile_image = COALESCE(profile_image, $2),
+                 updated_at = CURRENT_TIMESTAMP 
+             WHERE id = $3`, 
+            [socialId, picture, user.id]
+          );
+        } catch (updateErr) {
+          console.warn(`[OAuth Link Warning] ${idColumn} could not be updated:`, updateErr.message);
+        }
       }
     }
 
     if (user) {
-      // Sync latest profile_image & phone if available from social account
-      let updateNeeded = false;
-      let newImg = user.profile_image;
-      let newPhone = user.phone;
-
+      // Sync latest profile_image if available
       if (picture && user.profile_image !== picture) {
-        newImg = picture;
-        updateNeeded = true;
-      }
-      if (phone && !user.phone) {
-        newPhone = phone;
-        updateNeeded = true;
-      }
-
-      if (updateNeeded) {
-        await pool.query(
-          `UPDATE users SET profile_image = $1, phone = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3`,
-          [newImg, newPhone, user.id]
-        );
-        user.profile_image = newImg;
-        user.phone = newPhone;
+        try {
+          await pool.query(
+            `UPDATE users SET profile_image = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2`,
+            [picture, user.id]
+          );
+          user.profile_image = picture;
+        } catch (e) {
+          // Non-critical update error
+        }
       }
     } else {
-      // 3. Register a new user
+      // 3. Register a new user safely
       let cleanName = generateSafeUsername(name);
       let username = cleanName;
       let isUnique = false;
@@ -425,12 +415,25 @@ async function handleSocialLogin(req, res, idColumn, socialId, email, name, pict
         }
       }
 
-      const result = await pool.query(
-        `INSERT INTO users (username, email, ${idColumn}, profile_image, phone, role, account_status)
-         VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
-        [username, emailNormalized, socialId, picture, phone, 'customer', 'active']
-      );
-      user = result.rows[0];
+      try {
+        const result = await pool.query(
+          `INSERT INTO users (username, email, ${idColumn}, profile_image, role, account_status)
+           VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+          [username, emailNormalized, socialId, picture, 'customer', 'active']
+        );
+        user = result.rows[0];
+      } catch (insertErr) {
+        console.warn('[OAuth Insert Fallback] Fetching existing account after insert collision:', insertErr.message);
+        const fallbackRes = await pool.query(
+          `SELECT * FROM users WHERE email = $1 OR ${idColumn} = $2 ORDER BY created_at DESC LIMIT 1`,
+          [emailNormalized, socialId]
+        );
+        user = fallbackRes.rows[0];
+      }
+    }
+
+    if (!user) {
+      throw new Error('User account resolution failed.');
     }
 
     // Check if suspended
