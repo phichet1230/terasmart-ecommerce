@@ -1,9 +1,10 @@
--- 1. เปิดใช้งาน Extension สำหรับรหัสสุ่ม UUID
+-- 1. เปิดใช้งาน Extension สำหรับรหัสสุ่ม UUID (ใช้อันที่มีในระบบ)
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 -- 2. สร้างตารางสมาชิกและสิทธิ์การใช้งาน
-CREATE TABLE users (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+CREATE TABLE IF NOT EXISTS users (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     username VARCHAR(255) NOT NULL UNIQUE,
     email VARCHAR(255) NOT NULL UNIQUE,
     password_hash VARCHAR(255),
@@ -28,8 +29,8 @@ CREATE TABLE password_resets (
 );
 
 -- 3.5 ตารางเก็บ Refresh Tokens
-CREATE TABLE refresh_tokens (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+CREATE TABLE IF NOT EXISTS refresh_tokens (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID REFERENCES users(id) ON DELETE CASCADE,
     token VARCHAR(555) NOT NULL UNIQUE,
     expires_at TIMESTAMP NOT NULL,
@@ -101,8 +102,8 @@ CREATE TABLE addresses (
 );
 
 -- 8. ตารางคำสั่งซื้อและรายการสินค้า
-CREATE TABLE orders (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+CREATE TABLE IF NOT EXISTS orders (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID REFERENCES users(id),
     coupon_id INTEGER REFERENCES coupons(id),
     subtotal DECIMAL(10, 2),
@@ -115,7 +116,7 @@ CREATE TABLE orders (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE order_items (
+CREATE TABLE IF NOT EXISTS order_items (
     id SERIAL PRIMARY KEY,
     order_id UUID REFERENCES orders(id),
     variant_id INTEGER REFERENCES product_variants(id),
@@ -124,8 +125,8 @@ CREATE TABLE order_items (
 );
 
 -- 9. ตารางการชำระเงินและการจัดส่ง
-CREATE TABLE payments (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+CREATE TABLE IF NOT EXISTS payments (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     order_id UUID UNIQUE REFERENCES orders(id),
     method VARCHAR(50),
     amount DECIMAL(10, 2),
@@ -139,16 +140,16 @@ CREATE TABLE payments (
 );
 
 -- Anti-Replay Protection: UNIQUE partial indexes (Idempotency & ISO 20022)
-CREATE UNIQUE INDEX idx_payments_bank_txref_unique
+CREATE UNIQUE INDEX IF NOT EXISTS idx_payments_bank_txref_unique
   ON payments (sending_bank, transaction_ref)
   WHERE payment_status = 'completed' AND transaction_ref IS NOT NULL AND sending_bank IS NOT NULL;
 
-CREATE UNIQUE INDEX idx_payments_qr_ref_unique
+CREATE UNIQUE INDEX IF NOT EXISTS idx_payments_qr_ref_unique
   ON payments (qr_ref)
   WHERE payment_status = 'completed' AND qr_ref IS NOT NULL;
 
 
-CREATE TABLE shipping (
+CREATE TABLE IF NOT EXISTS shipping (
     id SERIAL PRIMARY KEY,
     order_id UUID UNIQUE REFERENCES orders(id),
     tracking_number VARCHAR(100),
@@ -157,7 +158,7 @@ CREATE TABLE shipping (
 );
 
 -- 10. ตารางบันทึกการทำงานแอดมิน (Audit Logs)
-CREATE TABLE audit_logs (
+CREATE TABLE IF NOT EXISTS audit_logs (
     id SERIAL PRIMARY KEY,
     admin_id UUID REFERENCES users(id),
     action VARCHAR(255),
@@ -166,13 +167,9 @@ CREATE TABLE audit_logs (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-SELECT * FROM users;
-
-SELECT count(*) FROM users;
-
 -- สร้างตารางตะกร้าสินค้า (Carts)
-CREATE TABLE carts (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+CREATE TABLE IF NOT EXISTS carts (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID UNIQUE REFERENCES users(id),
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

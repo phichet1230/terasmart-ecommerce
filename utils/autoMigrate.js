@@ -15,8 +15,8 @@ async function runSqlScript(filePath) {
     try {
       await pool.query(statement);
     } catch (err) {
-      if (!err.message.includes('already exists') && !err.message.includes('does not exist')) {
-        console.warn('⚠️ SQL Statement notice:', err.message);
+      if (!err.message.includes('already exists')) {
+        console.warn(`[DB Migration Log] Notice during SQL execute:`, err.message);
       }
     }
   }
@@ -24,27 +24,16 @@ async function runSqlScript(filePath) {
 
 async function autoMigrateDatabase() {
   try {
-    // Check if 'users' table exists
-    const checkRes = await pool.query(`
-      SELECT EXISTS (
-        SELECT FROM information_schema.tables 
-        WHERE table_schema = 'public' 
-          AND table_name = 'users'
-      );
-    `);
-
-    const tableExists = checkRes.rows[0].exists;
     const initSqlPath = path.join(__dirname, '../init.sql');
     const seedSqlPath = path.join(__dirname, '../seed.sql');
 
-    if (!tableExists) {
-      console.log('⚡ Initializing Database Schema (init.sql & seed.sql)...');
-      await runSqlScript(initSqlPath);
-      console.log('✅ Schema tables created successfully!');
-      await runSqlScript(seedSqlPath);
-      console.log('✅ Initial seed data inserted successfully!');
-    } else {
-      // Check if products table has items or needs rich seed refresh
+    // Always run init.sql to ensure all missing tables/columns exist (IF NOT EXISTS pattern)
+    console.log('⚡ Verifying Database Schema (init.sql)...');
+    await runSqlScript(initSqlPath);
+    console.log('✅ Database Schema verified!');
+
+    // Check if products table has catalog seed data
+    try {
       const prodCountRes = await pool.query('SELECT COUNT(*) FROM products');
       const count = parseInt(prodCountRes.rows[0]?.count || '0', 10);
       if (count < 8) {
@@ -52,6 +41,9 @@ async function autoMigrateDatabase() {
         await runSqlScript(seedSqlPath);
         console.log('✅ Rich catalog seed data synchronized!');
       }
+    } catch (e) {
+      console.warn('⚡ Populating initial catalog seed data...');
+      await runSqlScript(seedSqlPath);
     }
   } catch (err) {
     console.error('⚠️ Auto migration notice:', err.message);
