@@ -62,6 +62,19 @@ exports.getAllProducts = async (req, res) => {
     
     const productsResult = await pool.query(query, params);
 
+    // ดึงรายการ variants ของสินค้าทั้งหมดเพื่อแนบในข้อมูลตอบกลับ
+    const productIds = productsResult.rows.map(p => p.id);
+    if (productIds.length > 0) {
+      const variantsResult = await pool.query(
+        `SELECT * FROM product_variants WHERE product_id = ANY($1::int[]) ORDER BY price ASC`,
+        [productIds]
+      );
+      productsResult.rows.forEach(p => {
+        p.variants = variantsResult.rows.filter(v => v.product_id === p.id);
+        p.total_stock = parseInt(p.total_stock || 0);
+      });
+    }
+
     // ดึงจำนวนแถวทั้งหมดสำหรับการคำนวณหน้า (Pagination Total count)
     let countQuery = `
       SELECT COUNT(DISTINCT p.id) 

@@ -38,6 +38,7 @@ interface Product {
   price: string;
   min_price?: string;
   max_price?: string;
+  total_stock?: number | string;
   variants?: Variant[];
 }
 
@@ -1667,13 +1668,13 @@ export default function Storefront() {
                     <img 
                       src={user.profile_image} 
                       alt={user.username} 
-                      style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', inset: 0 }}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', inset: 0, zIndex: 2 }}
                       onError={(e) => {
-                        (e.target as HTMLElement).style.display = 'none';
+                        (e.currentTarget as HTMLElement).style.display = 'none';
                       }}
                     />
                   ) : null}
-                  <span style={{ fontSize: '1rem', color: '#FF3201', fontWeight: 800 }}>{user.username.charAt(0).toUpperCase()}</span>
+                  <span style={{ fontSize: '1rem', color: '#FF3201', fontWeight: 800, position: 'relative', zIndex: 1 }}>{user.username.charAt(0).toUpperCase()}</span>
                 </div>
               </div>
             ) : (
@@ -2748,7 +2749,7 @@ export default function Storefront() {
                           </div>
                         ) : (
                           filterProducts().map((prod) => {
-                            const isOutOfStock = !prod.variants || prod.variants.length === 0 || prod.variants.every((v: any) => v.stock_quantity <= 0);
+                            const isOutOfStock = prod.total_stock !== undefined ? parseInt(String(prod.total_stock)) <= 0 : (!prod.variants || prod.variants.length === 0 || prod.variants.every((v: any) => v.stock_quantity <= 0));
                             return (
                               <div 
                                 key={prod.id}
@@ -3884,12 +3885,20 @@ export default function Storefront() {
                   
                   {/* Left Column: User details sidebar */}
                   <div className="profile-sidebar">
-                    <div className="profile-avatar-large">
+                    <div className="profile-avatar-large" style={{ position: 'relative', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       {user.profile_image ? (
-                        <img src={user.profile_image} alt={user.username} />
-                      ) : (
-                        user.username.charAt(0).toUpperCase()
-                      )}
+                        <img 
+                          src={user.profile_image} 
+                          alt={user.username} 
+                          style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', inset: 0, zIndex: 2 }}
+                          onError={(e) => {
+                            (e.currentTarget as HTMLElement).style.display = 'none';
+                          }}
+                        />
+                      ) : null}
+                      <span style={{ fontSize: '2.5rem', fontWeight: 800, color: '#FFFFFF', position: 'relative', zIndex: 1 }}>
+                        {user.username.charAt(0).toUpperCase()}
+                      </span>
                     </div>
                     <div className="profile-username">{user.username}</div>
                     <div className="profile-email">{user.role === 'admin' ? 'ผู้ดูแลระบบ (Admin)' : 'ลูกค้าสมาชิก (Customer)'}</div>
