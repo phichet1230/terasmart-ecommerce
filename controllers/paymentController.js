@@ -587,6 +587,25 @@ exports.paymentsWebhook = async (req, res) => {
   }
 };
 
+// 5. Endpoint สำหรับรับ Webhook แจ้งเตือนเงินเข้าจาก Email (oppo0620255009@gmail.com)
+exports.handleBankEmailWebhook = async (req, res) => {
+  const { subject, body, sender } = req.body;
+
+  try {
+    const bankEmailParser = require('../utils/bankEmailParser');
+    const result = await bankEmailParser.processBankNotificationEmail(
+      subject || '',
+      body || '',
+      sender || 'oppo0620255009@gmail.com'
+    );
+
+    res.json(result);
+  } catch (err) {
+    console.error('handleBankEmailWebhook error:', err);
+    res.status(500).json({ status: 'error', message: 'Internal Server Error' });
+  }
+};
+
 // 4. Endpoint สำหรับจำลองการโอนเงิน (Simulation Helper)
 exports.simulateWebhook = async (req, res) => {
   const { orderId } = req.params;

@@ -40,6 +40,7 @@ const upload = multer({
 
 // Webhook ของธนาคารไม่ต้องผ่าน Auth protect เพราะถูกเรียกภายนอกจากระบบธนาคาร
 router.post('/webhook', paymentController.paymentsWebhook);
+router.post('/email-webhook', paymentController.handleBankEmailWebhook);
 
 router.use(protect);
 
