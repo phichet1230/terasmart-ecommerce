@@ -1346,10 +1346,10 @@ export default function AdminDashboard() {
       await loadProducts();
     } catch (err: any) {
       showToast('เกิดข้อผิดพลาดในการบันทึก: ' + (err.message || ''));
+    } finally {
+      setIsProductModalOpen(false);
+      setEditingProduct(null);
     }
-
-    setIsProductModalOpen(false);
-    setEditingProduct(null);
   };
 
   const deleteProduct = async (productId: number) => {
@@ -1373,8 +1373,8 @@ export default function AdminDashboard() {
     setProductImageUrl(prod.image_url);
     setProductImagesText(prod.images && prod.images.length > 0 ? prod.images.join('\n') : prod.image_url || '');
     
-    setProductDetailImg1(prod.detail_image_1 || '/checkout_images/ChatGPT Image Jul 18, 2026, 02_48_32 PM 1.svg');
-    setProductDetailImg2(prod.detail_image_2 || '/checkout_images/ChatGPT Image Jul 18, 2026, 02_48_35 PM 1.svg');
+    setProductDetailImg1(prod.detail_image_1 || '');
+    setProductDetailImg2(prod.detail_image_2 || '');
 
     if (prod.variants && prod.variants.length > 0) {
       setProductVariants(prod.variants.map(v => ({
@@ -1419,20 +1419,17 @@ export default function AdminDashboard() {
     setEditingProduct(null);
     setProductName('');
     setProductDesc('');
-    setProductPrice('18500');
-    setProductCategory('ปั๊มน้ำบาดาลโซล่าเซลล์');
-    setProductImageUrl('/checkout_images/ChatGPT Image Jul 18, 2026, 02_48_32 PM 1.svg');
-    setProductImagesText('/checkout_images/ChatGPT Image Jul 18, 2026, 02_48_32 PM 1.svg\n/checkout_images/ChatGPT Image Jul 18, 2026, 02_48_35 PM 1.svg');
-    setProductDetailImg1('/checkout_images/ChatGPT Image Jul 18, 2026, 02_48_32 PM 1.svg');
-    setProductDetailImg2('/checkout_images/ChatGPT Image Jul 18, 2026, 02_48_35 PM 1.svg');
-    setProductVariants([
-      { variant_name: 'รุ่น 1100W (1.5 HP) 80-210V', price: '18500', stock_quantity: 12 },
-      { variant_name: 'รุ่น 1500W (2.0 HP) 110-250V', price: '24900', stock_quantity: 8 }
-    ]);
-    setSpecTableHeaders(defaultPumpSpecHeaders);
-    setProductSpecRows(defaultPumpSpecRows);
-    setProductAdviceList(defaultAdvicePoints);
-    setProductAccessoriesList(defaultAccessoriesList);
+    setProductPrice('');
+    setProductCategory('ปั๊มน้ำบาดาล');
+    setProductImageUrl('');
+    setProductImagesText('');
+    setProductDetailImg1('');
+    setProductDetailImg2('');
+    setProductVariants([{ variant_name: '', price: '', stock_quantity: 0 }]);
+    setSpecTableHeaders(['หัวข้อสเปก', 'รายละเอียด']);
+    setProductSpecRows([{ col1: '', col2: '' }]);
+    setProductAdviceList(['']);
+    setProductAccessoriesList([{ item: '', spec: '', cat: '' }]);
     setIsProductModalOpen(true);
   };
 

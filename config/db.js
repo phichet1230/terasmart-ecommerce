@@ -17,8 +17,6 @@ const poolConfig = {
   max: parseInt(process.env.DB_POOL_MAX || '20', 10),
   min: 0,                                             // min=0 เพื่อไม่ให้ค้าง Stale Socket ใน Cloud Pool
   idleTimeoutMillis: 10000,                           // คืน Connection หลังจาก 10 วินาทีที่ไม่ใช้งาน
-  connectionTimeoutMillis: 15000,                     // ขยายเวลาคอยการเชื่อมต่อเป็น 15 วินาที สำหรับ Cloud DB Cold Start
-  statement_timeout: 30000,                           // ตั้งเวลา Timeout สำหรับ Query ที่ใช้เวลานาน 30 วินาที
   keepAlive: true,
   keepAliveInitialDelayMillis: 10000
 };
