@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const bcrypt = require('bcrypt');
 const pool = require('../config/db');
 
 async function autoMigrateDatabase() {
@@ -204,7 +205,36 @@ async function autoMigrateDatabase() {
 
     console.log('✅ All Database Tables verified successfully!');
 
-    // 3. Sync initial products seed if catalog count < 8
+    // 3. Seed default Admin & Customer accounts
+    try {
+      const adminHash = await bcrypt.hash('Password123!', 10);
+      const adminCheck = await pool.query('SELECT id FROM users WHERE email = $1', ['admin@terasmart.com']);
+      if (adminCheck.rows.length === 0) {
+        await pool.query(
+          `INSERT INTO users (username, email, password_hash, phone, role, account_status)
+           VALUES ($1, $2, $3, $4, $5, $6)`,
+          ['AdminTera', 'admin@terasmart.com', adminHash, '0899999999', 'admin', 'active']
+        );
+        console.log('✅ Default Admin user (admin@terasmart.com / Password123!) seeded!');
+      } else {
+        await pool.query('UPDATE users SET password_hash = $1 WHERE email = $2', [adminHash, 'admin@terasmart.com']);
+      }
+
+      const custHash = await bcrypt.hash('customer1234', 10);
+      const custCheck = await pool.query('SELECT id FROM users WHERE email = $1', ['customer@terasmart.com']);
+      if (custCheck.rows.length === 0) {
+        await pool.query(
+          `INSERT INTO users (username, email, password_hash, phone, role, account_status)
+           VALUES ($1, $2, $3, $4, $5, $6)`,
+          ['TeraCustomer', 'customer@terasmart.com', custHash, '0812345678', 'customer', 'active']
+        );
+        console.log('✅ Default Customer user (customer@terasmart.com / customer1234) seeded!');
+      }
+    } catch (userErr) {
+      console.warn('⚠️ Default users seeding notice:', userErr.message);
+    }
+
+    // 4. Sync initial products seed if catalog count < 8
     const prodCountRes = await pool.query('SELECT COUNT(*) FROM products');
     const count = parseInt(prodCountRes.rows[0]?.count || '0', 10);
     if (count < 8) {
