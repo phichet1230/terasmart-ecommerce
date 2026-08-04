@@ -901,51 +901,15 @@ export default function AdminDashboard() {
   };
 
   const loadProducts = async () => {
-    const saved = localStorage.getItem('tera_storefront_products');
-    let localSaved: Product[] = [];
-    if (saved) {
-      try { localSaved = JSON.parse(saved); } catch (e) {}
-    }
-
     try {
       const res = await apiRequest('/api/v1/admin/products');
-      const apiData = res.data;
-      const merged = apiData.map((p: any) => {
-        const match = localSaved.find(sp => sp.id === p.id || sp.slug === p.slug);
-        return {
-          ...p,
-          ...(match || {})
-        };
-      });
-      const localOnly = localSaved.filter(sp => !merged.some((p: any) => p.id === sp.id));
-      const finalList = [...merged, ...localOnly];
-      saveProductsState(finalList.length > 0 ? finalList : localSaved);
-    } catch {
-      if (localSaved.length > 0) {
-        setProducts(localSaved);
+      if (res && res.data && Array.isArray(res.data) && res.data.length > 0) {
+        setProducts(res.data);
+        localStorage.setItem('tera_storefront_products', JSON.stringify(res.data));
         return;
       }
-      const initialList = [
-        {
-          id: 1,
-          name: 'ปั๊มน้ำบาดาลโซล่าเซลล์บัสเลส TERA 1100W',
-          description: 'ปั๊มน้ำบาดาลโซล่าเซลล์บัสเลส TERA (TERA GROUP) 1.5 แรงม้า',
-          slug: 'tera-solar-pump-1100w',
-          image_url: '/checkout_images/ChatGPT Image Jul 18, 2026, 02_48_32 PM 1.svg',
-          detail_image_1: '/checkout_images/ChatGPT Image Jul 18, 2026, 02_48_32 PM 1.svg',
-          detail_image_2: '/checkout_images/ChatGPT Image Jul 18, 2026, 02_48_35 PM 1.svg',
-          category_name: 'ปั๊มน้ำบาดาลโซล่าเซลล์',
-          price: '18500',
-          spec_headers: defaultPumpSpecHeaders,
-          spec_table: defaultPumpSpecRows,
-          advice_list: defaultAdvicePoints,
-          accessories_list: defaultAccessoriesList,
-          variants: [
-            { id: 101, variant_name: 'รุ่น 1100W (1.5 HP) 80-210V', sku: 'TERA-SI4VS-1100', price: '18500', stock_quantity: 12 }
-          ]
-        }
-      ];
-      saveProductsState(initialList);
+    } catch (err) {
+      console.warn('Admin load products API notice:', err);
     }
   };
 
@@ -1129,8 +1093,10 @@ export default function AdminDashboard() {
       } else {
         await apiRequest('/api/v1/admin/products', 'POST', payload);
       }
-    } catch (err) {
-      console.log('Saved to local storage fallback:', err);
+      showToast('บันทึกข้อมูลสินค้าสำเร็จ');
+      await loadProducts();
+    } catch (err: any) {
+      showToast('เกิดข้อผิดพลาดในการบันทึก: ' + (err.message || ''));
     }
 
     setIsProductModalOpen(false);
@@ -1139,14 +1105,13 @@ export default function AdminDashboard() {
 
   const deleteProduct = async (productId: number) => {
     if (!window.confirm('คุณแน่ใจว่าต้องการลบสินค้าชิ้นนี้ (Soft Delete)?')) return;
-    const updatedList = products.filter(p => p.id !== productId);
-    saveProductsState(updatedList);
-    showToast('ลบสินค้าชิ้นนี้สำเร็จ');
 
     try {
       await apiRequest(`/api/v1/admin/products/${productId}`, 'DELETE');
-    } catch (err) {
-      console.log('Deleted locally:', err);
+      showToast('ลบสินค้าชิ้นนี้สำเร็จ');
+      await loadProducts();
+    } catch (err: any) {
+      showToast('ไม่สามารถลบสินค้าได้: ' + (err.message || ''));
     }
   };
 
