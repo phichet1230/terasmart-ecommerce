@@ -19,7 +19,7 @@ function parseBankEmailNotification(emailSubject = '', emailContent = '') {
   let isDeposit = false;
 
   // Check deposit keywords
-  const depositKeywords = ['เงินเข้า', 'รับโอน', 'โอนสำเร็จ', 'ชำระเงินสำเร็จ', 'TRANSFER IN', 'DEPOSIT', 'RECEIVED', 'CREDIT'];
+  const depositKeywords = ['เงินเข้า', 'รับโอน', 'โอนสำเร็จ', 'ชำระเงินสำเร็จ', 'โอนเงิน', 'สำเร็จ', 'TRANSFER', 'DEPOSIT', 'RECEIVED', 'CREDIT'];
   if (depositKeywords.some(kw => text.toUpperCase().includes(kw))) {
     isDeposit = true;
   }
@@ -80,13 +80,14 @@ async function processBankNotificationEmail(emailSubject, emailContent, senderEm
     };
   }
 
-  // Find matching pending order in DB (within last 30 minutes)
+  // Find matching pending order in DB (within last 60 minutes)
   const orderResult = await pool.query(
-    `SELECT * FROM orders 
-     WHERE status = 'pending' 
-       AND ABS(total_price - $1) < 0.01 
-       AND created_at >= NOW() - INTERVAL '30 minutes'
-     ORDER BY created_at DESC LIMIT 1`,
+    `SELECT o.* FROM orders o
+     LEFT JOIN payments p ON o.id = p.order_id
+     WHERE (o.status = 'pending' OR p.payment_status = 'pending') 
+       AND ABS(o.total_price - $1) < 0.01 
+       AND o.created_at >= NOW() - INTERVAL '60 minutes'
+     ORDER BY o.created_at DESC LIMIT 1`,
     [parsed.amount]
   );
 
@@ -103,13 +104,23 @@ async function processBankNotificationEmail(emailSubject, emailContent, senderEm
   // 1. Update order status to paid
   await pool.query(`UPDATE orders SET status = 'paid' WHERE id = $1`, [order.id]);
 
-  // 2. Insert payment record into database
+  // 2. Insert or update payment record in database
   const slipRef = `EMAIL-BANK-ALERT-${Date.now()}`;
   await pool.query(
     `INSERT INTO payments (
        order_id, method, amount, payment_status, paid_at, 
        transaction_ref, sending_bank, ocr_raw_text, is_ai_verified, ai_verified_status
-     ) VALUES ($1, $2, $3, 'completed', NOW(), $4, $5, $6, true, 'MATCHED')`,
+     ) VALUES ($1, $2, $3, 'completed', NOW(), $4, $5, $6, true, 'MATCHED')
+     ON CONFLICT (order_id) DO UPDATE SET 
+       payment_status = 'completed',
+       paid_at = NOW(),
+       method = EXCLUDED.method,
+       amount = EXCLUDED.amount,
+       transaction_ref = EXCLUDED.transaction_ref,
+       sending_bank = EXCLUDED.sending_bank,
+       ocr_raw_text = EXCLUDED.ocr_raw_text,
+       is_ai_verified = true,
+       ai_verified_status = 'MATCHED'`,
     [order.id, 'bank_email_notification', parsed.amount, slipRef, parsed.bankName, `E-mail Alert (oppo0620255009@gmail.com): ${parsed.rawText}`]
   );
 
