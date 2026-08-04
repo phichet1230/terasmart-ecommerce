@@ -558,6 +558,12 @@ export default function Storefront() {
         }
         throw new Error(data.message || `ไม่สามารถทำรายการได้ (รหัส: ${response.status})`);
       }
+      if (method !== 'GET') {
+        localStorage.setItem('tera_sync_timestamp', Date.now().toString());
+        window.dispatchEvent(new Event('tera_orders_updated'));
+        window.dispatchEvent(new Event('tera_products_updated'));
+        window.dispatchEvent(new Event('tera_admin_updated'));
+      }
       return data;
     } else {
       if (response.status === 401 && !isAuthRequest) {

@@ -754,18 +754,65 @@ export default function AdminDashboard() {
     }
   };
 
+  const syncAdminData = async () => {
+    if (!isAuthorized || !admin) return;
+    try {
+      await Promise.allSettled([
+        loadMetrics(),
+        loadOrders(),
+        loadCustomers(),
+        loadProducts(),
+        loadBanners()
+      ]);
+    } catch (err) {
+      console.warn('Sync admin error:', err);
+    }
+  };
+
   useEffect(() => {
     checkAdminAuth();
   }, []);
 
   useEffect(() => {
-    if (isAuthorized && admin) {
-      loadMetrics();
-      loadOrders();
-      loadCustomers();
-      loadProducts();
-      loadBanners();
-    }
+    if (!isAuthorized || !admin) return;
+
+    syncAdminData();
+
+    // 1. Storage listener across browser tabs/windows
+    const handleStorageChange = (e: StorageEvent) => {
+      if (!e.key || e.key.includes('tera_') || e.key.includes('admin')) {
+        syncAdminData();
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('tera_admin_updated', syncAdminData);
+    window.addEventListener('tera_products_updated', syncAdminData);
+    window.addEventListener('tera_banners_updated', syncAdminData);
+    window.addEventListener('tera_orders_updated', syncAdminData);
+
+    // 2. Tab Focus & Visibility Change
+    window.addEventListener('focus', syncAdminData);
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        syncAdminData();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // 3. Periodic Background Sync (6-second heartbeat for multi-staff live updates)
+    const autoSyncInterval = setInterval(syncAdminData, 6000);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('tera_admin_updated', syncAdminData);
+      window.removeEventListener('tera_products_updated', syncAdminData);
+      window.removeEventListener('tera_banners_updated', syncAdminData);
+      window.removeEventListener('tera_orders_updated', syncAdminData);
+      window.removeEventListener('focus', syncAdminData);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      clearInterval(autoSyncInterval);
+    };
   }, [isAuthorized, admin]);
 
   const showToast = (msg: string) => {
@@ -797,6 +844,14 @@ export default function AdminDashboard() {
       const data = await response.json();
       if (!response.ok || data.status === 'error') {
         throw new Error(data.message || `เกิดข้อผิดพลาดในการประมวลผล (HTTP ${response.status})`);
+      }
+      // Broadcast mutation sync event if method is POST, PUT, DELETE, PATCH
+      if (method !== 'GET') {
+        localStorage.setItem('tera_sync_timestamp', Date.now().toString());
+        window.dispatchEvent(new Event('tera_admin_updated'));
+        window.dispatchEvent(new Event('tera_products_updated'));
+        window.dispatchEvent(new Event('tera_banners_updated'));
+        window.dispatchEvent(new Event('tera_orders_updated'));
       }
       return data;
     } else {
