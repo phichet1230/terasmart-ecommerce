@@ -139,14 +139,23 @@ export const AddressForm: React.FC<AddressFormProps> = ({
     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
       {showPhoneField && (
         <div className="form-group" style={{ marginBottom: '10px' }}>
-          <label style={{ fontSize: '0.82rem', fontWeight: 500, color: 'var(--text-muted)' }}>เบอร์โทรศัพท์สำหรับที่อยู่นี้</label>
+          <label style={{ fontSize: '0.82rem', fontWeight: 500, color: 'var(--text-muted)' }}>
+            เบอร์โทรศัพท์สำหรับที่อยู่นี้ <span style={{ color: '#EF4444' }}>*</span> (10 หลัก ขึ้นต้นด้วย 0)
+          </label>
           <input
             type="text"
             className="form-control"
             value={phone}
             maxLength={10}
-            placeholder="เช่น 08XXXXXXXX"
-            onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
+            placeholder="เช่น 0812345678"
+            onChange={(e) => {
+              let cleaned = e.target.value.replace(/\D/g, '');
+              if (cleaned.length > 0 && !cleaned.startsWith('0')) {
+                const zeroIdx = cleaned.indexOf('0');
+                cleaned = zeroIdx !== -1 ? cleaned.substring(zeroIdx) : '';
+              }
+              setPhone(cleaned.slice(0, 10));
+            }}
             style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-input)', color: 'var(--text-main)', marginTop: '4px' }}
             required
           />

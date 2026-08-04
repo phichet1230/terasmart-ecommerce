@@ -702,11 +702,35 @@ export default function AdminDashboard() {
     setProductVariants((prev) => prev.filter((_, i) => i !== index));
   };
 
+  const formatPhoneNumber = (val: string): string => {
+    let cleaned = val.replace(/\D/g, '');
+    if (cleaned.length > 0 && !cleaned.startsWith('0')) {
+      const zeroIdx = cleaned.indexOf('0');
+      cleaned = zeroIdx !== -1 ? cleaned.substring(zeroIdx) : '';
+    }
+    return cleaned.slice(0, 10);
+  };
+
+  const isValidPhoneNumber = (val: string): boolean => {
+    if (!val) return true;
+    return /^0\d{9}$/.test(val);
+  };
+
+  const sanitizePriceInput = (val: string): string => {
+    let cleaned = val.replace(/[^0-9.,]/g, '');
+    const parts = cleaned.split('.');
+    if (parts.length > 2) {
+      cleaned = parts[0] + '.' + parts.slice(1).join('');
+    }
+    return cleaned;
+  };
+
   const handleMainPriceChange = (val: string) => {
-    setProductPrice(val);
+    const cleanVal = sanitizePriceInput(val);
+    setProductPrice(cleanVal);
     setProductVariants((prev) => {
       if (prev.length <= 1) {
-        return prev.map(v => ({ ...v, price: val }));
+        return prev.map(v => ({ ...v, price: cleanVal }));
       }
       return prev;
     });
@@ -725,11 +749,15 @@ export default function AdminDashboard() {
   };
 
   const updateVariantRow = (index: number, field: keyof VariantInput, value: any) => {
+    let cleanVal = value;
+    if (field === 'price' && typeof value === 'string') {
+      cleanVal = sanitizePriceInput(value);
+    }
     setProductVariants((prev) => {
       const updated = [...prev];
-      updated[index] = { ...updated[index], [field]: value };
+      updated[index] = { ...updated[index], [field]: cleanVal };
       if (field === 'price' && (index === 0 || updated.length === 1)) {
-        setProductPrice(value);
+        setProductPrice(cleanVal);
       }
       return updated;
     });
@@ -821,7 +849,12 @@ export default function AdminDashboard() {
   const handleSaveEmployee = (e: React.FormEvent) => {
     e.preventDefault();
     if (!empName.trim() || !empEmail.trim()) {
-      showToast('กรุณากรอกข้อมูลชื่อและอีเมลให้ครบถ้วน');
+      showToast('กรุณากรอกข้อมูลชื่อและอีเมลให้ครบถ้วน (จำเป็นต้องกรอก *)');
+      return;
+    }
+
+    if (empPhone && !isValidPhoneNumber(empPhone)) {
+      showToast('กรุณากรอกเบอร์มือถือเป็นตัวเลข 10 หลัก ขึ้นต้นด้วย 0 (เช่น 0812345678)');
       return;
     }
 
@@ -867,6 +900,14 @@ export default function AdminDashboard() {
 
   const updateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!editUsername.trim()) {
+      showToast('กรุณากรอกชื่อผู้ใช้งาน (จำเป็นต้องกรอก *)');
+      return;
+    }
+    if (editPhone && !isValidPhoneNumber(editPhone)) {
+      showToast('กรุณากรอกเบอร์มือถือเป็นตัวเลข 10 หลัก ขึ้นต้นด้วย 0 (เช่น 0812345678)');
+      return;
+    }
     try {
       const res = await apiRequest('/api/v1/auth/profile', 'PUT', {
         username: editUsername,
