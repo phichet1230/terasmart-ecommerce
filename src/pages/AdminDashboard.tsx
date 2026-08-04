@@ -785,12 +785,33 @@ export default function AdminDashboard() {
       options.headers['Content-Type'] = 'application/json';
       options.body = JSON.stringify(body);
     }
-    const response = await fetch(url, options);
-    const data = await response.json();
-    if (data.status === 'error') {
-      throw new Error(data.message);
+    let response: Response;
+    try {
+      response = await fetch(url, options);
+    } catch (err: any) {
+      throw new Error('ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้ กรุณาตรวจสอบการเชื่อมต่อ');
     }
-    return data;
+
+    const contentType = response.headers.get('content-type');
+    if (contentType && contentType.includes('application/json')) {
+      const data = await response.json();
+      if (!response.ok || data.status === 'error') {
+        throw new Error(data.message || `เกิดข้อผิดพลาดในการประมวลผล (HTTP ${response.status})`);
+      }
+      return data;
+    } else {
+      if (response.status === 401) {
+        localStorage.removeItem('tera_token');
+        localStorage.removeItem('tera_user');
+        setAdmin(null);
+        setIsAuthorized(false);
+        throw new Error('เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่อีกครั้ง');
+      }
+      if (response.status === 404) {
+        throw new Error('ไม่พบ API Endpoint หรือข้อมูลในระบบ');
+      }
+      throw new Error(`ระบบขัดข้องชั่วคราว หรือกำลังอัปเดตเซิร์ฟเวอร์ (HTTP ${response.status})`);
+    }
   };
 
   const checkAdminAuth = () => {
