@@ -30,16 +30,16 @@ app.use((req, res, next) => {
   next();
 });
 
+const fs = require('fs');
+if (!fs.existsSync(path.join(__dirname, 'uploads'))) {
+  fs.mkdirSync(path.join(__dirname, 'uploads'), { recursive: true });
+}
+
 // Middleware
 app.use(express.json()); // อ่าน JSON จาก Body ได้
 app.use(cookieParser()); // อ่าน Cookie ได้
-app.use(express.static('dist')); // ให้บริการไฟล์ HTML/CSS/JS หน้าบ้านที่คอมไพล์แล้วจาก React/Vite
-app.use('/uploads', express.static('uploads')); // ให้บริการไฟล์สลิปชำระเงินที่อัปโหลดเข้ามา
-
-// Routes (เดี๋ยวเราจะมาเพิ่มตรงนี้)
-app.get('/', (req, res) => {
-  res.send('TeraSmart API is running...');
-});
+app.use(express.static(path.join(__dirname, 'dist'))); // ให้บริการไฟล์ HTML/CSS/JS หน้าบ้านที่คอมไพล์แล้วจาก React/Vite
+app.use('/uploads', express.static(path.join(__dirname, 'uploads'))); // ให้บริการไฟล์สลิปชำระเงินที่อัปโหลดเข้ามา
 
 const autoMigrate = require('./utils/autoMigrate');
 
