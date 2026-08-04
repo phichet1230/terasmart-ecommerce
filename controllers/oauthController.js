@@ -438,6 +438,6 @@ async function handleSocialLogin(req, res, idColumn, socialId, email, name, pict
     return res.redirect(getFrontendRedirectUrl(req, `token=${token}&user=${encodeURIComponent(JSON.stringify(userData))}`));
   } catch (err) {
     console.error('[Social Login Error]:', err);
-    return res.redirect(getFrontendRedirectUrl(req, `error=${encodeURIComponent('เกิดข้อผิดพลาดในการเข้าสู่ระบบด้วย Social Network กรุณาลองใหม่อีกครั้ง')}`));
+    return res.redirect(getFrontendRedirectUrl(req, `error=${encodeURIComponent(`Social Login Error: ${err.message}`)}`));
   }
 }
