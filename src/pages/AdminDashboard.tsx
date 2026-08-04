@@ -62,6 +62,20 @@ export const formatPriceWithCommasAndDecimals = (val: string | number | undefine
   });
 };
 
+export const safeParseArray = <T,>(data: any, fallback: T[] = []): T[] => {
+  if (!data) return fallback;
+  if (Array.isArray(data)) return data;
+  if (typeof data === 'string') {
+    try {
+      const parsed = JSON.parse(data);
+      if (Array.isArray(parsed)) return parsed;
+    } catch {
+      return fallback;
+    }
+  }
+  return fallback;
+};
+
 interface Order {
   id: string;
   username: string;
@@ -1409,18 +1423,21 @@ export default function AdminDashboard() {
 
   const triggerEditProduct = (prod: Product) => {
     setEditingProduct(prod);
-    setProductName(prod.name);
-    setProductDesc(prod.description);
+    setProductName(prod.name || '');
+    setProductDesc(prod.description || '');
     setProductPrice(formatPriceWithCommasAndDecimals(prod.price));
-    setProductCategory(prod.category_name);
-    setProductImageUrl(prod.image_url);
-    setProductImagesText(prod.images && prod.images.length > 0 ? prod.images.join('\n') : prod.image_url || '');
+    setProductCategory(prod.category_name || '');
+    setProductImageUrl(prod.image_url || '');
+
+    const safeImages = safeParseArray<string>(prod.images, []);
+    setProductImagesText(safeImages.length > 0 ? safeImages.join('\n') : prod.image_url || '');
     
     setProductDetailImg1(prod.detail_image_1 || '');
     setProductDetailImg2(prod.detail_image_2 || '');
 
-    if (prod.variants && prod.variants.length > 0) {
-      setProductVariants(prod.variants.map(v => ({
+    const safeVariants = safeParseArray<Variant>(prod.variants, []);
+    if (safeVariants.length > 0) {
+      setProductVariants(safeVariants.map(v => ({
         id: v.id,
         variant_name: v.variant_name,
         sku: v.sku,
@@ -1431,29 +1448,17 @@ export default function AdminDashboard() {
       setProductVariants([{ variant_name: 'รุ่นมาตรฐาน (Standard)', price: formatPriceWithCommasAndDecimals(prod.price || '0'), stock_quantity: 10 }]);
     }
 
-    if (prod.spec_headers && Array.isArray(prod.spec_headers) && prod.spec_headers.length > 0) {
-      setSpecTableHeaders(prod.spec_headers);
-    } else {
-      setSpecTableHeaders(defaultPumpSpecHeaders);
-    }
+    const safeSpecHeaders = safeParseArray<string>(prod.spec_headers, defaultPumpSpecHeaders);
+    setSpecTableHeaders(safeSpecHeaders.length > 0 ? safeSpecHeaders : defaultPumpSpecHeaders);
 
-    if (prod.spec_table && Array.isArray(prod.spec_table) && prod.spec_table.length > 0) {
-      setProductSpecRows(prod.spec_table);
-    } else {
-      setProductSpecRows(defaultPumpSpecRows);
-    }
+    const safeSpecRows = safeParseArray<SpecRowInput>(prod.spec_table, defaultPumpSpecRows);
+    setProductSpecRows(safeSpecRows.length > 0 ? safeSpecRows : defaultPumpSpecRows);
 
-    if (prod.advice_list && Array.isArray(prod.advice_list) && prod.advice_list.length > 0) {
-      setProductAdviceList(prod.advice_list);
-    } else {
-      setProductAdviceList(defaultAdvicePoints);
-    }
+    const safeAdvice = safeParseArray<string>(prod.advice_list, defaultAdvicePoints);
+    setProductAdviceList(safeAdvice.length > 0 ? safeAdvice : defaultAdvicePoints);
 
-    if (prod.accessories_list && Array.isArray(prod.accessories_list) && prod.accessories_list.length > 0) {
-      setProductAccessoriesList(prod.accessories_list);
-    } else {
-      setProductAccessoriesList(defaultAccessoriesList);
-    }
+    const safeAccessories = safeParseArray<AccessoryItem>(prod.accessories_list, defaultAccessoriesList);
+    setProductAccessoriesList(safeAccessories.length > 0 ? safeAccessories : defaultAccessoriesList);
 
     setIsProductModalOpen(true);
   };
@@ -2059,9 +2064,11 @@ export default function AdminDashboard() {
                         <tr><td colSpan={7} style={{ textAlign: 'center', padding: '32px', color: 'var(--text-muted)' }}>ยังไม่มีสินค้าในคลัง</td></tr>
                       )}
                       {products.map((prod) => {
-                        const totalStock = prod.variants ? prod.variants.reduce((sum, v) => sum + v.stock_quantity, 0) : 0;
-                        const specRowsCount = prod.spec_table ? prod.spec_table.length : 0;
-                        const accessoriesCount = prod.accessories_list ? prod.accessories_list.length : 0;
+                        const safeVariants = safeParseArray<Variant>(prod.variants, []);
+                        const safeSpecRows = safeParseArray<SpecRowInput>(prod.spec_table, []);
+                        const safeAccessories = safeParseArray<AccessoryItem>(prod.accessories_list, []);
+                        const specRowsCount = safeSpecRows.length;
+                        const accessoriesCount = safeAccessories.length;
                         return (
                           <tr key={prod.id}>
                             <td style={{ width: '56px', height: '56px' }}>
@@ -2080,9 +2087,9 @@ export default function AdminDashboard() {
                             </td>
                             <td><strong style={{ color: '#059669' }}>{parseFloat(String(prod.price || '0')).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ฿</strong></td>
                             <td>
-                              {prod.variants && prod.variants.length > 0 ? (
-                                prod.variants.map((v) => (
-                                  <div key={v.id} className={`variant-stock-badge ${v.stock_quantity <= 3 ? 'low-stock' : ''}`}>
+                              {safeVariants.length > 0 ? (
+                                safeVariants.map((v, idx) => (
+                                  <div key={v.id || v.sku || idx} className={`variant-stock-badge ${v.stock_quantity <= 3 ? 'low-stock' : ''}`}>
                                     <span>{v.variant_name}:</span> <strong>{v.stock_quantity} ชิ้น</strong>
                                   </div>
                                 ))
@@ -2243,7 +2250,13 @@ export default function AdminDashboard() {
       </main>
 
       {/* PRODUCT DETAILS & SPEC TABLE INSPECTOR MODAL (BACK-OFFICE VIEW) */}
-      {viewingProductDetail && (
+      {viewingProductDetail && (() => {
+        const detailSpecHeaders = safeParseArray<string>(viewingProductDetail.spec_headers, defaultPumpSpecHeaders);
+        const detailSpecRows = safeParseArray<SpecRowInput>(viewingProductDetail.spec_table, defaultPumpSpecRows);
+        const detailAdvice = safeParseArray<string>(viewingProductDetail.advice_list, defaultAdvicePoints);
+        const detailAccessories = safeParseArray<AccessoryItem>(viewingProductDetail.accessories_list, defaultAccessoriesList);
+        
+        return (
         <div className="modal active" style={{ zIndex: 1200 }}>
           <div className="modal-content" style={{ maxWidth: '960px', padding: '32px', borderRadius: '24px', maxHeight: '92vh', overflowY: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid var(--border-color)', paddingBottom: '14px' }}>
@@ -2265,7 +2278,7 @@ export default function AdminDashboard() {
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.86rem', border: '1px solid #555555' }}>
                     <thead>
                       <tr style={{ background: '#EAEAEA' }}>
-                        {(viewingProductDetail.spec_headers || defaultPumpSpecHeaders).map((h, i) => (
+                        {detailSpecHeaders.map((h, i) => (
                           <th key={i} style={{ padding: '10px 14px', textAlign: i === 0 ? 'center' : 'left', fontWeight: 700, color: '#0F172A', border: '1px solid #555555' }}>
                             {h}
                           </th>
@@ -2273,7 +2286,7 @@ export default function AdminDashboard() {
                       </tr>
                     </thead>
                     <tbody>
-                      {(viewingProductDetail.spec_table || defaultPumpSpecRows).map((row, idx) => (
+                      {detailSpecRows.map((row, idx) => (
                         <tr key={idx} style={{ backgroundColor: '#FFFFFF' }}>
                           <td style={{ padding: '8px 14px', textAlign: 'center', fontWeight: 600, color: '#334155', border: '1px solid #555555', whiteSpace: 'nowrap' }}>{row.col1}</td>
                           <td style={{ padding: '8px 14px', textAlign: 'left', color: '#0F172A', border: '1px solid #555555', whiteSpace: 'pre-line', lineHeight: 1.4 }}>{row.col2}</td>
@@ -2304,7 +2317,7 @@ export default function AdminDashboard() {
                     ข้อแนะนำเพิ่มเติม
                   </div>
                   <ul style={{ margin: 0, paddingLeft: 0, listStyle: 'none', fontSize: '0.86rem', color: '#334155', lineHeight: 1.85 }}>
-                    {(viewingProductDetail.advice_list || defaultAdvicePoints).map((adv, idx) => (
+                    {detailAdvice.map((adv, idx) => (
                       <li key={idx}>• {adv}</li>
                     ))}
                   </ul>
@@ -2336,7 +2349,7 @@ export default function AdminDashboard() {
                       </tr>
                     </thead>
                     <tbody>
-                      {(viewingProductDetail.accessories_list || defaultAccessoriesList).map((acc, idx) => (
+                      {detailAccessories.map((acc, idx) => (
                         <tr key={idx} style={{ borderBottom: '1px solid #E2E8F0', backgroundColor: idx % 2 === 0 ? '#FFFFFF' : '#F8FAFC' }}>
                           <td style={{ padding: '8px 14px', fontWeight: 600, color: '#0F172A' }}>{acc.item}</td>
                           <td style={{ padding: '8px 14px', color: '#475569' }}>{acc.spec}</td>
@@ -2347,14 +2360,15 @@ export default function AdminDashboard() {
                   </table>
                 </div>
               </div>
-            </div>
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '20px' }}>
-              <button className="btn btn-secondary" onClick={() => setViewingProductDetail(null)}>ปิดหน้าต่างตรวจสอบ</button>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '20px' }}>
+                <button className="btn btn-secondary" onClick={() => setViewingProductDetail(null)}>ปิดหน้าต่างตรวจสอบ</button>
+              </div>
             </div>
           </div>
         </div>
-      )}
+        );
+      })()}
 
       {/* PRINTABLE SHIPPING LABEL MODAL (LOGISTICS DEPT) */}
       {printingOrderLabel && (
