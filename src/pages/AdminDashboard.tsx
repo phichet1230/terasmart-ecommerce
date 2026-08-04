@@ -47,6 +47,21 @@ interface Product {
   variants: Variant[];
 }
 
+export const formatPriceWithCommasAndDecimals = (val: string | number | undefined | null): string => {
+  if (val === undefined || val === null) return '';
+  const str = String(val).trim();
+  if (!str) return '';
+
+  const cleanStr = str.replace(/,/g, '');
+  const num = parseFloat(cleanStr);
+  if (isNaN(num)) return str;
+
+  return num.toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  });
+};
+
 interface Order {
   id: string;
   username: string;
@@ -683,6 +698,18 @@ export default function AdminDashboard() {
     });
   };
 
+  const handleMainPriceBlur = () => {
+    if (!productPrice || !productPrice.trim()) return;
+    const formatted = formatPriceWithCommasAndDecimals(productPrice);
+    setProductPrice(formatted);
+    setProductVariants((prev) => {
+      if (prev.length <= 1) {
+        return prev.map(v => ({ ...v, price: formatted }));
+      }
+      return prev;
+    });
+  };
+
   const updateVariantRow = (index: number, field: keyof VariantInput, value: any) => {
     setProductVariants((prev) => {
       const updated = [...prev];
@@ -692,6 +719,12 @@ export default function AdminDashboard() {
       }
       return updated;
     });
+  };
+
+  const handleVariantPriceBlur = (index: number, val: string) => {
+    if (!val || !val.trim()) return;
+    const formatted = formatPriceWithCommasAndDecimals(val);
+    updateVariantRow(index, 'price', formatted);
   };
 
   // Dynamic Multi-column Spec Table Row Handlers
@@ -1270,13 +1303,24 @@ export default function AdminDashboard() {
     const imageUrlList = productImagesText.split('\n').map(s => s.trim()).filter(Boolean);
     const mainUrl = imageUrlList.length > 0 ? imageUrlList[0] : (productImageUrl || 'https://picsum.photos/400/300');
 
+    const formattedMainPrice = formatPriceWithCommasAndDecimals(productPrice || '0');
+    const cleanMainPriceNum = parseFloat(formattedMainPrice.replace(/,/g, '')) || 0;
+
+    const formattedVariants = productVariants.map((v) => {
+      const vPrice = v.price || formattedMainPrice;
+      return {
+        ...v,
+        price: formatPriceWithCommasAndDecimals(vPrice)
+      };
+    });
+
     let updatedList: Product[] = [];
     if (editingProduct) {
       updatedList = products.map(p => p.id === editingProduct.id ? {
         ...p,
         name: productName,
         description: productDesc,
-        price: productPrice,
+        price: formattedMainPrice,
         category_name: productCategory,
         image_url: mainUrl,
         images: imageUrlList.length > 0 ? imageUrlList : [mainUrl],
@@ -1286,7 +1330,7 @@ export default function AdminDashboard() {
         spec_table: productSpecRows,
         advice_list: productAdviceList,
         accessories_list: productAccessoriesList,
-        variants: productVariants as any
+        variants: formattedVariants as any
       } : p);
     } else {
       const newP: Product = {
@@ -1299,32 +1343,31 @@ export default function AdminDashboard() {
         detail_image_1: productDetailImg1 || '/checkout_images/ChatGPT Image Jul 18, 2026, 02_48_32 PM 1.svg',
         detail_image_2: productDetailImg2 || '/checkout_images/ChatGPT Image Jul 18, 2026, 02_48_35 PM 1.svg',
         category_name: productCategory,
-        price: productPrice,
+        price: formattedMainPrice,
         spec_headers: specTableHeaders,
         spec_table: productSpecRows,
         advice_list: productAdviceList,
         accessories_list: productAccessoriesList,
-        variants: productVariants as any
+        variants: formattedVariants as any
       };
       updatedList = [...products, newP];
     }
 
     saveProductsState(updatedList);
+    setProductPrice(formattedMainPrice);
+    setProductVariants(formattedVariants);
     showToast('บันทึกข้อมูลสินค้า รูปรายละเอียด และสเปกเรียบร้อย!');
 
     try {
-      const activePriceVal = productPrice || (productVariants.length > 0 ? productVariants[0].price : '0');
-      const syncedVariants = productVariants.map((v, i) => {
-        if (productVariants.length === 1 || !v.price || v.price === '0') {
-          return { ...v, price: activePriceVal };
-        }
-        return v;
-      });
+      const syncedVariants = formattedVariants.map((v) => ({
+        ...v,
+        price: parseFloat(v.price.replace(/,/g, '')) || cleanMainPriceNum
+      }));
 
       const payload = {
         name: productName,
         description: productDesc,
-        price: parseFloat(activePriceVal),
+        price: cleanMainPriceNum,
         category_name: productCategory,
         image_url: mainUrl,
         images: imageUrlList.length > 0 ? imageUrlList : [mainUrl],
@@ -1368,7 +1411,7 @@ export default function AdminDashboard() {
     setEditingProduct(prod);
     setProductName(prod.name);
     setProductDesc(prod.description);
-    setProductPrice(prod.price);
+    setProductPrice(formatPriceWithCommasAndDecimals(prod.price));
     setProductCategory(prod.category_name);
     setProductImageUrl(prod.image_url);
     setProductImagesText(prod.images && prod.images.length > 0 ? prod.images.join('\n') : prod.image_url || '');
@@ -1381,11 +1424,11 @@ export default function AdminDashboard() {
         id: v.id,
         variant_name: v.variant_name,
         sku: v.sku,
-        price: v.price,
+        price: formatPriceWithCommasAndDecimals(v.price),
         stock_quantity: v.stock_quantity
       })));
     } else {
-      setProductVariants([{ variant_name: 'รุ่นมาตรฐาน (Standard)', price: prod.price || '0', stock_quantity: 10 }]);
+      setProductVariants([{ variant_name: 'รุ่นมาตรฐาน (Standard)', price: formatPriceWithCommasAndDecimals(prod.price || '0'), stock_quantity: 10 }]);
     }
 
     if (prod.spec_headers && Array.isArray(prod.spec_headers) && prod.spec_headers.length > 0) {
@@ -2035,7 +2078,7 @@ export default function AdminDashboard() {
                                 {prod.category_name}
                               </span>
                             </td>
-                            <td><strong style={{ color: '#059669' }}>{parseFloat(prod.price).toFixed(2)} ฿</strong></td>
+                            <td><strong style={{ color: '#059669' }}>{parseFloat(String(prod.price || '0')).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ฿</strong></td>
                             <td>
                               {prod.variants && prod.variants.length > 0 ? (
                                 prod.variants.map((v) => (
@@ -2565,9 +2608,11 @@ export default function AdminDashboard() {
                   <div className="form-group">
                     <label style={{ fontSize: '0.85rem', fontWeight: 700 }}>ราคาหลัก (฿)</label>
                     <input 
-                      type="number" 
+                      type="text" 
                       value={productPrice} 
                       onChange={(e) => handleMainPriceChange(e.target.value)} 
+                      onBlur={handleMainPriceBlur}
+                      placeholder="0.00"
                       style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-input)', color: 'var(--text-main)', marginTop: '4px' }} 
                       required 
                     />
@@ -2723,10 +2768,11 @@ export default function AdminDashboard() {
                         style={{ padding: '8px', borderRadius: '6px', border: '1px solid var(--border-color)' }} 
                       />
                       <input 
-                        type="number" 
+                        type="text" 
                         value={varItem.price} 
                         onChange={(e) => updateVariantRow(idx, 'price', e.target.value)} 
-                        placeholder="ราคา" 
+                        onBlur={() => handleVariantPriceBlur(idx, varItem.price)}
+                        placeholder="0.00" 
                         style={{ padding: '8px', borderRadius: '6px', border: '1px solid var(--border-color)' }} 
                       />
                       <input 
