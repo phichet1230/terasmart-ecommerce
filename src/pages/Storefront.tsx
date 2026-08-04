@@ -167,7 +167,7 @@ export default function Storefront() {
   const [selectedCategory, setSelectedCategory] = useState<string>('ทั้งหมด');
   const [searchText, setSearchText] = useState('');
   const [isSearchCommitted, setIsSearchCommitted] = useState(false);
-  const [priceRange, setPriceRange] = useState<number>(50000); 
+  const [priceRange, setPriceRange] = useState<number>(100000); 
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [selectedVariant, setSelectedVariant] = useState<Variant | null>(null);
   const [detailQty, setDetailQty] = useState(1);
@@ -1379,10 +1379,15 @@ export default function Storefront() {
 
   const filterProducts = () => {
     return products.filter((p) => {
-      const matchesCategory = selectedCategory === 'ทั้งหมด' || p.category_name === selectedCategory;
-      const matchesSearch = p.name.toLowerCase().includes(searchText.toLowerCase()) || 
-                            p.description.toLowerCase().includes(searchText.toLowerCase());
-      const matchesPrice = parseFloat(p.price) <= priceRange;
+      const matchesCategory = selectedCategory === 'ทั้งหมด' || 
+                              !p.category_name || 
+                              p.category_name === selectedCategory || 
+                              p.category_name.includes(selectedCategory) || 
+                              selectedCategory.includes(p.category_name);
+      const matchesSearch = !searchText || 
+                            p.name.toLowerCase().includes(searchText.toLowerCase()) || 
+                            (p.description && p.description.toLowerCase().includes(searchText.toLowerCase()));
+      const matchesPrice = !priceRange || parseFloat(p.price || '0') <= priceRange;
 
       const matchesBrand = selectedBrands.length === 0 || selectedBrands.some(b => 
         p.name.toLowerCase().includes(b.toLowerCase()) || p.description.toLowerCase().includes(b.toLowerCase())
