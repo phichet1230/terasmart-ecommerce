@@ -35,7 +35,7 @@ async function autoMigrateDatabase() {
       // Check if products table has items or needs rich seed refresh
       const prodCountRes = await pool.query('SELECT COUNT(*) FROM products');
       const count = parseInt(prodCountRes.rows[0].count, 10);
-      if (count <= 1 && fs.existsSync(seedSqlPath)) {
+      if (count < 8 && fs.existsSync(seedSqlPath)) {
         console.log('⚡ Refreshing rich catalog seed data (seed.sql)...');
         const seedSql = fs.readFileSync(seedSqlPath, 'utf8');
         await pool.query(seedSql);
