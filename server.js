@@ -83,6 +83,9 @@ app.use('/api/v1/coupons', couponRoutes);
 const adminRoutes = require('./routes/adminRoutes');
 app.use('/api/v1/admin', adminRoutes);
 
+const bannerRoutes = require('./routes/bannerRoutes');
+app.use('/api/v1/banners', bannerRoutes);
+
 // Fallback for unmatched /api routes to always return JSON 404 instead of HTML
 app.use('/api', (req, res) => {
   res.status(404).json({ status: 'error', message: `ไม่พบ API Endpoint (${req.originalUrl})` });

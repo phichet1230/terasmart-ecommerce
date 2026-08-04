@@ -299,59 +299,50 @@ export default function Storefront() {
     { id: 4, src: '/hero_machinery_showcase_alt.png', title: 'Solar Agricultural Inverters & Pumping Systems' }
   ];
 
-  const [promoPosters, setPromoPosters] = useState<any[]>(() => {
-    const saved = localStorage.getItem('tera_storefront_banners');
+  const [promoPosters, setPromoPosters] = useState<any[]>(defaultBannersList);
+
+  const fetchBanners = async () => {
+    try {
+      const res = await apiRequest('/api/v1/banners');
+      if (res && res.data && Array.isArray(res.data) && res.data.length > 0) {
+        const activeOnly = res.data.filter((b: any) => b.active !== false);
+        if (activeOnly.length > 0) {
+          setPromoPosters(activeOnly);
+        }
+      }
+    } catch (err) {
+      console.warn('API fetch banners warning:', err);
+    }
+  };
+
+  const handleBannerUpdate = () => {
+    fetchBanners();
+  };
+
+  const handleProductUpdate = () => {
+    const saved = localStorage.getItem('tera_storefront_products');
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        const activeOnly = parsed.filter((b: any) => b.active !== false);
-        if (activeOnly.length > 0) return activeOnly;
+        if (Array.isArray(parsed) && parsed.length >= defaultStorefrontProducts.length) {
+          setProducts(parsed);
+          setSelectedProduct((prev) => {
+            if (!prev) return null;
+            const found = parsed.find((p: any) => p.id === prev.id);
+            return found || prev;
+          });
+          return;
+        }
       } catch (err) {
-        console.error('Error parsing banners:', err);
+        console.error('Error parsing updated products:', err);
       }
     }
-    return defaultBannersList;
-  });
+    localStorage.removeItem('tera_storefront_products');
+    setProducts(defaultStorefrontProducts);
+  };
 
   useEffect(() => {
-    const handleBannerUpdate = () => {
-      const saved = localStorage.getItem('tera_storefront_banners');
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved);
-          const activeOnly = parsed.filter((b: any) => b.active !== false);
-          if (activeOnly.length > 0) {
-            setPromoPosters(activeOnly);
-            setPromoSlideIndex(0);
-          }
-        } catch (err) {
-          console.error('Error parsing updated banners:', err);
-        }
-      }
-    };
-
-    const handleProductUpdate = () => {
-      const saved = localStorage.getItem('tera_storefront_products');
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed) && parsed.length >= defaultStorefrontProducts.length) {
-            setProducts(parsed);
-            setSelectedProduct((prev) => {
-              if (!prev) return null;
-              const found = parsed.find((p: any) => p.id === prev.id);
-              return found || prev;
-            });
-            return;
-          }
-        } catch (err) {
-          console.error('Error parsing updated products:', err);
-        }
-      }
-      localStorage.removeItem('tera_storefront_products');
-      setProducts(defaultStorefrontProducts);
-    };
-
+    fetchBanners();
     handleProductUpdate();
 
     window.addEventListener('storage', handleBannerUpdate);

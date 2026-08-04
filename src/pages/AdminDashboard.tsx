@@ -360,10 +360,7 @@ export default function AdminDashboard() {
     { id: 4, src: '/hero_machinery_showcase_alt.png', title: 'Solar Agricultural Inverters & Pumping Systems', active: true }
   ];
 
-  const [banners, setBanners] = useState<BannerItem[]>(() => {
-    const saved = localStorage.getItem('tera_storefront_banners');
-    return saved ? JSON.parse(saved) : defaultBannersList;
-  });
+  const [banners, setBanners] = useState<BannerItem[]>(defaultBannersList);
 
   const [isBannerModalOpen, setIsBannerModalOpen] = useState(false);
   const [editingBanner, setEditingBanner] = useState<BannerItem | null>(null);
@@ -492,49 +489,59 @@ export default function AdminDashboard() {
     setIsBannerModalOpen(true);
   };
 
-  const handleSaveBanner = (e: React.FormEvent) => {
+  const handleSaveBanner = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!bannerTitle.trim() || !bannerSrc.trim()) {
       showToast('กรุณากรอกข้อมูลชื่อแบรนเนอร์และรูปภาพให้ครบถ้วน');
       return;
     }
-    if (editingBanner) {
-      const updated = banners.map((b) =>
-        b.id === editingBanner.id
-          ? { ...b, title: bannerTitle.trim(), src: bannerSrc.trim(), active: bannerActive }
-          : b
-      );
-      saveBannersState(updated);
-      showToast('แก้ไขรูปภาพแบรนเนอร์เรียบร้อย!');
-    } else {
-      const newBanner: BannerItem = {
-        id: Date.now(),
-        title: bannerTitle.trim(),
-        src: bannerSrc.trim(),
-        active: bannerActive
-      };
-      saveBannersState([...banners, newBanner]);
-      showToast('เพิ่มรูปภาพแบรนเนอร์ใหม่เรียบร้อย!');
+    try {
+      if (editingBanner) {
+        await apiRequest(`/api/v1/banners/${editingBanner.id}`, 'PUT', {
+          title: bannerTitle.trim(),
+          src: bannerSrc.trim(),
+          active: bannerActive
+        });
+        showToast('แก้ไขรูปภาพแบรนเนอร์เรียบร้อย!');
+      } else {
+        await apiRequest('/api/v1/banners', 'POST', {
+          title: bannerTitle.trim(),
+          src: bannerSrc.trim(),
+          active: bannerActive
+        });
+        showToast('เพิ่มรูปภาพแบรนเนอร์ใหม่เรียบร้อย!');
+      }
+      await loadBanners();
+    } catch (err: any) {
+      showToast('เกิดข้อผิดพลาด: ' + (err.message || ''));
     }
     setIsBannerModalOpen(false);
   };
 
-  const toggleBannerActive = (id: number) => {
-    const updated = banners.map((b) =>
-      b.id === id ? { ...b, active: !b.active } : b
-    );
-    saveBannersState(updated);
-    showToast('อัปเดตสถานะแบรนเนอร์เรียบร้อย');
+  const toggleBannerActive = async (id: number) => {
+    const target = banners.find(b => b.id === id);
+    if (!target) return;
+    try {
+      await apiRequest(`/api/v1/banners/${id}`, 'PUT', { active: !target.active });
+      showToast('อัปเดตสถานะแบรนเนอร์เรียบร้อย');
+      await loadBanners();
+    } catch (err: any) {
+      showToast('เกิดข้อผิดพลาด: ' + (err.message || ''));
+    }
   };
 
-  const deleteBanner = (id: number) => {
+  const deleteBanner = async (id: number) => {
     if (banners.length <= 1) {
       showToast('ต้องมีแบรนเนอร์อย่างน้อย 1 รายการในระบบ');
       return;
     }
-    const updated = banners.filter((b) => b.id !== id);
-    saveBannersState(updated);
-    showToast('ลบแบรนเนอร์เรียบร้อย');
+    try {
+      await apiRequest(`/api/v1/banners/${id}`, 'DELETE');
+      showToast('ลบแบรนเนอร์เรียบร้อย');
+      await loadBanners();
+    } catch (err: any) {
+      showToast('เกิดข้อผิดพลาดในการลบ: ' + (err.message || ''));
+    }
   };
 
   const addVariantRow = () => {
@@ -757,6 +764,7 @@ export default function AdminDashboard() {
       loadOrders();
       loadCustomers();
       loadProducts();
+      loadBanners();
     }
   }, [isAuthorized, admin]);
 
@@ -910,6 +918,17 @@ export default function AdminDashboard() {
       }
     } catch (err) {
       console.warn('Admin load products API notice:', err);
+    }
+  };
+
+  const loadBanners = async () => {
+    try {
+      const res = await apiRequest('/api/v1/banners');
+      if (res && res.data && Array.isArray(res.data)) {
+        setBanners(res.data);
+      }
+    } catch (err) {
+      console.warn('Admin load banners API notice:', err);
     }
   };
 
