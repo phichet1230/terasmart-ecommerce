@@ -1,0 +1,44 @@
+services:
+  - type: web
+    name: terasmart-ecommerce
+    env: node
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: node server.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DB_HOST
+        fromDatabase:
+          name: terasmart-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: terasmart-db
+          property: port
+      - key: DB_USER
+        fromDatabase:
+          name: terasmart-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: terasmart-db
+          property: password
+      - key: DB_NAME
+        fromDatabase:
+          name: terasmart-db
+          property: database
+      - key: JWT_SECRET
+        generateValue: true
+      - key: PROMPTPAY_ID
+        value: "0820761709"
+      - key: MERCHANT_RECEIVER_BANK
+        value: "ธนาคารกรุงไทย"
+      - key: BANK_ACCOUNT_NO
+        value: "6608200153"
+
+databases:
+  - name: terasmart-db
+    databaseName: terasmart_db
+    user: terasmart_user
+    plan: free
