@@ -1370,6 +1370,8 @@ export default function AdminDashboard() {
     saveProductsState(updatedList);
     setProductPrice(formattedMainPrice);
     setProductVariants(formattedVariants);
+    setIsProductModalOpen(false);
+    setEditingProduct(null);
     showToast('บันทึกข้อมูลสินค้า รูปรายละเอียด และสเปกเรียบร้อย!');
 
     try {
