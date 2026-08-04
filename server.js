@@ -41,9 +41,12 @@ app.get('/', (req, res) => {
   res.send('TeraSmart API is running...');
 });
 
+const autoMigrate = require('./utils/autoMigrate');
+
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, '0.0.0.0', () => {
+app.listen(PORT, '0.0.0.0', async () => {
   console.log(`🚀 Server started on http://0.0.0.0:${PORT}`);
+  await autoMigrate();
 });
 
 const authRoutes = require('./routes/authRoutes');
