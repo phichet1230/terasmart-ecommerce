@@ -1,9 +1,11 @@
 const express = require('express');
+const compression = require('compression');
 const cookieParser = require('cookie-parser');
 const path = require('path');
 require('dotenv').config();
 
 const app = express();
+app.use(compression()); // Gzip response compression for ultra-fast load times under high concurrency
 
 // Security & CORS Middleware for Multi-Device, Tunnel & International Security Compliance
 app.use((req, res, next) => {
