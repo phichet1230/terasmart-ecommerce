@@ -370,17 +370,17 @@ export default function Storefront() {
     }
   }, [qrExpireTimer]);
 
-  // Real-Time Payment Status Polling
+  // Real-Time Payment Status Polling (Auto-detects payment completion every 1.5 seconds)
   useEffect(() => {
     let interval: any;
     if (activeTab === 'payment' && createdOrderId && !verifiedPaymentInfo) {
       interval = setInterval(async () => {
         try {
           const res = await apiRequest(`/api/v1/payments/${createdOrderId}/check-status`);
-          if (res.status === 'success' && res.paymentStatus === 'paid') {
-            showToast('ได้รับการยืนยันการชำระเงินเรียบร้อยแล้ว!');
+          if (res.status === 'success' && (res.paymentStatus === 'paid' || res.paymentStatus === 'completed' || res.paymentStatus === 'shipped')) {
+            showToast('🎉 อนุมัติการชำระเงินเรียบร้อยแล้ว! ขอบคุณที่สั่งซื้อสินค้า');
             setVerifiedPaymentInfo({
-              ai_verified_amount: createdOrderTotal,
+              ai_verified_amount: res.amount || createdOrderTotal,
               ai_verified_datetime: new Date().toISOString()
             });
             fetchOrders(); // Refresh order history status
@@ -388,12 +388,12 @@ export default function Storefront() {
         } catch (err) {
           console.error('Error checking payment status:', err);
         }
-      }, 3000);
+      }, 1500);
     }
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [activeTab, createdOrderId, verifiedPaymentInfo]);
+  }, [activeTab, createdOrderId, verifiedPaymentInfo, createdOrderTotal]);
 
   // Real-Time Orders Live Auto-Polling (Refreshes order status every 4 seconds)
   useEffect(() => {
