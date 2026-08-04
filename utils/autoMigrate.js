@@ -5,9 +5,9 @@ const pool = require('../config/db');
 async function runSqlScript(filePath) {
   if (!fs.existsSync(filePath)) return;
   const content = fs.readFileSync(filePath, 'utf8');
-  // Split statements safely by semicolon while removing comment-only lines
+  // Split statements cleanly by semicolon
   const statements = content
-    .split(/;\s*$/m)
+    .split(';')
     .map(s => s.trim())
     .filter(s => s.length > 0 && !s.startsWith('--'));
 
@@ -15,7 +15,9 @@ async function runSqlScript(filePath) {
     try {
       await pool.query(statement);
     } catch (err) {
-      console.warn('⚠️ SQL Statement execution warning:', err.message);
+      if (!err.message.includes('already exists') && !err.message.includes('does not exist')) {
+        console.warn('⚠️ SQL Statement notice:', err.message);
+      }
     }
   }
 }
