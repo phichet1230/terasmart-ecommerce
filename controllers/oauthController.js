@@ -439,6 +439,17 @@ async function handleSocialLogin(req, res, idColumn, socialId, email, name, pict
     return res.redirect(getFrontendRedirectUrl(req, `token=${token}&user=${encodeURIComponent(JSON.stringify(userData))}`));
   } catch (err) {
     console.error('[Social Login Error]:', err);
+    if (err.message && err.message.includes('users') && err.message.includes('does not exist')) {
+      try {
+        console.log('⚡ Missing users table detected on demand, triggering autoMigrateDatabase...');
+        const autoMigrate = require('../utils/autoMigrate');
+        await autoMigrate();
+        // Retry handleSocialLogin once
+        return await handleSocialLogin(req, res, idColumn, socialId, email, name, picture, phone);
+      } catch (retryErr) {
+        console.error('[Social Login Retry Error]:', retryErr);
+      }
+    }
     return res.redirect(getFrontendRedirectUrl(req, `error=${encodeURIComponent(`Social Login Error: ${err.message}`)}`));
   }
 }
