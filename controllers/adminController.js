@@ -446,7 +446,7 @@ exports.createProduct = async (req, res) => {
 // 8. แก้ไขข้อมูลสินค้าหลัก
 exports.updateProduct = async (req, res) => {
   const productId = req.params.id;
-  let { category_id, name, slug, short_description, description, image_url, images, spec_table, category_name, price, is_active } = req.body;
+  let { category_id, name, slug, short_description, description, image_url, images, spec_table, category_name, price, is_active, detail_image_1, detail_image_2, spec_headers, advice_list, accessories_list } = req.body;
   const admin_id = req.user.id;
 
   try {
@@ -473,60 +473,85 @@ exports.updateProduct = async (req, res) => {
         .replace(/^-+|-+$/g, '');
     }
 
-    let imagesJson = null;
-    if (images !== undefined) {
-      imagesJson = typeof images === 'string' ? images : JSON.stringify(images);
+    let imagesJson = images !== undefined ? (typeof images === 'string' ? images : JSON.stringify(images)) : null;
+    let specTableJson = spec_table !== undefined ? (typeof spec_table === 'string' ? spec_table : JSON.stringify(spec_table)) : null;
+    let specHeadersJson = spec_headers !== undefined ? (typeof spec_headers === 'string' ? spec_headers : JSON.stringify(spec_headers)) : null;
+    let adviceListJson = advice_list !== undefined ? (typeof advice_list === 'string' ? advice_list : JSON.stringify(advice_list)) : null;
+    let accessoriesListJson = accessories_list !== undefined ? (typeof accessories_list === 'string' ? accessories_list : JSON.stringify(accessories_list)) : null;
+
+    try {
+      await pool.query(
+        `UPDATE products 
+         SET category_id = COALESCE($1, category_id),
+             name = COALESCE($2, name),
+             slug = COALESCE($3, slug),
+             short_description = COALESCE($4, short_description),
+             description = COALESCE($5, description),
+             image_url = COALESCE($6, image_url),
+             images = COALESCE($7, images),
+             spec_table = COALESCE($8, spec_table),
+             detail_image_1 = COALESCE($9, detail_image_1),
+             detail_image_2 = COALESCE($10, detail_image_2),
+             spec_headers = COALESCE($11, spec_headers),
+             advice_list = COALESCE($12, advice_list),
+             accessories_list = COALESCE($13, accessories_list),
+             is_active = COALESCE($14, is_active)
+         WHERE id = $15`,
+        [
+          category_id, name, slug, short_description, description, image_url,
+          imagesJson, specTableJson, detail_image_1, detail_image_2,
+          specHeadersJson, adviceListJson, accessoriesListJson, is_active, productId
+        ]
+      );
+    } catch (updateErr) {
+      console.warn('Fallback basic product update notice:', updateErr.message);
+      await pool.query(
+        `UPDATE products 
+         SET category_id = COALESCE($1, category_id),
+             name = COALESCE($2, name),
+             slug = COALESCE($3, slug),
+             short_description = COALESCE($4, short_description),
+             description = COALESCE($5, description),
+             image_url = COALESCE($6, image_url),
+             is_active = COALESCE($7, is_active)
+         WHERE id = $8`,
+        [category_id, name, slug, short_description, description, image_url, is_active, productId]
+      );
     }
 
-    let specTableJson = null;
-    if (spec_table !== undefined) {
-      specTableJson = typeof spec_table === 'string' ? spec_table : JSON.stringify(spec_table);
+    // Determine target price (main price and sub price unified)
+    let { variants } = req.body;
+    let targetPrice = parseFloat(price);
+    if ((isNaN(targetPrice) || targetPrice <= 0) && variants && variants.length > 0 && variants[0].price) {
+      targetPrice = parseFloat(variants[0].price);
     }
-
-    await pool.query(
-      `UPDATE products 
-       SET category_id = COALESCE($1, category_id),
-           name = COALESCE($2, name),
-           slug = COALESCE($3, slug),
-           short_description = COALESCE($4, short_description),
-           description = COALESCE($5, description),
-           image_url = COALESCE($6, image_url),
-           images = COALESCE($7, images),
-           spec_table = COALESCE($8, spec_table),
-           is_active = COALESCE($9, is_active)
-       WHERE id = $10`,
-      [category_id, name, slug, short_description, description, image_url, imagesJson, specTableJson, is_active, productId]
-    );
 
     // Sync product variants if variants array is provided
-    let { variants } = req.body;
     if (variants && Array.isArray(variants) && variants.length > 0) {
       const keptIds = [];
       for (let i = 0; i < variants.length; i++) {
         const v = variants[i];
         const vSku = v.sku || `TERA-${productId}-${Date.now().toString().slice(-4)}-${i}`;
+        const vPrice = parseFloat(v.price) > 0 ? parseFloat(v.price) : (!isNaN(targetPrice) ? targetPrice : 0);
         
         if (v.id) {
-          // Update existing variant
           await pool.query(
             `UPDATE product_variants 
              SET variant_name = $1, sku = $2, price = $3, stock_quantity = $4 
              WHERE id = $5 AND product_id = $6`,
-            [v.variant_name || 'Standard', vSku, parseFloat(v.price || price || 0), parseInt(v.stock_quantity || 0), v.id, productId]
+            [v.variant_name || 'Standard', vSku, vPrice, parseInt(v.stock_quantity || 0), v.id, productId]
           );
           keptIds.push(v.id);
         } else {
-          // Insert new variant
           const inserted = await pool.query(
             `INSERT INTO product_variants (product_id, variant_name, sku, price, stock_quantity)
              VALUES ($1, $2, $3, $4, $5) RETURNING id`,
-            [productId, v.variant_name || 'Standard', vSku, parseFloat(v.price || price || 0), parseInt(v.stock_quantity || 0)]
+            [productId, v.variant_name || 'Standard', vSku, vPrice, parseInt(v.stock_quantity || 0)]
           );
           keptIds.push(inserted.rows[0].id);
         }
       }
 
-      // Safely delete or deactivate variants removed from product
       if (keptIds.length > 0) {
         const existingVars = await pool.query('SELECT id FROM product_variants WHERE product_id = $1', [productId]);
         for (const ev of existingVars.rows) {
@@ -534,11 +559,22 @@ exports.updateProduct = async (req, res) => {
             try {
               await pool.query('DELETE FROM product_variants WHERE id = $1', [ev.id]);
             } catch (delErr) {
-              // If referenced in order_items, mark stock as 0
               await pool.query('UPDATE product_variants SET stock_quantity = 0 WHERE id = $1', [ev.id]);
             }
           }
         }
+      }
+    }
+
+    // Ensure all variant prices match targetPrice if single variant or main price explicitly set
+    if (!isNaN(targetPrice) && targetPrice > 0) {
+      const varCountRes = await pool.query('SELECT COUNT(*) FROM product_variants WHERE product_id = $1', [productId]);
+      const varCount = parseInt(varCountRes.rows[0]?.count || '0', 10);
+      if (varCount <= 1 || price !== undefined) {
+        await pool.query(
+          'UPDATE product_variants SET price = $1 WHERE product_id = $2',
+          [targetPrice, productId]
+        );
       }
     }
 
@@ -548,18 +584,12 @@ exports.updateProduct = async (req, res) => {
         [parseInt(req.body.stock_quantity), productId]
       );
     }
-    if (price !== undefined && price !== null) {
-      await pool.query(
-        'UPDATE product_variants SET price = $1 WHERE product_id = $2',
-        [parseFloat(price), productId]
-      );
-    }
 
     await logAction(admin_id, `Updated product ID: ${productId}`, 'products', productId);
     res.json({ status: 'success', message: 'แก้ไขข้อมูลสินค้าสำเร็จ' });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ status: 'error', message: 'Internal Server Error' });
+    console.error('Update product error:', err);
+    res.status(500).json({ status: 'error', message: 'Internal Server Error: ' + err.message });
   }
 };
 

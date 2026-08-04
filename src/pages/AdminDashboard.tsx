@@ -673,10 +673,23 @@ export default function AdminDashboard() {
     setProductVariants((prev) => prev.filter((_, i) => i !== index));
   };
 
+  const handleMainPriceChange = (val: string) => {
+    setProductPrice(val);
+    setProductVariants((prev) => {
+      if (prev.length <= 1) {
+        return prev.map(v => ({ ...v, price: val }));
+      }
+      return prev;
+    });
+  };
+
   const updateVariantRow = (index: number, field: keyof VariantInput, value: any) => {
     setProductVariants((prev) => {
       const updated = [...prev];
       updated[index] = { ...updated[index], [field]: value };
+      if (field === 'price' && (index === 0 || updated.length === 1)) {
+        setProductPrice(value);
+      }
       return updated;
     });
   };
@@ -1300,16 +1313,24 @@ export default function AdminDashboard() {
     showToast('บันทึกข้อมูลสินค้า รูปรายละเอียด และสเปกเรียบร้อย!');
 
     try {
+      const activePriceVal = productPrice || (productVariants.length > 0 ? productVariants[0].price : '0');
+      const syncedVariants = productVariants.map((v, i) => {
+        if (productVariants.length === 1 || !v.price || v.price === '0') {
+          return { ...v, price: activePriceVal };
+        }
+        return v;
+      });
+
       const payload = {
         name: productName,
         description: productDesc,
-        price: parseFloat(productPrice),
+        price: parseFloat(activePriceVal),
         category_name: productCategory,
         image_url: mainUrl,
         images: imageUrlList.length > 0 ? imageUrlList : [mainUrl],
         detail_image_1: productDetailImg1,
         detail_image_2: productDetailImg2,
-        variants: productVariants,
+        variants: syncedVariants,
         spec_headers: specTableHeaders,
         spec_table: productSpecRows.filter(s => s.col1.trim() || s.col2.trim()),
         advice_list: productAdviceList,
@@ -2549,7 +2570,7 @@ export default function AdminDashboard() {
                     <input 
                       type="number" 
                       value={productPrice} 
-                      onChange={(e) => setProductPrice(e.target.value)} 
+                      onChange={(e) => handleMainPriceChange(e.target.value)} 
                       style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-input)', color: 'var(--text-main)', marginTop: '4px' }} 
                       required 
                     />

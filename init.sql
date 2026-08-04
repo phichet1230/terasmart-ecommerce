@@ -56,7 +56,7 @@ CREATE TABLE categories (
     name VARCHAR(255) NOT NULL
 );
 
-CREATE TABLE products (
+CREATE TABLE IF NOT EXISTS products (
     id SERIAL PRIMARY KEY,
     category_id INTEGER REFERENCES categories(id),
     name VARCHAR(255) NOT NULL,
@@ -64,6 +64,13 @@ CREATE TABLE products (
     short_description VARCHAR(255),
     description TEXT,
     image_url VARCHAR(500),
+    images TEXT DEFAULT '[]',
+    spec_table TEXT DEFAULT '[]',
+    detail_image_1 VARCHAR(500),
+    detail_image_2 VARCHAR(500),
+    spec_headers TEXT DEFAULT '[]',
+    advice_list TEXT DEFAULT '[]',
+    accessories_list TEXT DEFAULT '[]',
     is_active BOOLEAN DEFAULT TRUE,
     deleted_at TIMESTAMP
 );

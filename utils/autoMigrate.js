@@ -83,6 +83,14 @@ async function autoMigrateDatabase() {
         is_active BOOLEAN DEFAULT TRUE,
         deleted_at TIMESTAMP
       );
+
+      ALTER TABLE products ADD COLUMN IF NOT EXISTS images TEXT DEFAULT '[]';
+      ALTER TABLE products ADD COLUMN IF NOT EXISTS spec_table TEXT DEFAULT '[]';
+      ALTER TABLE products ADD COLUMN IF NOT EXISTS detail_image_1 VARCHAR(500);
+      ALTER TABLE products ADD COLUMN IF NOT EXISTS detail_image_2 VARCHAR(500);
+      ALTER TABLE products ADD COLUMN IF NOT EXISTS spec_headers TEXT DEFAULT '[]';
+      ALTER TABLE products ADD COLUMN IF NOT EXISTS advice_list TEXT DEFAULT '[]';
+      ALTER TABLE products ADD COLUMN IF NOT EXISTS accessories_list TEXT DEFAULT '[]';
     `);
 
     await pool.query(`
