@@ -130,4 +130,21 @@ LINE_CALLBACK_URL=https://api.teragroup.com/api/v1/auth/line/callback
 - [x] **Promo Discounts**: ตาราง `coupons`, API `/api/v1/coupons/validate` และช่องกรอกโค้ดลดราคาในหน้า Checkout
 - [x] **Email Notifications**: Nodemailer SMTP ยิงอีเมลยืนยันคำสั่งซื้อเรียลไทม์
 - [x] **AI Slip Processing**: EMVCo QR Code + Pattern Matching OCR สกัดข้อมูลเข้า JSON Array
-- [x] **Infrastructure & Deployment**: จัดทำคู่มือและไฟล์สคริปต์การ Deploy บน Cloud Server พร้อม SSL (HTTPS) ครบถ้วน
+- [x] **Infrastructure & Deployment**: จัดทำคู่มือ, Dockerfile, docker-compose.yml และไฟล์สคริปต์การ Deploy แบบ 1-Click (`deploy.sh`) ครบถ้วน
+
+---
+
+## 🐳 6. การติดตั้งแบบ 1-Click ด้วย Docker Compose (แนะนำสูงสุด)
+
+หากเช่า Cloud VPS มาเรียบร้อยแล้ว สามารถนำระบบขึ้นใช้งานจริงได้ทันทีด้วยคำสั่งเดียว:
+
+```bash
+# 1. Clone โปรเจกต์เข้ามายังเซิร์ฟเวอร์
+git clone https://github.com/bdteragroup-max/ecommerce-project.git
+cd ecommerce-project
+
+# 2. รันสคริปต์คีย์เดียวสร้างทั้งระบบอัตโนมัติ (Database + Node.js API + Nginx)
+bash deploy.sh
+```
+*ระบบจะทำการติดตั้ง Docker, สร้าง Database PostgreSQL, Import สคริปต์ตาราง, บิวด์หน้าเว็บ และรัน Nginx Reverse Proxy ให้เรียบร้อยทันที!*
+
