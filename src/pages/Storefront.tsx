@@ -101,6 +101,113 @@ interface Order {
   };
 }
 
+const defaultStorefrontProducts: Product[] = [
+  {
+    id: 1,
+    name: 'ปั๊มน้ำซับเมิร์สโซล่าเซลล์ Tera Solar Pump 4 นิ้ว (DC Brushless)',
+    description: 'ปั๊มน้ำบาดาลโซล่าเซลล์ มอเตอร์ DC บรัสเลส ไร้แปรงถ่าน ประสิทธิภาพสูง ตัวเรือนสแตนเลส 304 ทนทาน รองรับแรงดันกว้าง',
+    slug: 'tera-solar-pump-4-inch',
+    image_url: '/checkout_images/image 156.svg',
+    detail_image_1: '/checkout_images/image 156.svg',
+    category_name: 'ปั้มน้ำบาดาล',
+    price: '18500',
+    variants: [
+      { id: 101, variant_name: 'รุ่น 1100W (1.5 HP) 80-210V', sku: 'TERA-SI4VS-1100', price: '18500', stock_quantity: 15 },
+      { id: 102, variant_name: 'รุ่น 1500W (2.0 HP) 110-250V', sku: 'TERA-SI4VS-1500', price: '24900', stock_quantity: 10 },
+      { id: 103, variant_name: 'รุ่น 2200W (3.0 HP) High Flow', sku: 'TERA-SI4VS-2200', price: '32500', stock_quantity: 8 }
+    ]
+  },
+  {
+    id: 2,
+    name: 'แผงโซล่าเซลล์ Tera Mono Half-Cut 550W (Tier 1 N-Type High Efficiency)',
+    description: 'แผงโซล่าเซลล์ ชนิด โมโนคริสตัลไลน์ N-Type Half-Cut Cell กำลังผลิตสูงสุด 550W ผ่านการรับรองมาตรฐานสากล Tier 1',
+    slug: 'tera-mono-half-cut-550w',
+    image_url: '/checkout_images/image 206.svg',
+    category_name: 'แผงโซล่าเซลล์ & ระบบพลังงาน',
+    price: '3500',
+    variants: [
+      { id: 201, variant_name: 'ชุด 1 แผง (Single Panel)', sku: 'TERA-SOLAR-550W-1', price: '3500', stock_quantity: 50 },
+      { id: 202, variant_name: 'แพ็ค 4 แผง (Set of 4 Panels)', sku: 'TERA-SOLAR-550W-4', price: '13200', stock_quantity: 20 }
+    ]
+  },
+  {
+    id: 3,
+    name: 'ตู้ควบคุมปั๊มน้ำโซล่าเซลล์อัตโนมัติ (DC Surge & Breaker Control Box)',
+    description: 'ตู้ควบคุมระบบปั๊มน้ำโซล่าเซลล์สำเร็จรูป พร้อมอุปกรณ์ป้องกันฟ้าผ่า (Surge Protection) และเบรกเกอร์ DC ตัดการทำงานอัตโนมัติเมื่อน้ำแห้ง',
+    slug: 'tera-dc-control-box',
+    image_url: '/checkout_images/image 207.svg',
+    category_name: 'แผงโซล่าเซลล์ & ระบบพลังงาน',
+    price: '1450',
+    variants: [
+      { id: 301, variant_name: 'รุ่นมาตรฐาน DC 1000V (Standard)', sku: 'TERA-BOX-DC-STD', price: '1450', stock_quantity: 30 },
+      { id: 302, variant_name: 'รุ่นพรีเมียม AC/DC Hybrid Auto Switch', sku: 'TERA-BOX-HYBRID', price: '3850', stock_quantity: 15 }
+    ]
+  },
+  {
+    id: 4,
+    name: 'Tera Phone 15 Pro Max 5G (Flagship Smartphone)',
+    description: 'สมาร์ทโฟนระดับเรือธง ชิปประมวลผลรุ่นใหม่ล่าสุด จอแสดงผล 120Hz Super Retina XDR กล้องถ่ายภาพความละเอียดสูง 108MP พร้อมระบบชาร์จไว',
+    slug: 'tera-phone-15-pro-max',
+    image_url: 'https://images.unsplash.com/photo-1592899677977-9c10ca588bbd?w=800',
+    category_name: 'สมาร์ทไอที & อิเล็กทรอนิกส์',
+    price: '42900',
+    variants: [
+      { id: 401, variant_name: 'ความจุ 256GB - Titanium Natural', sku: 'TERA-P15-256GB', price: '42900', stock_quantity: 12 },
+      { id: 402, variant_name: 'ความจุ 512GB - Titanium Black', sku: 'TERA-P15-512GB', price: '48900', stock_quantity: 5 }
+    ]
+  },
+  {
+    id: 5,
+    name: 'Tera Laptop Pro 16 Workstation Notebook',
+    description: 'แล็ปท็อปสำหรับการทำงานวิศวกรรมและการประมวลผลหนัก หน้าจอ 16 นิ้ว 4K OLED ตัวเรือนอลูมิเนียมแอร์คราฟต์เกรด',
+    slug: 'tera-laptop-pro-16',
+    image_url: 'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=800',
+    category_name: 'สมาร์ทไอที & อิเล็กทรอนิกส์',
+    price: '69900',
+    variants: [
+      { id: 501, variant_name: 'RAM 18GB / SSD 512GB', sku: 'TERA-LAP-18GB', price: '69900', stock_quantity: 7 },
+      { id: 502, variant_name: 'RAM 36GB / SSD 1TB', sku: 'TERA-LAP-36GB', price: '89900', stock_quantity: 4 }
+    ]
+  },
+  {
+    id: 6,
+    name: 'Tera Smart Watch Ultra 2 (Solar Charging & GPS)',
+    description: 'นาฬิกาสมาร์ทวอทช์สายลุย ชาร์จพลังงานแสงอาทิตย์ได้ในตัว วัดระดับออกซิเจน การเต้นของหัวใจ พร้อมระบบ GPS นำทางแม่นยำสูง',
+    slug: 'tera-smart-watch-ultra-2',
+    image_url: 'https://images.unsplash.com/photo-1579586337278-3befd40fd17a?w=800',
+    category_name: 'สมาร์ทไอที & อิเล็กทรอนิกส์',
+    price: '14900',
+    variants: [
+      { id: 601, variant_name: 'สายสปอร์ต Titanium Band', sku: 'TERA-WATCH-ULTRA', price: '14900', stock_quantity: 25 }
+    ]
+  },
+  {
+    id: 7,
+    name: 'สายไฟจุ่มน้ำ VCT 3x2.5 sq.mm (Submersible Power Cable)',
+    description: 'สายไฟชนิด VCT 3 ฉนวนกันน้ำพิเศษ 3-Core สำหรับงานปั๊มน้ำบาดาลจุ่มน้ำ ทนความชื้นและแรงดันน้ำลึกได้อย่างดีเยี่ยม',
+    slug: 'tera-submersible-cable-vct-3x25',
+    image_url: '/checkout_images/image 208.svg',
+    category_name: 'อะไหล่ & อุปกรณ์เสริม',
+    price: '2250',
+    variants: [
+      { id: 701, variant_name: 'ความยาว 50 เมตร', sku: 'TERA-CABLE-50M', price: '2250', stock_quantity: 40 },
+      { id: 702, variant_name: 'ความยาว 100 เมตร', sku: 'TERA-CABLE-100M', price: '4100', stock_quantity: 20 }
+    ]
+  },
+  {
+    id: 8,
+    name: 'สลิงสแตนเลส 304 หนา 4 มม. (Stainless Steel Wire Rope)',
+    description: 'สลิงสแตนเลสเกรด 304 ไร้สนิม ทนทานแรงดึงสูง สำหรับผูกแขวนปั๊มน้ำบาดาลในบ่อลึก ปลอดภัยตลอดอายุการใช้งาน',
+    slug: 'tera-stainless-wire-rope-4mm',
+    image_url: '/checkout_images/image 209.svg',
+    category_name: 'อะไหล่ & อุปกรณ์เสริม',
+    price: '980',
+    variants: [
+      { id: 801, variant_name: 'ความยาว 50 เมตร + กิ๊บล็อก 4 ตัว', sku: 'TERA-ROPE-50M', price: '980', stock_quantity: 35 }
+    ]
+  }
+];
+
 export default function Storefront() {
   const navigate = useNavigate();
 
@@ -162,7 +269,7 @@ export default function Storefront() {
   const [isForgotLoading, setIsForgotLoading] = useState(false);
 
   // Catalog States
-  const [products, setProducts] = useState<Product[]>([]);
+  const [products, setProducts] = useState<Product[]>(() => defaultStorefrontProducts);
   const [categories, setCategories] = useState<Category[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('ทั้งหมด');
   const [searchText, setSearchText] = useState('');
@@ -228,18 +335,21 @@ export default function Storefront() {
       if (saved) {
         try {
           const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed) && parsed.length > 0) {
+          if (Array.isArray(parsed) && parsed.length >= defaultStorefrontProducts.length) {
             setProducts(parsed);
             setSelectedProduct((prev) => {
               if (!prev) return null;
               const found = parsed.find((p: any) => p.id === prev.id);
               return found || prev;
             });
+            return;
           }
         } catch (err) {
           console.error('Error parsing updated products:', err);
         }
       }
+      localStorage.removeItem('tera_storefront_products');
+      setProducts(defaultStorefrontProducts);
     };
 
     handleProductUpdate();
@@ -522,113 +632,6 @@ export default function Storefront() {
       console.error(err);
     }
   };
-
-  const defaultStorefrontProducts: Product[] = [
-    {
-      id: 1,
-      name: 'ปั๊มน้ำซับเมิร์สโซล่าเซลล์ Tera Solar Pump 4 นิ้ว (DC Brushless)',
-      description: 'ปั๊มน้ำบาดาลโซล่าเซลล์ มอเตอร์ DC บรัสเลส ไร้แปรงถ่าน ประสิทธิภาพสูง ตัวเรือนสแตนเลส 304 ทนทาน รองรับแรงดันกว้าง',
-      slug: 'tera-solar-pump-4-inch',
-      image_url: '/checkout_images/image 156.svg',
-      detail_image_1: '/checkout_images/image 156.svg',
-      category_name: 'ปั้มน้ำบาดาล',
-      price: '18500',
-      variants: [
-        { id: 101, variant_name: 'รุ่น 1100W (1.5 HP) 80-210V', sku: 'TERA-SI4VS-1100', price: '18500', stock_quantity: 15 },
-        { id: 102, variant_name: 'รุ่น 1500W (2.0 HP) 110-250V', sku: 'TERA-SI4VS-1500', price: '24900', stock_quantity: 10 },
-        { id: 103, variant_name: 'รุ่น 2200W (3.0 HP) High Flow', sku: 'TERA-SI4VS-2200', price: '32500', stock_quantity: 8 }
-      ]
-    },
-    {
-      id: 2,
-      name: 'แผงโซล่าเซลล์ Tera Mono Half-Cut 550W (Tier 1 N-Type High Efficiency)',
-      description: 'แผงโซล่าเซลล์ ชนิด โมโนคริสตัลไลน์ N-Type Half-Cut Cell กำลังผลิตสูงสุด 550W ผ่านการรับรองมาตรฐานสากล Tier 1',
-      slug: 'tera-mono-half-cut-550w',
-      image_url: '/checkout_images/image 206.svg',
-      category_name: 'แผงโซล่าเซลล์ & ระบบพลังงาน',
-      price: '3500',
-      variants: [
-        { id: 201, variant_name: 'ชุด 1 แผง (Single Panel)', sku: 'TERA-SOLAR-550W-1', price: '3500', stock_quantity: 50 },
-        { id: 202, variant_name: 'แพ็ค 4 แผง (Set of 4 Panels)', sku: 'TERA-SOLAR-550W-4', price: '13200', stock_quantity: 20 }
-      ]
-    },
-    {
-      id: 3,
-      name: 'ตู้ควบคุมปั๊มน้ำโซล่าเซลล์อัตโนมัติ (DC Surge & Breaker Control Box)',
-      description: 'ตู้ควบคุมระบบปั๊มน้ำโซล่าเซลล์สำเร็จรูป พร้อมอุปกรณ์ป้องกันฟ้าผ่า (Surge Protection) และเบรกเกอร์ DC ตัดการทำงานอัตโนมัติเมื่อน้ำแห้ง',
-      slug: 'tera-dc-control-box',
-      image_url: '/checkout_images/image 207.svg',
-      category_name: 'แผงโซล่าเซลล์ & ระบบพลังงาน',
-      price: '1450',
-      variants: [
-        { id: 301, variant_name: 'รุ่นมาตรฐาน DC 1000V (Standard)', sku: 'TERA-BOX-DC-STD', price: '1450', stock_quantity: 30 },
-        { id: 302, variant_name: 'รุ่นพรีเมียม AC/DC Hybrid Auto Switch', sku: 'TERA-BOX-HYBRID', price: '3850', stock_quantity: 15 }
-      ]
-    },
-    {
-      id: 4,
-      name: 'Tera Phone 15 Pro Max 5G (Flagship Smartphone)',
-      description: 'สมาร์ทโฟนระดับเรือธง ชิปประมวลผลรุ่นใหม่ล่าสุด จอแสดงผล 120Hz Super Retina XDR กล้องถ่ายภาพความละเอียดสูง 108MP พร้อมระบบชาร์จไว',
-      slug: 'tera-phone-15-pro-max',
-      image_url: 'https://images.unsplash.com/photo-1592899677977-9c10ca588bbd?w=800',
-      category_name: 'สมาร์ทไอที & อิเล็กทรอนิกส์',
-      price: '42900',
-      variants: [
-        { id: 401, variant_name: 'ความจุ 256GB - Titanium Natural', sku: 'TERA-P15-256GB', price: '42900', stock_quantity: 12 },
-        { id: 402, variant_name: 'ความจุ 512GB - Titanium Black', sku: 'TERA-P15-512GB', price: '48900', stock_quantity: 5 }
-      ]
-    },
-    {
-      id: 5,
-      name: 'Tera Laptop Pro 16 Workstation Notebook',
-      description: 'แล็ปท็อปสำหรับการทำงานวิศวกรรมและการประมวลผลหนัก หน้าจอ 16 นิ้ว 4K OLED ตัวเรือนอลูมิเนียมแอร์คราฟต์เกรด',
-      slug: 'tera-laptop-pro-16',
-      image_url: 'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=800',
-      category_name: 'สมาร์ทไอที & อิเล็กทรอนิกส์',
-      price: '69900',
-      variants: [
-        { id: 501, variant_name: 'RAM 18GB / SSD 512GB', sku: 'TERA-LAP-18GB', price: '69900', stock_quantity: 7 },
-        { id: 502, variant_name: 'RAM 36GB / SSD 1TB', sku: 'TERA-LAP-36GB', price: '89900', stock_quantity: 4 }
-      ]
-    },
-    {
-      id: 6,
-      name: 'Tera Smart Watch Ultra 2 (Solar Charging & GPS)',
-      description: 'นาฬิกาสมาร์ทวอทช์สายลุย ชาร์จพลังงานแสงอาทิตย์ได้ในตัว วัดระดับออกซิเจน การเต้นของหัวใจ พร้อมระบบ GPS นำทางแม่นยำสูง',
-      slug: 'tera-smart-watch-ultra-2',
-      image_url: 'https://images.unsplash.com/photo-1579586337278-3befd40fd17a?w=800',
-      category_name: 'สมาร์ทไอที & อิเล็กทรอนิกส์',
-      price: '14900',
-      variants: [
-        { id: 601, variant_name: 'สายสปอร์ต Titanium Band', sku: 'TERA-WATCH-ULTRA', price: '14900', stock_quantity: 25 }
-      ]
-    },
-    {
-      id: 7,
-      name: 'สายไฟจุ่มน้ำ VCT 3x2.5 sq.mm (Submersible Power Cable)',
-      description: 'สายไฟชนิด VCT 3 ฉนวนกันน้ำพิเศษ 3-Core สำหรับงานปั๊มน้ำบาดาลจุ่มน้ำ ทนความชื้นและแรงดันน้ำลึกได้อย่างดีเยี่ยม',
-      slug: 'tera-submersible-cable-vct-3x25',
-      image_url: '/checkout_images/image 208.svg',
-      category_name: 'อะไหล่ & อุปกรณ์เสริม',
-      price: '2250',
-      variants: [
-        { id: 701, variant_name: 'ความยาว 50 เมตร', sku: 'TERA-CABLE-50M', price: '2250', stock_quantity: 40 },
-        { id: 702, variant_name: 'ความยาว 100 เมตร', sku: 'TERA-CABLE-100M', price: '4100', stock_quantity: 20 }
-      ]
-    },
-    {
-      id: 8,
-      name: 'สลิงสแตนเลส 304 หนา 4 มม. (Stainless Steel Wire Rope)',
-      description: 'สลิงสแตนเลสเกรด 304 ไร้สนิม ทนทานแรงดึงสูง สำหรับผูกแขวนปั๊มน้ำบาดาลในบ่อลึก ปลอดภัยตลอดอายุการใช้งาน',
-      slug: 'tera-stainless-wire-rope-4mm',
-      image_url: '/checkout_images/image 209.svg',
-      category_name: 'อะไหล่ & อุปกรณ์เสริม',
-      price: '980',
-      variants: [
-        { id: 801, variant_name: 'ความยาว 50 เมตร + กิ๊บล็อก 4 ตัว', sku: 'TERA-ROPE-50M', price: '980', stock_quantity: 35 }
-      ]
-    }
-  ];
 
   const fetchProducts = async () => {
     let apiProds: Product[] = [];
