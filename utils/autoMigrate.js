@@ -14,11 +14,11 @@ async function autoMigrateDatabase() {
     `);
 
     const tableExists = checkRes.rows[0].exists;
+    const initSqlPath = path.join(__dirname, '../init.sql');
+    const seedSqlPath = path.join(__dirname, '../seed.sql');
+
     if (!tableExists) {
       console.log('⚡ Initializing Database Schema (init.sql & seed.sql)...');
-
-      const initSqlPath = path.join(__dirname, '../init.sql');
-      const seedSqlPath = path.join(__dirname, '../seed.sql');
 
       if (fs.existsSync(initSqlPath)) {
         const initSql = fs.readFileSync(initSqlPath, 'utf8');
@@ -32,7 +32,17 @@ async function autoMigrateDatabase() {
         console.log('✅ Initial seed data inserted successfully!');
       }
     } else {
-      console.log('✅ Database schema is up-to-date.');
+      // Check if products table has items or needs rich seed refresh
+      const prodCountRes = await pool.query('SELECT COUNT(*) FROM products');
+      const count = parseInt(prodCountRes.rows[0].count, 10);
+      if (count <= 1 && fs.existsSync(seedSqlPath)) {
+        console.log('⚡ Refreshing rich catalog seed data (seed.sql)...');
+        const seedSql = fs.readFileSync(seedSqlPath, 'utf8');
+        await pool.query(seedSql);
+        console.log('✅ Rich catalog seed data populated successfully!');
+      } else {
+        console.log(`✅ Database schema up-to-date. (${count} products active)`);
+      }
     }
   } catch (err) {
     console.error('⚠️ Auto migration notice:', err.message);
