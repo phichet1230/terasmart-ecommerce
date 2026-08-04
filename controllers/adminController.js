@@ -449,19 +449,23 @@ exports.updateProduct = async (req, res) => {
   let { category_id, name, slug, short_description, description, image_url, images, spec_table, category_name, price, is_active, detail_image_1, detail_image_2, spec_headers, advice_list, accessories_list } = req.body;
   const admin_id = req.user.id;
 
+  const client = await pool.connect();
   try {
-    const prodCheck = await pool.query('SELECT id FROM products WHERE id = $1 AND deleted_at IS NULL', [productId]);
+    await client.query('BEGIN');
+
+    const prodCheck = await client.query('SELECT id FROM products WHERE id = $1 AND deleted_at IS NULL', [productId]);
     if (prodCheck.rows.length === 0) {
+      await client.query('ROLLBACK');
       return res.status(404).json({ status: 'error', message: 'ไม่พบสินค้าชิ้นนี้' });
     }
 
     // Resolve category_id from category_name if needed
     if (!category_id && category_name) {
-      const catResult = await pool.query('SELECT id FROM categories WHERE name = $1', [category_name]);
+      const catResult = await client.query('SELECT id FROM categories WHERE name = $1', [category_name]);
       if (catResult.rows.length > 0) {
         category_id = catResult.rows[0].id;
       } else {
-        const newCat = await pool.query('INSERT INTO categories (name) VALUES ($1) RETURNING id', [category_name]);
+        const newCat = await client.query('INSERT INTO categories (name) VALUES ($1) RETURNING id', [category_name]);
         category_id = newCat.rows[0].id;
       }
     }
@@ -480,7 +484,7 @@ exports.updateProduct = async (req, res) => {
     let accessoriesListJson = accessories_list !== undefined ? (typeof accessories_list === 'string' ? accessories_list : JSON.stringify(accessories_list)) : null;
 
     try {
-      await pool.query(
+      await client.query(
         `UPDATE products 
          SET category_id = COALESCE($1, category_id),
              name = COALESCE($2, name),
@@ -505,7 +509,7 @@ exports.updateProduct = async (req, res) => {
       );
     } catch (updateErr) {
       console.warn('Fallback basic product update notice:', updateErr.message);
-      await pool.query(
+      await client.query(
         `UPDATE products 
          SET category_id = COALESCE($1, category_id),
              name = COALESCE($2, name),
@@ -535,7 +539,7 @@ exports.updateProduct = async (req, res) => {
         const vPrice = parseFloat(v.price) > 0 ? parseFloat(v.price) : (!isNaN(targetPrice) ? targetPrice : 0);
         
         if (v.id) {
-          await pool.query(
+          await client.query(
             `UPDATE product_variants 
              SET variant_name = $1, sku = $2, price = $3, stock_quantity = $4 
              WHERE id = $5 AND product_id = $6`,
@@ -543,7 +547,7 @@ exports.updateProduct = async (req, res) => {
           );
           keptIds.push(v.id);
         } else {
-          const inserted = await pool.query(
+          const inserted = await client.query(
             `INSERT INTO product_variants (product_id, variant_name, sku, price, stock_quantity)
              VALUES ($1, $2, $3, $4, $5) RETURNING id`,
             [productId, v.variant_name || 'Standard', vSku, vPrice, parseInt(v.stock_quantity || 0)]
@@ -553,13 +557,13 @@ exports.updateProduct = async (req, res) => {
       }
 
       if (keptIds.length > 0) {
-        const existingVars = await pool.query('SELECT id FROM product_variants WHERE product_id = $1', [productId]);
+        const existingVars = await client.query('SELECT id FROM product_variants WHERE product_id = $1', [productId]);
         for (const ev of existingVars.rows) {
           if (!keptIds.includes(ev.id)) {
             try {
-              await pool.query('DELETE FROM product_variants WHERE id = $1', [ev.id]);
+              await client.query('DELETE FROM product_variants WHERE id = $1', [ev.id]);
             } catch (delErr) {
-              await pool.query('UPDATE product_variants SET stock_quantity = 0 WHERE id = $1', [ev.id]);
+              await client.query('UPDATE product_variants SET stock_quantity = 0 WHERE id = $1', [ev.id]);
             }
           }
         }
@@ -568,10 +572,10 @@ exports.updateProduct = async (req, res) => {
 
     // Ensure all variant prices match targetPrice if single variant or main price explicitly set
     if (!isNaN(targetPrice) && targetPrice > 0) {
-      const varCountRes = await pool.query('SELECT COUNT(*) FROM product_variants WHERE product_id = $1', [productId]);
+      const varCountRes = await client.query('SELECT COUNT(*) FROM product_variants WHERE product_id = $1', [productId]);
       const varCount = parseInt(varCountRes.rows[0]?.count || '0', 10);
       if (varCount <= 1 || price !== undefined) {
-        await pool.query(
+        await client.query(
           'UPDATE product_variants SET price = $1 WHERE product_id = $2',
           [targetPrice, productId]
         );
@@ -579,17 +583,21 @@ exports.updateProduct = async (req, res) => {
     }
 
     if (req.body.stock_quantity !== undefined && req.body.stock_quantity !== null) {
-      await pool.query(
+      await client.query(
         'UPDATE product_variants SET stock_quantity = $1 WHERE product_id = $2',
         [parseInt(req.body.stock_quantity), productId]
       );
     }
 
+    await client.query('COMMIT');
     await logAction(admin_id, `Updated product ID: ${productId}`, 'products', productId);
     res.json({ status: 'success', message: 'แก้ไขข้อมูลสินค้าสำเร็จ' });
   } catch (err) {
+    await client.query('ROLLBACK');
     console.error('Update product error:', err);
     res.status(500).json({ status: 'error', message: 'Internal Server Error: ' + err.message });
+  } finally {
+    client.release();
   }
 };
 
