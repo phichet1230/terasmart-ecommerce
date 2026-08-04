@@ -36,7 +36,8 @@ if (!fs.existsSync(path.join(__dirname, 'uploads'))) {
 }
 
 // Middleware
-app.use(express.json()); // อ่าน JSON จาก Body ได้
+app.use(express.json({ limit: '50mb' })); // อ่าน JSON จาก Body ได้สูงสุด 50MB (รองรับรูปภาพ Banner/สินค้าขนาดใหญ่)
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use(cookieParser()); // อ่าน Cookie ได้
 app.use(express.static(path.join(__dirname, 'dist'))); // ให้บริการไฟล์ HTML/CSS/JS หน้าบ้านที่คอมไพล์แล้วจาก React/Vite
 app.use('/uploads', express.static(path.join(__dirname, 'uploads'))); // ให้บริการไฟล์สลิปชำระเงินที่อัปโหลดเข้ามา

@@ -807,6 +807,9 @@ export default function AdminDashboard() {
         setIsAuthorized(false);
         throw new Error('เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่อีกครั้ง');
       }
+      if (response.status === 413) {
+        throw new Error('ขนาดรูปภาพหรือข้อมูลส่งออกใหญ่เกินไป กรุณาใช้ไฟล์ขนาดไม่เกิน 50MB');
+      }
       if (response.status === 404) {
         throw new Error('ไม่พบ API Endpoint หรือข้อมูลในระบบ');
       }
