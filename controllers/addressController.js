@@ -21,8 +21,8 @@ exports.addAddress = async (req, res) => {
   if (!receiver_name || !phone || !address_detail || !sub_district || !district || !province || !postal_code) {
     return res.status(400).json({ status: 'error', message: 'กรุณากรอกข้อมูลที่อยู่ให้ครบถ้วน' });
   }
-  if (!/^\d{10}$/.test(phone)) {
-    return res.status(400).json({ status: 'error', message: 'เบอร์โทรศัพท์ต้องเป็นตัวเลข 10 หลัก' });
+  if (!/^0\d{9}$/.test(phone)) {
+    return res.status(400).json({ status: 'error', message: 'เบอร์โทรศัพท์ต้องเป็นตัวเลข 10 หลัก ขึ้นต้นด้วย 0' });
   }
 
   try {
@@ -55,8 +55,8 @@ exports.updateAddress = async (req, res) => {
   if (!receiver_name || !phone || !address_detail || !sub_district || !district || !province || !postal_code) {
     return res.status(400).json({ status: 'error', message: 'กรุณากรอกข้อมูลที่อยู่ให้ครบถ้วน' });
   }
-  if (!/^\d{10}$/.test(phone)) {
-    return res.status(400).json({ status: 'error', message: 'เบอร์โทรศัพท์ต้องเป็นตัวเลข 10 หลัก' });
+  if (!/^0\d{9}$/.test(phone)) {
+    return res.status(400).json({ status: 'error', message: 'เบอร์โทรศัพท์ต้องเป็นตัวเลข 10 หลัก ขึ้นต้นด้วย 0' });
   }
 
   try {

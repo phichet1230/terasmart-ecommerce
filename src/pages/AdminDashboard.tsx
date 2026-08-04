@@ -2587,14 +2587,25 @@ export default function AdminDashboard() {
               </div>
 
               <div className="form-group" style={{ marginBottom: '14px' }}>
-                <label style={{ fontSize: '0.85rem', fontWeight: 600 }}>เบอร์โทรศัพท์ติดต่อ</label>
+                <label style={{ fontSize: '0.85rem', fontWeight: 600 }}>เบอร์โทรศัพท์ติดต่อ (10 หลัก)</label>
                 <input 
                   type="text" 
                   value={empPhone} 
-                  onChange={(e) => setEmpPhone(e.target.value)} 
-                  placeholder="เช่น 081-234-5678" 
-                  style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-input)', color: 'var(--text-main)', marginTop: '4px' }} 
+                  maxLength={10}
+                  onChange={(e) => setEmpPhone(formatPhoneNumber(e.target.value))} 
+                  placeholder="เช่น 0812345678" 
+                  style={{ width: '100%', padding: '10px', borderRadius: '8px', border: empPhone && empPhone.length > 0 && empPhone.length < 10 ? '1px solid #EF4444' : '1px solid var(--border-color)', backgroundColor: 'var(--bg-input)', color: 'var(--text-main)', marginTop: '4px' }} 
                 />
+                {empPhone.length > 0 && empPhone.length < 10 && (
+                  <small style={{ color: '#EF4444', fontSize: '0.78rem', display: 'block', marginTop: '4px' }}>
+                    ⚠️ ต้องเป็นตัวเลข 10 หลัก ขึ้นต้นด้วย 0 (ขณะนี้ {empPhone.length}/10 หลัก)
+                  </small>
+                )}
+                {empPhone.length === 10 && (
+                  <small style={{ color: '#10B981', fontSize: '0.78rem', display: 'block', marginTop: '4px' }}>
+                    ✓ เบอร์โทรศัพท์ถูกต้อง (10 หลัก)
+                  </small>
+                )}
               </div>
 
               <div className="form-group" style={{ marginBottom: '14px' }}>

@@ -811,6 +811,10 @@ export default function Storefront() {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!registerPhone || !/^0\d{9}$/.test(registerPhone)) {
+      showToast('กรุณากรอกเบอร์มือถือเป็นตัวเลข 10 หลัก ขึ้นต้นด้วย 0 (เช่น 0812345678)');
+      return;
+    }
     try {
       await apiRequest('/api/v1/auth/register', 'POST', {
         username: registerUsername,
@@ -840,6 +844,10 @@ export default function Storefront() {
 
   const updateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (editPhone && !/^0\d{9}$/.test(editPhone)) {
+      showToast('กรุณากรอกเบอร์มือถือเป็นตัวเลข 10 หลัก ขึ้นต้นด้วย 0 (เช่น 0812345678)');
+      return;
+    }
     try {
       const res = await apiRequest('/api/v1/auth/profile', 'PUT', {
         username: editUsername,

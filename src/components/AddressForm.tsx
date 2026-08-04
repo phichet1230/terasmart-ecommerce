@@ -156,9 +156,19 @@ export const AddressForm: React.FC<AddressFormProps> = ({
               }
               setPhone(cleaned.slice(0, 10));
             }}
-            style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-input)', color: 'var(--text-main)', marginTop: '4px' }}
+            style={{ width: '100%', padding: '10px', borderRadius: '8px', border: phone && phone.length > 0 && phone.length < 10 ? '1px solid #EF4444' : '1px solid var(--border-color)', backgroundColor: 'var(--bg-input)', color: 'var(--text-main)', marginTop: '4px' }}
             required
           />
+          {phone.length > 0 && phone.length < 10 && (
+            <small style={{ color: '#EF4444', fontSize: '0.75rem', display: 'block', marginTop: '4px' }}>
+              ⚠️ ต้องเป็นตัวเลข 10 หลัก ขึ้นต้นด้วย 0 (ขณะนี้ {phone.length}/10 หลัก)
+            </small>
+          )}
+          {phone.length === 10 && (
+            <small style={{ color: '#10B981', fontSize: '0.75rem', display: 'block', marginTop: '4px' }}>
+              ✓ เบอร์โทรศัพท์ถูกต้อง (10 หลัก)
+            </small>
+          )}
         </div>
       )}
 
