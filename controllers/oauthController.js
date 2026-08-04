@@ -136,17 +136,8 @@ exports.handleGoogleCallback = async (req, res) => {
     
     const tokenData = await tokenRes.json();
     if (tokenData.error) {
-      console.warn('Google Token exchange error:', tokenData.error_description);
-      // Seamless fallback for smooth developer/user testing
-      return await handleSocialLogin(
-        req,
-        res,
-        'google_id',
-        '100000000000000000001',
-        'demo.google@gmail.com',
-        'Google Member',
-        'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&h=150'
-      );
+      console.warn('Google Token exchange error:', tokenData.error, tokenData.error_description);
+      return res.redirect(getFrontendRedirectUrl(req, `error=${encodeURIComponent(`Google OAuth Failed: ${tokenData.error_description || tokenData.error}`)}`));
     }
 
     // 2. Fetch userinfo
@@ -157,7 +148,7 @@ exports.handleGoogleCallback = async (req, res) => {
 
     const phone = formatThaiPhone(profile.phone_number || profile.phone || null);
 
-    await handleSocialLogin(
+    return await handleSocialLogin(
       req,
       res, 
       'google_id', 
@@ -169,31 +160,15 @@ exports.handleGoogleCallback = async (req, res) => {
     );
   } catch (err) {
     console.error('Google OAuth Error:', err);
-    return await handleSocialLogin(
-      req,
-      res,
-      'google_id',
-      '100000000000000000001',
-      'demo.google@gmail.com',
-      'Google Member',
-      'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&h=150'
-    );
+    return res.redirect(getFrontendRedirectUrl(req, `error=${encodeURIComponent(`Google Error: ${err.message}`)}`));
   }
 };
 
 exports.handleLineCallback = async (req, res) => {
   const { code, error } = req.query;
   if (error || !code) {
-    console.log('[LINE OAuth Warning] Error or no code received, falling back to demo LINE user login.');
-    return await handleSocialLogin(
-      req,
-      res,
-      'line_id',
-      'U100000000000000000000000000000001',
-      'demo.line@line.me',
-      'LINE Member',
-      'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?auto=format&fit=crop&w=150&h=150'
-    );
+    console.log('[LINE OAuth Warning] Error or no code received:', error);
+    return res.redirect(getFrontendRedirectUrl(req, `error=${encodeURIComponent(`LINE Login Canceled: ${error || 'no_code'}`)}`));
   }
 
   try {
@@ -227,15 +202,7 @@ exports.handleLineCallback = async (req, res) => {
     const tokenData = await tokenRes.json();
     if (tokenData.error) {
       console.warn('LINE Token exchange warning:', tokenData.error_description || tokenData.error);
-      return await handleSocialLogin(
-        req,
-        res,
-        'line_id',
-        'U100000000000000000000000000000001',
-        'demo.line@line.me',
-        'LINE Member',
-        'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?auto=format&fit=crop&w=150&h=150'
-      );
+      return res.redirect(getFrontendRedirectUrl(req, `error=${encodeURIComponent(`LINE OAuth Failed: ${tokenData.error_description || tokenData.error}`)}`));
     }
 
     // Fetch profile from LINE User Profile API
@@ -253,8 +220,8 @@ exports.handleLineCallback = async (req, res) => {
       lineId = profileData.userId;
       name = profileData.displayName;
       picture = profileData.pictureUrl;
-    } catch (pErr) {
-      console.error('Fetch LINE profile error:', pErr);
+    } catch (pe) {
+      console.warn('LINE Profile fetch notice:', pe.message);
     }
 
     // Decode ID Token to get email if available
@@ -269,18 +236,19 @@ exports.handleLineCallback = async (req, res) => {
       }
     }
 
-    await handleSocialLogin(req, res, 'line_id', lineId, email, name, picture, phone);
-  } catch (err) {
-    console.error('LINE OAuth Error:', err);
     return await handleSocialLogin(
       req,
       res,
       'line_id',
-      'U100000000000000000000000000000001',
-      'demo.line@line.me',
-      'LINE Member',
-      'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?auto=format&fit=crop&w=150&h=150'
+      lineId || tokenData.id_token || `line_${Date.now()}`,
+      email,
+      name || 'LINE Member',
+      picture,
+      phone
     );
+  } catch (err) {
+    console.error('LINE OAuth Error:', err);
+    return res.redirect(getFrontendRedirectUrl(req, `error=${encodeURIComponent(`LINE Error: ${err.message}`)}`));
   }
 };
 
