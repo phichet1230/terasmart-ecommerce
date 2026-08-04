@@ -634,30 +634,24 @@ export default function Storefront() {
   };
 
   const fetchProducts = async () => {
-    let apiProds: Product[] = [];
     try {
-      const res = await apiRequest('/api/v1/products');
+      const res = await apiRequest('/api/v1/products?limit=100');
       if (res && res.data && Array.isArray(res.data) && res.data.length > 0) {
-        apiProds = res.data.map((p: any) => ({
+        const apiProds: Product[] = res.data.map((p: any) => ({
           ...p,
           price: p.min_price || p.price || '0',
           image_url: p.image_url || '/checkout_images/image 156.svg'
         }));
+        setProducts(apiProds);
+        localStorage.setItem('tera_storefront_products', JSON.stringify(apiProds));
+        return;
       }
     } catch (err: any) {
       console.warn('API fetch warning:', err);
     }
 
-    const mergedMap = new Map<number, Product>();
-    defaultStorefrontProducts.forEach(p => mergedMap.set(p.id, p));
-    apiProds.forEach(p => {
-      const existing = mergedMap.get(p.id);
-      mergedMap.set(p.id, { ...existing, ...p });
-    });
-
-    const finalList = Array.from(mergedMap.values());
-    setProducts(finalList);
-    localStorage.setItem('tera_storefront_products', JSON.stringify(finalList));
+    setProducts(defaultStorefrontProducts);
+    localStorage.setItem('tera_storefront_products', JSON.stringify(defaultStorefrontProducts));
   };
 
   const fetchCart = async () => {

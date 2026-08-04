@@ -3,7 +3,7 @@ const pool = require('../config/db');
 // 1. ดึงรายการสินค้าทั้งหมด พร้อมเงื่อนไขตัวกรองและการแบ่งหน้า (Pagination)
 exports.getAllProducts = async (req, res) => {
   try {
-    const { category, min_price, max_price, search, limit = 10, offset = 0 } = req.query;
+    const { category, min_price, max_price, search, limit = 100, offset = 0 } = req.query;
     
     // ค้นหาเฉพาะสินค้าที่ยังไม่ถูกลบ (deleted_at IS NULL) และเปิดใช้งานอยู่ (is_active = true)
     let query = `
