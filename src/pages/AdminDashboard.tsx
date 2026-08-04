@@ -938,6 +938,8 @@ export default function AdminDashboard() {
       if (res && res.data && Array.isArray(res.data) && res.data.length > 0) {
         setProducts(res.data);
         localStorage.setItem('tera_storefront_products', JSON.stringify(res.data));
+        localStorage.setItem('tera_sync_timestamp', Date.now().toString());
+        window.dispatchEvent(new Event('tera_products_updated'));
         return;
       }
     } catch (err) {
@@ -950,6 +952,9 @@ export default function AdminDashboard() {
       const res = await apiRequest('/api/v1/banners');
       if (res && res.data && Array.isArray(res.data)) {
         setBanners(res.data);
+        localStorage.setItem('tera_storefront_banners', JSON.stringify(res.data));
+        localStorage.setItem('tera_sync_timestamp', Date.now().toString());
+        window.dispatchEvent(new Event('tera_banners_updated'));
       }
     } catch (err) {
       console.warn('Admin load banners API notice:', err);

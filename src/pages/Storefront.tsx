@@ -315,45 +315,50 @@ export default function Storefront() {
     }
   };
 
-  const handleBannerUpdate = () => {
+  const syncStorefrontData = () => {
     fetchBanners();
-  };
-
-  const handleProductUpdate = () => {
-    const saved = localStorage.getItem('tera_storefront_products');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length >= defaultStorefrontProducts.length) {
-          setProducts(parsed);
-          setSelectedProduct((prev) => {
-            if (!prev) return null;
-            const found = parsed.find((p: any) => p.id === prev.id);
-            return found || prev;
-          });
-          return;
-        }
-      } catch (err) {
-        console.error('Error parsing updated products:', err);
-      }
-    }
-    localStorage.removeItem('tera_storefront_products');
-    setProducts(defaultStorefrontProducts);
+    fetchProducts();
+    fetchCategories();
   };
 
   useEffect(() => {
-    fetchBanners();
-    handleProductUpdate();
+    syncStorefrontData();
 
-    window.addEventListener('storage', handleBannerUpdate);
-    window.addEventListener('tera_banners_updated', handleBannerUpdate);
-    window.addEventListener('storage', handleProductUpdate);
-    window.addEventListener('tera_products_updated', handleProductUpdate);
+    // 1. Storage event listener for cross-tab instant updates
+    const handleStorageEvent = (e: StorageEvent) => {
+      if (
+        !e.key ||
+        e.key === 'tera_sync_timestamp' ||
+        e.key === 'tera_storefront_banners' ||
+        e.key === 'tera_storefront_products'
+      ) {
+        syncStorefrontData();
+      }
+    };
+
+    window.addEventListener('storage', handleStorageEvent);
+    window.addEventListener('tera_banners_updated', syncStorefrontData);
+    window.addEventListener('tera_products_updated', syncStorefrontData);
+
+    // 2. Tab Focus & Visibility Change (triggers immediately when user switches back to Storefront tab)
+    window.addEventListener('focus', syncStorefrontData);
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        syncStorefrontData();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // 3. Background periodic heartbeat auto-sync (every 8 seconds) for multi-device sync without F5
+    const autoSyncInterval = setInterval(syncStorefrontData, 8000);
+
     return () => {
-      window.removeEventListener('storage', handleBannerUpdate);
-      window.removeEventListener('tera_banners_updated', handleBannerUpdate);
-      window.removeEventListener('storage', handleProductUpdate);
-      window.removeEventListener('tera_products_updated', handleProductUpdate);
+      window.removeEventListener('storage', handleStorageEvent);
+      window.removeEventListener('tera_banners_updated', syncStorefrontData);
+      window.removeEventListener('tera_products_updated', syncStorefrontData);
+      window.removeEventListener('focus', syncStorefrontData);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      clearInterval(autoSyncInterval);
     };
   }, []);
 
