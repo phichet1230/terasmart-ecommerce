@@ -410,9 +410,10 @@ async function handleSocialLogin(req, res, idColumn, socialId, email, name, pict
     }
 
     // 4. Generate JWT
+    const jwtSecret = process.env.JWT_SECRET || 'tera_group_secret_key_2024';
     const token = jwt.sign(
       { id: user.id, role: user.role },
-      process.env.JWT_SECRET || 'terasmart_secret',
+      jwtSecret,
       { expiresIn: '1d' }
     );
 

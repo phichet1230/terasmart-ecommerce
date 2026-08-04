@@ -17,7 +17,8 @@ exports.protect = async (req, res, next) => {
 
   try {
     // 2. ยืนยันความถูกต้องของ Token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const jwtSecret = process.env.JWT_SECRET || 'tera_group_secret_key_2024';
+    const decoded = jwt.verify(token, jwtSecret);
     
     // 3. ตรวจสอบว่าผู้ใช้ยังมีตัวตนอยู่ในระบบหรือไม่
     const userResult = await pool.query('SELECT id, username, email, phone, role, account_status, profile_image FROM users WHERE id = $1', [decoded.id]);

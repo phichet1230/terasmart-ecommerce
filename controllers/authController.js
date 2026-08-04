@@ -76,9 +76,10 @@ exports.login = async (req, res) => {
     }
 
     // 3. สร้าง JWT Token (กุญแจยืนยันตัวตน)
+    const jwtSecret = process.env.JWT_SECRET || 'tera_group_secret_key_2024';
     const token = jwt.sign(
       { id: user.id, role: user.role },
-      process.env.JWT_SECRET,
+      jwtSecret,
       { expiresIn: '1d' } // อายุการใช้งาน 1 วัน
     );
 
