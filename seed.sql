@@ -1,15 +1,4 @@
--- 1. ลบข้อมูลเดิมอย่างปลอดภัย
-DELETE FROM order_items;
-DELETE FROM shipping;
-DELETE FROM payments;
-DELETE FROM orders;
-DELETE FROM cart_items;
-DELETE FROM carts;
-DELETE FROM product_variants;
-DELETE FROM products;
-DELETE FROM categories;
-
--- 2. หมวดหมู่สินค้า (Categories - ตรงกับ UI Sidebar)
+-- 1. หมวดหมู่สินค้า (Categories - ตรงกับ UI Sidebar)
 INSERT INTO categories (id, name) VALUES 
 (1, 'ปั้มน้ำบาดาล'),
 (2, 'แผงโซล่าเซลล์ & ระบบพลังงาน'),
@@ -17,7 +6,7 @@ INSERT INTO categories (id, name) VALUES
 (4, 'สมาร์ทไอที & อิเล็กทรอนิกส์')
 ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name;
 
--- 3. เพิ่มรายการสินค้า (Products)
+-- 2. เพิ่มรายการสินค้า (Products)
 INSERT INTO products (id, category_id, name, slug, description, short_description, is_active, image_url) VALUES 
 (1, 1, 'ปั๊มน้ำซับเมิร์สโซล่าเซลล์ Tera Solar Pump 4 นิ้ว (DC Brushless)', 'tera-solar-pump-4-inch', 'ปั๊มน้ำบาดาลโซล่าเซลล์ มอเตอร์ DC บรัสเลส ไร้แปรงถ่าน ประสิทธิภาพสูง ตัวเรือนสแตนเลส 304 ทนทาน รองรับแรงดันกว้าง', 'ปั๊มบาดาลโซล่าเซลล์ DC Brushless ประสิทธิภาพสูง', true, '/checkout_images/image 156.svg'),
 (2, 2, 'แผงโซล่าเซลล์ Tera Mono Half-Cut 550W (Tier 1 N-Type High Efficiency)', 'tera-mono-half-cut-550w', 'แผงโซล่าเซลล์ ชนิด โมโนคริสตัลไลน์ N-Type Half-Cut Cell กำลังผลิตสูงสุด 550W ผ่านการรับรองมาตรฐานสากล Tier 1', 'แผงโมโนคริสตัลไลน์ 550W Tier 1 N-Type', true, '/checkout_images/image 206.svg'),
@@ -36,7 +25,7 @@ ON CONFLICT (id) DO UPDATE SET
   is_active = EXCLUDED.is_active,
   image_url = EXCLUDED.image_url;
 
--- 4. เพิ่มรายการรุ่น/ตัวเลือกสินค้า (Product Variants)
+-- 3. เพิ่มรายการรุ่น/ตัวเลือกสินค้า (Product Variants)
 INSERT INTO product_variants (product_id, variant_name, sku, price, stock_quantity) VALUES 
 (1, 'รุ่น 1100W (1.5 HP) 80-210V', 'TERA-SI4VS-1100', 18500.00, 15),
 (1, 'รุ่น 1500W (2.0 HP) 110-250V', 'TERA-SI4VS-1500', 24900.00, 10),
@@ -59,9 +48,13 @@ INSERT INTO product_variants (product_id, variant_name, sku, price, stock_quanti
 (7, 'ความยาว 50 เมตร', 'TERA-CABLE-50M', 2250.00, 40),
 (7, 'ความยาว 100 เมตร', 'TERA-CABLE-100M', 4100.00, 20),
 
-(8, 'ความยาว 50 เมตร + กิ๊บล็อก 4 ตัว', 'TERA-ROPE-50M', 980.00, 35);
+(8, 'ความยาว 50 เมตร + กิ๊บล็อก 4 ตัว', 'TERA-ROPE-50M', 980.00, 35)
+ON CONFLICT (sku) DO UPDATE SET 
+  variant_name = EXCLUDED.variant_name,
+  price = EXCLUDED.price,
+  stock_quantity = EXCLUDED.stock_quantity;
 
--- 5. ปรับอัปเดตค่า Auto-Increment Sequence ให้สอดคล้องกับ ID ที่เพิ่มใหม่
+-- 4. ปรับอัปเดตค่า Auto-Increment Sequence ให้สอดคล้องกับ ID ที่เพิ่มใหม่
 SELECT setval('categories_id_seq', COALESCE((SELECT MAX(id) FROM categories), 1));
 SELECT setval('products_id_seq', COALESCE((SELECT MAX(id) FROM products), 1));
 SELECT setval('product_variants_id_seq', COALESCE((SELECT MAX(id) FROM product_variants), 1));

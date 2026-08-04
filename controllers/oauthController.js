@@ -336,130 +336,137 @@ exports.handleFacebookCallback = async (req, res) => {
 
 // Core login/signup handling function
 async function handleSocialLogin(req, res, idColumn, socialId, email, name, picture, phone = null) {
-  let emailNormalized = email ? email.trim().toLowerCase() : null;
-  if (!emailNormalized) {
-    const providerPrefix = idColumn.replace('_id', '');
-    emailNormalized = `${providerPrefix}_${socialId}@terasmartecom.temporary`;
-  }
-  
-  // 1. Check if user is already linked with this social ID
-  let userResult = await pool.query(`SELECT * FROM users WHERE ${idColumn} = $1`, [socialId]);
-  let user = userResult.rows[0];
-
-  if (!user && emailNormalized) {
-    // 2. Check if a user with this email exists
-    const emailResult = await pool.query('SELECT * FROM users WHERE email = $1', [emailNormalized]);
-    user = emailResult.rows[0];
+  try {
+    let emailNormalized = email ? email.trim().toLowerCase() : null;
+    if (!emailNormalized) {
+      const providerPrefix = idColumn.replace('_id', '');
+      emailNormalized = `${providerPrefix}_${socialId}@terasmartecom.temporary`;
+    }
     
-    if (user) {
-      // Link the social ID to existing account and sync profile info
-      await pool.query(
-        `UPDATE users 
-         SET ${idColumn} = $1, 
-             profile_image = COALESCE($2, profile_image),
-             phone = COALESCE(phone, $3),
-             updated_at = CURRENT_TIMESTAMP 
-         WHERE id = $4`, 
-        [socialId, picture, phone, user.id]
-      );
-      user[idColumn] = socialId;
-      if (picture && !user.profile_image) user.profile_image = picture;
-      if (phone && !user.phone) user.phone = phone;
-    }
-  }
+    // 1. Check if user is already linked with this social ID
+    let userResult = await pool.query(`SELECT * FROM users WHERE ${idColumn} = $1`, [socialId]);
+    let user = userResult.rows[0];
 
-  if (user) {
-    // Sync latest profile_image & phone if available from social account
-    let updateNeeded = false;
-    let newImg = user.profile_image;
-    let newPhone = user.phone;
-
-    if (picture && user.profile_image !== picture) {
-      newImg = picture;
-      updateNeeded = true;
-    }
-    if (phone && !user.phone) {
-      newPhone = phone;
-      updateNeeded = true;
-    }
-
-    if (updateNeeded) {
-      await pool.query(
-        `UPDATE users SET profile_image = $1, phone = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3`,
-        [newImg, newPhone, user.id]
-      );
-      user.profile_image = newImg;
-      user.phone = newPhone;
-    }
-  } else {
-    // 3. Register a new user
-    let cleanName = generateSafeUsername(name);
-    let username = cleanName;
-    let isUnique = false;
-    let attempt = 0;
-
-    while (!isUnique) {
-      const checkRes = await pool.query('SELECT id FROM users WHERE username = $1', [username]);
-      if (checkRes.rows.length === 0) {
-        isUnique = true;
-      } else {
-        attempt++;
-        const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-        let randomStr = '';
-        const len = attempt > 5 ? 6 : 3;
-        for (let i = 0; i < len; i++) {
-          randomStr += alphabet.charAt(Math.floor(Math.random() * alphabet.length));
-        }
-        username = `${cleanName} ${randomStr}`;
-      }
+    if (!user && emailNormalized) {
+      // 2. Check if a user with this email exists
+      const emailResult = await pool.query('SELECT * FROM users WHERE email = $1', [emailNormalized]);
+      user = emailResult.rows[0];
       
-      if (attempt > 15) {
-        const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-        let fallback = '';
-        for (let i = 0; i < 10; i++) {
-          fallback += alphabet.charAt(Math.floor(Math.random() * alphabet.length));
-        }
-        username = `${cleanName} ${fallback}`;
-        break;
+      if (user) {
+        // Link the social ID to existing account and sync profile info
+        await pool.query(
+          `UPDATE users 
+           SET ${idColumn} = $1, 
+               profile_image = COALESCE($2, profile_image),
+               phone = COALESCE(phone, $3),
+               updated_at = CURRENT_TIMESTAMP 
+           WHERE id = $4`, 
+          [socialId, picture, phone, user.id]
+        );
+        user[idColumn] = socialId;
+        if (picture && !user.profile_image) user.profile_image = picture;
+        if (phone && !user.phone) user.phone = phone;
       }
     }
 
-    const result = await pool.query(
-      `INSERT INTO users (username, email, ${idColumn}, profile_image, phone, role, account_status)
-       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
-      [username, emailNormalized, socialId, picture, phone, 'customer', 'active']
+    if (user) {
+      // Sync latest profile_image & phone if available from social account
+      let updateNeeded = false;
+      let newImg = user.profile_image;
+      let newPhone = user.phone;
+
+      if (picture && user.profile_image !== picture) {
+        newImg = picture;
+        updateNeeded = true;
+      }
+      if (phone && !user.phone) {
+        newPhone = phone;
+        updateNeeded = true;
+      }
+
+      if (updateNeeded) {
+        await pool.query(
+          `UPDATE users SET profile_image = $1, phone = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3`,
+          [newImg, newPhone, user.id]
+        );
+        user.profile_image = newImg;
+        user.phone = newPhone;
+      }
+    } else {
+      // 3. Register a new user
+      let cleanName = generateSafeUsername(name);
+      let username = cleanName;
+      let isUnique = false;
+      let attempt = 0;
+
+      while (!isUnique) {
+        const checkRes = await pool.query('SELECT id FROM users WHERE username = $1', [username]);
+        if (checkRes.rows.length === 0) {
+          isUnique = true;
+        } else {
+          attempt++;
+          const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+          let randomStr = '';
+          const len = attempt > 5 ? 6 : 3;
+          for (let i = 0; i < len; i++) {
+            randomStr += alphabet.charAt(Math.floor(Math.random() * alphabet.length));
+          }
+          username = `${cleanName} ${randomStr}`;
+        }
+        
+        if (attempt > 15) {
+          const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+          let fallback = '';
+          for (let i = 0; i < 10; i++) {
+            fallback += alphabet.charAt(Math.floor(Math.random() * alphabet.length));
+          }
+          username = `${cleanName} ${fallback}`;
+          break;
+        }
+      }
+
+      const result = await pool.query(
+        `INSERT INTO users (username, email, ${idColumn}, profile_image, phone, role, account_status)
+         VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+        [username, emailNormalized, socialId, picture, phone, 'customer', 'active']
+      );
+      user = result.rows[0];
+    }
+
+    // Check if suspended
+    if (user.account_status === 'suspended') {
+      return res.redirect(getFrontendRedirectUrl(req, `error=${encodeURIComponent('บัญชีผู้ใช้ถูกระงับ กรุณาติดต่อแอดมิน')}`));
+    }
+
+    // 4. Generate JWT
+    const token = jwt.sign(
+      { id: user.id, role: user.role },
+      process.env.JWT_SECRET || 'terasmart_secret',
+      { expiresIn: '1d' }
     );
-    user = result.rows[0];
+
+    // Set HTTP cookie if available
+    if (res.cookie) {
+      res.cookie('token', token, {
+        httpOnly: true,
+        secure: false,
+        maxAge: 24 * 60 * 60 * 1000
+      });
+    }
+
+    const userData = {
+      id: user.id,
+      username: user.username,
+      role: user.role,
+      email: user.email,
+      phone: user.phone,
+      profile_image: user.profile_image
+    };
+
+    // Redirect back to Storefront with token and user data
+    return res.redirect(getFrontendRedirectUrl(req, `token=${token}&user=${encodeURIComponent(JSON.stringify(userData))}`));
+  } catch (err) {
+    console.error('[Social Login Error]:', err);
+    return res.redirect(getFrontendRedirectUrl(req, `error=${encodeURIComponent('เกิดข้อผิดพลาดในการเข้าสู่ระบบด้วย Social Network กรุณาลองใหม่อีกครั้ง')}`));
   }
-
-  // Check if suspended
-  if (user.account_status === 'suspended') {
-    return res.redirect(getFrontendRedirectUrl(req, `error=${encodeURIComponent('บัญชีผู้ใช้ถูกระงับ กรุณาติดต่อแอดมิน')}`));
-  }
-
-  // 4. Generate JWT
-  const token = jwt.sign(
-    { id: user.id, role: user.role },
-    process.env.JWT_SECRET,
-    { expiresIn: '1d' }
-  );
-
-  // Set HTTP cookie
-  res.cookie('token', token, {
-    httpOnly: true,
-    secure: false,
-    maxAge: 24 * 60 * 60 * 1000
-  });
-
-  const userData = {
-    id: user.id,
-    username: user.username,
-    role: user.role,
-    email: user.email,
-    phone: user.phone,
-    profile_image: user.profile_image
-  };
-
-  // Redirect back to modern React Storefront (port 5173)
-  res.redirect(getFrontendRedirectUrl(req, `token=${token}&user=${encodeURIComponent(JSON.stringify(userData))}`));
 }

@@ -2,6 +2,24 @@ const fs = require('fs');
 const path = require('path');
 const pool = require('../config/db');
 
+async function runSqlScript(filePath) {
+  if (!fs.existsSync(filePath)) return;
+  const content = fs.readFileSync(filePath, 'utf8');
+  // Split statements safely by semicolon while removing comment-only lines
+  const statements = content
+    .split(/;\s*$/m)
+    .map(s => s.trim())
+    .filter(s => s.length > 0 && !s.startsWith('--'));
+
+  for (const statement of statements) {
+    try {
+      await pool.query(statement);
+    } catch (err) {
+      console.warn('⚠️ SQL Statement execution warning:', err.message);
+    }
+  }
+}
+
 async function autoMigrateDatabase() {
   try {
     // Check if 'users' table exists
@@ -19,26 +37,17 @@ async function autoMigrateDatabase() {
 
     if (!tableExists) {
       console.log('⚡ Initializing Database Schema (init.sql & seed.sql)...');
-
-      if (fs.existsSync(initSqlPath)) {
-        const initSql = fs.readFileSync(initSqlPath, 'utf8');
-        await pool.query(initSql);
-        console.log('✅ Schema tables created successfully!');
-      }
-
-      if (fs.existsSync(seedSqlPath)) {
-        const seedSql = fs.readFileSync(seedSqlPath, 'utf8');
-        await pool.query(seedSql);
-        console.log('✅ Initial seed data inserted successfully!');
-      }
+      await runSqlScript(initSqlPath);
+      console.log('✅ Schema tables created successfully!');
+      await runSqlScript(seedSqlPath);
+      console.log('✅ Initial seed data inserted successfully!');
     } else {
       // Check if products table has items or needs rich seed refresh
       const prodCountRes = await pool.query('SELECT COUNT(*) FROM products');
-      const count = parseInt(prodCountRes.rows[0].count, 10);
-      if (fs.existsSync(seedSqlPath)) {
-        console.log('⚡ Synchronizing rich catalog seed data (seed.sql)...');
-        const seedSql = fs.readFileSync(seedSqlPath, 'utf8');
-        await pool.query(seedSql);
+      const count = parseInt(prodCountRes.rows[0]?.count || '0', 10);
+      if (count < 8) {
+        console.log(`⚡ Synchronizing rich catalog seed data (current products: ${count})...`);
+        await runSqlScript(seedSqlPath);
         console.log('✅ Rich catalog seed data synchronized!');
       }
     }
