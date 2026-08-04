@@ -578,32 +578,33 @@ export default function Storefront() {
   ];
 
   const fetchProducts = async () => {
-    const savedStr = localStorage.getItem('tera_storefront_products');
-    let localSaved: Product[] = [];
-    if (savedStr) {
-      try { localSaved = JSON.parse(savedStr); } catch (e) {}
-    }
-
     try {
       const res = await apiRequest('/api/v1/products');
-      const mappedProducts = (res.data || []).map((p: any) => {
-        const localMatch = localSaved.find((sp: Product) => sp.id === p.id || sp.slug === p.slug);
-        return {
+      if (res && res.data && Array.isArray(res.data) && res.data.length > 0) {
+        const mappedProducts = res.data.map((p: any) => ({
           ...p,
-          price: p.min_price || '0',
-          ...(localMatch || {})
-        };
-      });
-      const localOnly = localSaved.filter((sp: Product) => !mappedProducts.some((p: any) => p.id === sp.id));
-      const mergedList = [...mappedProducts, ...localOnly];
-      const finalList = mergedList.length > 0 ? mergedList : (localSaved.length > 0 ? localSaved : defaultStorefrontProducts);
-      setProducts(finalList);
-      localStorage.setItem('tera_storefront_products', JSON.stringify(finalList));
+          price: p.min_price || p.price || '0',
+          image_url: p.image_url || '/checkout_images/image 156.svg'
+        }));
+        setProducts(mappedProducts);
+        localStorage.setItem('tera_storefront_products', JSON.stringify(mappedProducts));
+        return;
+      }
     } catch (err: any) {
-      const fallbackList = localSaved.length > 0 ? localSaved : defaultStorefrontProducts;
-      setProducts(fallbackList);
-      localStorage.setItem('tera_storefront_products', JSON.stringify(fallbackList));
+      console.warn('Failed fetching API products, using fallback:', err);
     }
+
+    const savedStr = localStorage.getItem('tera_storefront_products');
+    if (savedStr) {
+      try {
+        const localSaved = JSON.parse(savedStr);
+        if (localSaved.length > 0) {
+          setProducts(localSaved);
+          return;
+        }
+      } catch (e) {}
+    }
+    setProducts(defaultStorefrontProducts);
   };
 
   const fetchCart = async () => {
