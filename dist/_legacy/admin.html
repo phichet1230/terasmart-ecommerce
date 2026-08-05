@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TeraSmart - Admin Backend Dashboard</title>
+  <!-- Google Fonts: Inter & Sarabun -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="admin.css">
+</head>
+<body>
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- Header -->
+  <header class="main-header">
+    <div class="header-container">
+      <div class="logo-area" onclick="window.location.href='/'">
+        <svg class="logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+        </svg>
+        <span class="logo-text">Tera<span class="logo-highlight">Smart</span> <span class="admin-badge">Admin</span></span>
+      </div>
+
+      <nav class="main-nav">
+        <button id="admin-nav-dashboard" class="nav-btn active" onclick="admin.switchTab('dashboard')">สรุปยอดขาย</button>
+        <button id="admin-nav-orders" class="nav-btn" onclick="admin.switchTab('orders')">จัดการออเดอร์</button>
+        <button id="admin-nav-inventory" class="nav-btn" onclick="admin.switchTab('inventory')">คลังสินค้า</button>
+        <button id="admin-nav-customers" class="nav-btn" onclick="admin.switchTab('customers')">จัดการสมาชิก</button>
+        <button class="nav-btn logout-nav-btn" onclick="admin.logout()">ออกจากระบบ</button>
+      </nav>
+
+      <div class="auth-status-area" id="admin-header-status">
+        <!-- populated by JS -->
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="main-content">
+    
+    <!-- DASHBOARD VIEW -->
+    <section id="admin-tab-dashboard" class="tab-section active">
+      <div class="dashboard-stats-grid">
+        <div class="stat-card">
+          <div class="stat-title">ยอดขายสะสมสุทธิ</div>
+          <div class="stat-value"><span id="metric-total-sales">0.00</span> ฿</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-title">ออเดอร์ชำระเงินสำเร็จ</div>
+          <div class="stat-value"><span id="metric-total-orders">0</span> รายการ</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-title">จำนวนสินค้าออนไลน์</div>
+          <div class="stat-value"><span id="metric-active-products">0</span> รายการ</div>
+        </div>
+      </div>
+
+      <div class="dashboard-grid">
+        <!-- Sales Graphs -->
+        <div class="dashboard-card">
+          <h3>แนวโน้มยอดขายรายวัน (30 วันล่าสุด)</h3>
+          <div class="chart-wrapper">
+            <canvas id="sales-daily-chart" height="240"></canvas>
+          </div>
+        </div>
+        
+        <div class="dashboard-card">
+          <h3>สรุปยอดขายรายเดือน</h3>
+          <div class="chart-wrapper">
+            <canvas id="sales-monthly-chart" height="240"></canvas>
+          </div>
+        </div>
+
+        <!-- Inventory Warning Box -->
+        <div class="dashboard-card full-width">
+          <h3>การแจ้งเตือนสต็อกสินค้าใกล้หมด (Low Stock Warning)</h3>
+          <table class="admin-table margin-top">
+            <thead>
+              <tr>
+                <th>สินค้าหลัก</th>
+                <th>ตัวเลือก (Variant)</th>
+                <th>SKU รหัส</th>
+                <th>ราคาขาย</th>
+                <th>สต็อกปัจจุบัน</th>
+                <th>สถานะแจ้งเตือน</th>
+              </tr>
+            </thead>
+            <tbody id="low-stock-warnings-table">
+              <!-- Dynamically populated -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ORDERS MANAGEMENT VIEW -->
+    <section id="admin-tab-orders" class="tab-section">
+      <div class="section-title-wrapper flex-row">
+        <h2>ระบบจัดการคำสั่งซื้อ (Order Management)</h2>
+        <div class="filter-controls">
+          <select id="order-status-filter" onchange="admin.handleOrderFilter()">
+            <option value="">กรองออเดอร์ทั้งหมด</option>
+            <option value="pending">รอยืนยันชำระเงิน (Pending)</option>
+            <option value="paid">ชำระเงินแล้ว (Paid)</option>
+            <option value="shipping">กำลังจัดส่ง (Shipping)</option>
+            <option value="delivered">จัดส่งสำเร็จ (Delivered)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="dashboard-card">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>รหัสออเดอร์</th>
+              <th>ชื่อลูกค้า / บัญชี</th>
+              <th>วันที่สั่งซื้อ</th>
+              <th>ยอดชำระเงิน</th>
+              <th>การชำระเงิน</th>
+              <th>สถานะหลัก</th>
+              <th>หลักฐาน / การดำเนินการ</th>
+            </tr>
+          </thead>
+          <tbody id="admin-orders-table">
+            <!-- Dynamically populated -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- SHIPMENT FULFILLMENT MODAL -->
+    <div id="shipment-modal" class="modal">
+      <div class="modal-content admin-modal-card">
+        <button class="close-btn" onclick="admin.closeShipmentModal()">&times;</button>
+        <h3>ระบุเลขพัสดุและจัดส่งสินค้า</h3>
+        <form onsubmit="admin.submitShipment(event)" class="margin-top">
+          <div class="form-group form-group-margin">
+            <label for="ship-courier">บริษัทผู้ให้บริการจัดส่ง (Courier Name)</label>
+            <select id="ship-courier" required>
+              <option value="Kerry Express">Kerry Express</option>
+              <option value="Flash Express">Flash Express</option>
+              <option value="J&T Express">J&T Express</option>
+              <option value="ไปรษณีย์ไทย (EMS)">ไปรษณีย์ไทย (EMS)</option>
+              <option value="DHL Express">DHL Express</option>
+            </select>
+          </div>
+          <div class="form-group form-group-margin">
+            <label for="ship-tracking">หมายเลขพัสดุ (Tracking Number)</label>
+            <input type="text" id="ship-tracking" placeholder="ป้อนหมายเลขพัสดุ เช่น TH012345678" required>
+          </div>
+          <button type="submit" class="btn btn-primary">ยืนยันจัดส่งสินค้า</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- INVENTORY CRUD VIEW -->
+    <section id="admin-tab-inventory" class="tab-section">
+      <div class="section-title-wrapper flex-row">
+        <h2>ระบบจัดการคลังสินค้า (Inventory CRUD)</h2>
+        <button class="btn btn-primary btn-auto" onclick="admin.showAddProductModal()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="icon-sm">
+            <line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+          เพิ่มสินค้าใหม่
+        </button>
+      </div>
+
+      <div class="dashboard-card">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>รหัสสินค้า</th>
+              <th>ชื่อสินค้าหลัก</th>
+              <th>Slug หน้าเว็บ</th>
+              <th>หมวดหมู่</th>
+              <th>ตัวเลือกสินค้า & สต็อกคงเหลือ</th>
+              <th>สถานะเปิดใช้งาน</th>
+              <th>การดำเนินการ</th>
+            </tr>
+          </thead>
+          <tbody id="admin-products-table">
+            <!-- Dynamically populated -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ADD PRODUCT MODAL -->
+    <div id="add-product-modal" class="modal">
+      <div class="modal-content admin-modal-card-lg">
+        <button class="close-btn" onclick="admin.closeAddProductModal()">&times;</button>
+        <h3>เพิ่มสินค้าและตัวเลือกในคลัง</h3>
+        <form onsubmit="admin.submitNewProduct(event)" class="margin-top">
+          <div class="form-grid">
+            <div class="form-group col-6">
+              <label for="prod-name">ชื่อสินค้า</label>
+              <input type="text" id="prod-name" placeholder="เช่น Tera Watch v3" required>
+            </div>
+            <div class="form-group col-6">
+              <label for="prod-slug">Slug (URL ภาษาอังกฤษ ห้ามซ้ำ)</label>
+              <input type="text" id="prod-slug" placeholder="เช่น tera-watch-v3" required>
+            </div>
+            <div class="form-group col-6">
+              <label for="prod-category">หมวดหมู่สินค้า</label>
+              <select id="prod-category" required>
+                <!-- populated by JS -->
+              </select>
+            </div>
+            <div class="form-group col-6">
+              <label for="prod-short-desc">รายละเอียดแบบย่อ</label>
+              <input type="text" id="prod-short-desc" placeholder="เช่น นาฬิการุ่นท็อปจากเทอรากรุ๊ป">
+            </div>
+            <div class="form-group col-12">
+              <label for="prod-desc">รายละเอียดสเปกและข้อมูลเต็ม (Technical Specifications)</label>
+              <textarea id="prod-desc" rows="4" placeholder="กรอกสเปกเชิงเทคนิคของสินค้า..."></textarea>
+            </div>
+          </div>
+          
+          <div class="variants-section-box margin-top">
+            <div class="flex-row">
+              <h4>ตัวเลือกสินค้า (Variants) อย่างน้อย 1 รายการ</h4>
+              <button type="button" class="btn btn-secondary btn-sm btn-auto" onclick="admin.addVariantRow()">+ เพิ่มตัวเลือกย่อย</button>
+            </div>
+            <div id="variants-form-rows" class="variants-form-rows">
+              <!-- Dynamically added rows -->
+            </div>
+          </div>
+
+          <div class="form-actions margin-top">
+            <button type="button" class="btn btn-secondary" onclick="admin.closeAddProductModal()">ยกเลิก</button>
+            <button type="submit" class="btn btn-primary">บันทึกสินค้าใหม่</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- EDIT VARIANT STOCK MODAL -->
+    <div id="edit-variant-modal" class="modal">
+      <div class="modal-content admin-modal-card">
+        <button class="close-btn" onclick="admin.closeEditVariantModal()">&times;</button>
+        <h3>แก้ไขราคาและสต็อกตัวเลือกสินค้า</h3>
+        <form onsubmit="admin.submitEditVariant(event)" class="margin-top">
+          <div class="form-group form-group-margin">
+            <label for="edit-var-name">ชื่อตัวเลือก (Variant Name)</label>
+            <input type="text" id="edit-var-name" required>
+          </div>
+          <div class="form-group form-group-margin">
+            <label for="edit-var-sku">SKU รหัสสินค้า</label>
+            <input type="text" id="edit-var-sku" required>
+          </div>
+          <div class="form-group form-group-margin">
+            <label for="edit-var-price">ราคาสินค้า (Decimal)</label>
+            <input type="number" id="edit-var-price" step="0.01" min="0" required>
+          </div>
+          <div class="form-group form-group-margin">
+            <label for="edit-var-stock">สต็อกสินค้าคงเหลือ</label>
+            <input type="number" id="edit-var-stock" min="0" required>
+          </div>
+          <button type="submit" class="btn btn-primary">บันทึกตัวเลือกสินค้า</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- CUSTOMERS MANAGEMENT VIEW -->
+    <section id="admin-tab-customers" class="tab-section">
+      <div class="section-title-wrapper">
+        <h2>ระบบจัดการสมาชิกและผู้ใช้งาน (Customer Management)</h2>
+      </div>
+
+      <div class="dashboard-card">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>รหัสผู้ใช้ ID</th>
+              <th>ชื่อบัญชีสมาชิก</th>
+              <th>อีเมล</th>
+              <th>เบอร์โทรศัพท์</th>
+              <th>จำนวนสั่งซื้อ</th>
+              <th>ยอดซื้อสะสม</th>
+              <th>วันที่สมัคร</th>
+              <th>สถานะบัญชี</th>
+              <th>การจัดการสิทธิ์</th>
+            </tr>
+          </thead>
+          <tbody id="admin-customers-table">
+            <!-- Dynamically populated -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- CUSTOMER ORDER HISTORY DRAWER/MODAL -->
+    <div id="customer-orders-modal" class="modal">
+      <div class="modal-content admin-modal-card-lg">
+        <button class="close-btn" onclick="admin.closeCustomerOrdersModal()">&times;</button>
+        <h3>ประวัติสั่งซื้อของลูกค้า: <span id="cust-orders-username">---</span></h3>
+        <div class="margin-top" id="cust-orders-modal-body" style="max-height: 60vh; overflow-y: auto;">
+          <!-- Dynamically populated orders -->
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIP PREVIEW MODAL -->
+    <div id="slip-preview-modal" class="modal">
+      <div class="modal-content admin-modal-card" style="max-width: 450px;">
+        <button class="close-btn" onclick="admin.closeSlipPreviewModal()">&times;</button>
+        <h3>สลิปหลักฐานการชำระเงิน</h3>
+        <div class="margin-top" style="text-align: center;">
+          <img id="slip-preview-modal-img" src="" alt="Slip Image" style="max-width: 100%; border-radius: 8px; border: 1px solid var(--border-color)">
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="main-footer">
+    <div class="footer-container">
+      <p>&copy; 2026 Tera Group Co., Ltd. Admin Integration Dashboard v6 (RBAC Secured)</p>
+    </div>
+  </footer>
+
+  <!-- Chart.js from CDN (Pure Canvas draw handles it if CDN fails, but CDN gives standard aesthetic) -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Admin Controller script -->
+  <script src="admin.js"></script>
+</body>
+</html>
