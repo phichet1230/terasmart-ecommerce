@@ -694,9 +694,11 @@ export default function Storefront() {
   const fetchOrders = async () => {
     try {
       const res = await apiRequest('/api/v1/orders');
-      setOrders(res.data);
+      if (res && res.data) {
+        setOrders(res.data);
+      }
     } catch (err: any) {
-      console.error(err);
+      console.warn('Fetch orders notice:', err);
     }
   };
 

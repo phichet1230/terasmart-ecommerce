@@ -291,7 +291,11 @@ const buildTrackingUrl = (courierName, trackingNumber, customUrl) => {
 exports.getMyOrders = async (req, res) => {
   const user_id = req.user.id;
   try {
-    await releaseExpiredOrders();
+    try {
+      await releaseExpiredOrders();
+    } catch (expErr) {
+      console.warn('releaseExpiredOrders warning:', expErr);
+    }
     const ordersResult = await pool.query(
       `SELECT o.*, 
               s.tracking_number, s.courier_name, s.tracking_url as custom_tracking_url, s.status as shipping_status,
@@ -332,7 +336,11 @@ exports.getOrderDetail = async (req, res) => {
   const order_id = req.params.id;
 
   try {
-    await releaseExpiredOrders();
+    try {
+      await releaseExpiredOrders();
+    } catch (expErr) {
+      console.warn('releaseExpiredOrders warning:', expErr);
+    }
     // ดึงออเดอร์หลัก
     const orderResult = await pool.query(
       `SELECT o.*, 
