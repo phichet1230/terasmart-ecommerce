@@ -325,8 +325,8 @@ exports.getMyOrders = async (req, res) => {
 
     res.json({ status: 'success', data: orders });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ status: 'error', message: 'Internal Server Error' });
+    console.error('getMyOrders error:', err);
+    res.status(500).json({ status: 'error', message: err.message || 'Internal Server Error' });
   }
 };
 
