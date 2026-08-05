@@ -140,10 +140,18 @@ async function autoMigrateDatabase() {
         total_price DECIMAL(10, 2),
         tax_amount DECIMAL(10, 2),
         status VARCHAR(50) DEFAULT 'pending',
+        cancel_reason TEXT,
+        cancelled_at TIMESTAMP,
         is_email_sent BOOLEAN DEFAULT FALSE,
         address_id INTEGER REFERENCES addresses(id),
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
+    `);
+
+    // Ensure orders table columns exist
+    await pool.query(`
+      ALTER TABLE orders ADD COLUMN IF NOT EXISTS cancel_reason TEXT;
+      ALTER TABLE orders ADD COLUMN IF NOT EXISTS cancelled_at TIMESTAMP;
     `);
 
     await pool.query(`
