@@ -669,10 +669,21 @@ export default function Storefront() {
   const fetchAddresses = async () => {
     try {
       const res = await apiRequest('/api/v1/addresses');
-      setAddresses(res.data);
-      const defaultAddr = res.data.find((a: Address) => a.is_default);
-      if (defaultAddr) {
-        setSelectedAddressId(defaultAddr.id);
+      if (res && res.data && Array.isArray(res.data)) {
+        setAddresses(res.data);
+        const chosenAddr = res.data.find((a: Address) => a.is_default) || res.data[0];
+        if (chosenAddr) {
+          setSelectedAddressId(chosenAddr.id);
+          setReceiverName(chosenAddr.receiver_name || user?.username || '');
+          setNewAddress({
+            province: chosenAddr.province || '',
+            district: chosenAddr.district || '',
+            subdistrict: chosenAddr.sub_district || (chosenAddr as any).subdistrict || '',
+            postalCode: chosenAddr.postal_code || (chosenAddr as any).postalCode || '',
+            detail: chosenAddr.address_detail || chosenAddr.detail || '',
+            phone: chosenAddr.phone || ''
+          });
+        }
       }
     } catch (err: any) {
       console.error(err);
@@ -1253,8 +1264,42 @@ export default function Storefront() {
   };
 
   const submitOrder = async () => {
-    if (!selectedAddressId) {
-      showToast('กรุณาเลือกที่อยู่สำหรับจัดส่ง');
+    let addressIdToUse = selectedAddressId;
+
+    // Auto-create address if selectedAddressId is null but form inputs are filled!
+    if (!addressIdToUse) {
+      if (
+        receiverName.trim() &&
+        newAddress.detail.trim() &&
+        newAddress.province.trim() &&
+        newAddress.district.trim()
+      ) {
+        try {
+          const phoneNum = newAddress.phone && /^0\d{9}$/.test(newAddress.phone) ? newAddress.phone : '0812345678';
+          const addrPayload = {
+            receiver_name: receiverName,
+            phone: phoneNum,
+            address_detail: newAddress.detail,
+            province: newAddress.province,
+            district: newAddress.district,
+            sub_district: newAddress.subdistrict || newAddress.district,
+            postal_code: newAddress.postalCode || '10000',
+            is_default: true
+          };
+          const createdRes = await apiRequest('/api/v1/addresses', 'POST', addrPayload);
+          if (createdRes && createdRes.data) {
+            addressIdToUse = createdRes.data.id;
+            setSelectedAddressId(addressIdToUse);
+            fetchAddresses();
+          }
+        } catch (addrErr: any) {
+          console.warn('Auto create address on submit warning:', addrErr);
+        }
+      }
+    }
+
+    if (!addressIdToUse) {
+      showToast('กรุณากรอกและเลือกที่อยู่สำหรับจัดส่งให้ครบถ้วน');
       return;
     }
 
@@ -1273,7 +1318,7 @@ export default function Storefront() {
 
     try {
       const payload: any = {
-        address_id: selectedAddressId
+        address_id: addressIdToUse
       };
 
       if (checkoutDirectItem) {
@@ -3298,7 +3343,7 @@ export default function Storefront() {
                           <span style={{ fontSize: '16px', fontWeight: 600, color: '#000000' }}>ข้อมูลและที่อยู่สำหรับจัดส่ง</span>
                         </div>
                         <span 
-                          onClick={() => {
+                          onClick={async () => {
                             const defaultAddr = addresses.find(a => a.is_default) || addresses[0];
                             if (defaultAddr) {
                               setReceiverName(defaultAddr.receiver_name || user?.username || '');
@@ -3313,15 +3358,44 @@ export default function Storefront() {
                               setSelectedAddressId(defaultAddr.id);
                               showToast('ดึงข้อมูลที่อยู่ปัจจุบันเรียบร้อยแล้ว');
                             } else if (user) {
-                              setReceiverName(user.username || '');
+                              const receiver = receiverName || user.username || 'ผู้รับสินค้า';
+                              const phoneNum = newAddress.phone && /^0\d{9}$/.test(newAddress.phone) ? newAddress.phone : '0812345678';
+                              const detailAddr = newAddress.detail || '123 ม.1 ถ.เพชรเกษม';
+                              const prov = newAddress.province || 'สตูล';
+                              const dist = newAddress.district || 'ท่าแพ';
+                              const subdist = newAddress.subdistrict || 'ท่าแพ';
+                              const zip = newAddress.postalCode || '91150';
+
+                              setReceiverName(receiver);
                               setNewAddress({
-                                province: 'สตูล',
-                                district: 'ท่าแพ',
-                                subdistrict: 'ท่าแพ',
-                                postalCode: '91150',
-                                detail: '123 ม.1 ถ.เพชรเกษม',
-                                phone: '0812345678'
+                                province: prov,
+                                district: dist,
+                                subdistrict: subdist,
+                                postalCode: zip,
+                                detail: detailAddr,
+                                phone: phoneNum
                               });
+
+                              try {
+                                const createdRes = await apiRequest('/api/v1/addresses', 'POST', {
+                                  receiver_name: receiver,
+                                  phone: phoneNum,
+                                  address_detail: detailAddr,
+                                  province: prov,
+                                  district: dist,
+                                  sub_district: subdist,
+                                  postal_code: zip,
+                                  is_default: true
+                                });
+                                if (createdRes && createdRes.data) {
+                                  setSelectedAddressId(createdRes.data.id);
+                                  fetchAddresses();
+                                  showToast('ดึงและบันทึกข้อมูลที่อยู่เรียบร้อยแล้ว');
+                                  return;
+                                }
+                              } catch (e) {
+                                console.warn('Auto create address notice:', e);
+                              }
                               showToast('ดึงข้อมูลที่อยู่ผู้ใช้เรียบร้อยแล้ว');
                             } else {
                               showToast('ไม่พบข้อมูลที่อยู่ปัจจุบัน');
