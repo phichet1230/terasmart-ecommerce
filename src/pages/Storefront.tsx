@@ -557,7 +557,11 @@ export default function Storefront() {
           setUser(null);
           throw new Error('เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่อีกครั้ง');
         }
-        throw new Error(data.message || `ไม่สามารถทำรายการได้ (รหัส: ${response.status})`);
+        let errMsg = data.message || `ไม่สามารถทำรายการได้ (รหัส: ${response.status})`;
+        if (typeof errMsg === 'string' && errMsg.includes('Internal Server Error')) {
+          errMsg = 'ระบบขัดข้องชั่วคราวขณะประมวลผล กรุณาลองใหม่อีกครั้ง';
+        }
+        throw new Error(errMsg);
       }
       if (method !== 'GET') {
         localStorage.setItem('tera_sync_timestamp', Date.now().toString());
@@ -1360,6 +1364,16 @@ export default function Storefront() {
     }
   };
 
+  const safeParseUtcDate = (dateVal: any) => {
+    if (!dateVal) return new Date();
+    if (dateVal instanceof Date) return dateVal;
+    let str = String(dateVal);
+    if (!str.endsWith('Z') && !str.includes('+')) {
+      str = str.replace(' ', 'T') + 'Z';
+    }
+    return new Date(str);
+  };
+
   const resumeOrderPayment = async (ord: Order) => {
     setCreatedOrderId(ord.id);
     setCreatedOrderTotal(parseFloat(ord.total_price));
@@ -1367,8 +1381,8 @@ export default function Storefront() {
     setSlipPreview(null);
     setVerifiedPaymentInfo(null);
     
-    // Calculate real remaining seconds based on when order was created! (5 mins = 300s)
-    const createdAtMs = ord.created_at ? new Date(ord.created_at).getTime() : Date.now();
+    // Calculate real remaining seconds based on when order was created in UTC! (5 mins = 300s)
+    const createdAtMs = ord.created_at ? safeParseUtcDate(ord.created_at).getTime() : Date.now();
     const elapsedSec = Math.floor((Date.now() - createdAtMs) / 1000);
     const remainingSec = Math.max(300 - elapsedSec, 0);
 

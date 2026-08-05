@@ -151,7 +151,8 @@ async function autoMigrateDatabase() {
     // Ensure orders table columns exist
     await pool.query(`
       ALTER TABLE orders ADD COLUMN IF NOT EXISTS cancel_reason TEXT;
-      ALTER TABLE orders ADD COLUMN IF NOT EXISTS cancelled_at TIMESTAMP;
+      ALTER TABLE orders ADD COLUMN IF NOT EXISTS cancelled_at TIMESTAMPTZ;
+      ALTER TABLE orders ALTER COLUMN created_at TYPE TIMESTAMPTZ USING created_at AT TIME ZONE 'UTC';
     `);
 
     await pool.query(`

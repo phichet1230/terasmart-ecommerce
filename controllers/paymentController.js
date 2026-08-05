@@ -4,6 +4,16 @@ const fs = require('fs');
 const { releaseExpiredOrders } = require('./orderController');
 const { pdpaMask, parseEMVCoQR, validateUploadedFile, buildISO20022Message } = require('../utils/bankSlipStandards');
 
+const parseUtcDate = (dateVal) => {
+  if (!dateVal) return new Date();
+  if (dateVal instanceof Date) return dateVal;
+  let str = String(dateVal);
+  if (!str.endsWith('Z') && !str.includes('+')) {
+    str = str.replace(' ', 'T') + 'Z';
+  }
+  return new Date(str);
+};
+
 // 1. สร้าง Dynamic QR Code (PromptPay) และตั้งค่าหมดอายุ 5 นาที
 exports.generateQR = async (req, res) => {
   const user_id = req.user.id;
@@ -18,7 +28,11 @@ exports.generateQR = async (req, res) => {
   }
 
   try {
-    await releaseExpiredOrders();
+    try {
+      await releaseExpiredOrders();
+    } catch (e) {
+      console.warn('releaseExpiredOrders warning:', e);
+    }
 
     // ดึงรายละเอียดออเดอร์เพื่อเช็กยอดเงินและเจ้าของ
     const orderResult = await pool.query(
@@ -33,7 +47,8 @@ exports.generateQR = async (req, res) => {
     const order = orderResult.rows[0];
 
     // ตรวจสอบเวลากดสั่งซื้อ หากเกิน 5 นาที (300 วินาที) ให้ยกเลิกคำสั่งซื้อทันทีและไม่ออก QR Code
-    const elapsedMs = Date.now() - new Date(order.created_at).getTime();
+    const createdTime = parseUtcDate(order.created_at).getTime();
+    const elapsedMs = Date.now() - createdTime;
     if (order.status === 'cancelled' || elapsedMs > 300000) {
       if (order.status === 'pending') {
         await pool.query(
@@ -137,7 +152,7 @@ exports.uploadSlip = async (req, res) => {
 
     const order = orderResult.rows[0];
     const expectedAmount = parseFloat(order.total_price);
-    const orderCreatedAt = new Date(order.created_at);
+    const orderCreatedAt = parseUtcDate(order.created_at);
 
     // Anti-Replay: ตรวจว่าเคยใช้ภาพนี้ชำระเงินสำเร็จแล้วหรือยัง
     const duplicateHashCheck = await pool.query(
