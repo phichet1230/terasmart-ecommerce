@@ -2671,12 +2671,17 @@ export default function Storefront() {
                             border: '1px solid #E2E8F0'
                           }}
                         >
-                          {/* Main Poster Display Image with Smooth Transition */}
-                          <div style={{ position: 'relative', width: '100%', minHeight: '340px', maxHeight: '420px', overflow: 'hidden' }}>
+                          {/* Main Poster Display Image with Smooth Transition & Fallback */}
+                          <div style={{ position: 'relative', width: '100%', minHeight: '340px', maxHeight: '420px', overflow: 'hidden', background: '#F8FAFC' }}>
                             <img 
-                              src={promoPosters[promoSlideIndex].src} 
-                              alt={promoPosters[promoSlideIndex].title} 
+                              src={promoPosters[promoSlideIndex]?.src || '/hero_banner_full.png'} 
+                              alt={promoPosters[promoSlideIndex]?.title || 'Tera Group Banner'} 
                               style={{ width: '100%', height: '100%', display: 'block', maxHeight: '420px', objectFit: 'cover', transition: 'opacity 0.4s ease-in-out' }} 
+                              onError={(e) => {
+                                const target = e.currentTarget;
+                                target.onerror = null;
+                                target.src = '/hero_banner_full.png';
+                              }}
                             />
                             
                             {/* Left Arrow Button */}
@@ -2742,7 +2747,7 @@ export default function Storefront() {
                           <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', padding: '12px 0 16px', alignItems: 'center', background: '#FFFFFF' }}>
                             {promoPosters.map((poster, idx) => (
                               <div 
-                                key={poster.id}
+                                key={poster.id || idx}
                                 onClick={() => setPromoSlideIndex(idx)}
                                 style={{
                                   width: promoSlideIndex === idx ? '24px' : '11px',
@@ -2769,8 +2774,8 @@ export default function Storefront() {
                           <input 
                             type="range" 
                             min="0" 
-                            max="50000" 
-                            step="500" 
+                            max="150000" 
+                            step="1000" 
                             value={priceRange} 
                             onChange={(e) => setPriceRange(parseInt(e.target.value))}
                             style={{ flex: 1, accentColor: '#FF3201', cursor: 'pointer' }}

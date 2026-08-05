@@ -1,8 +1,15 @@
 const pool = require('../config/db');
+const { getCache, setCache, clearCache } = require('../utils/cache');
 
 // Get all banners
 exports.getBanners = async (req, res) => {
   try {
+    const cached = getCache('banners_all');
+    res.setHeader('Cache-Control', 'public, max-age=300, stale-while-revalidate=600');
+    if (cached) {
+      return res.json(cached);
+    }
+
     const result = await pool.query('SELECT * FROM banners ORDER BY id ASC');
     if (result.rows.length === 0) {
       // Seed default banners if table is empty
@@ -19,12 +26,17 @@ exports.getBanners = async (req, res) => {
         );
       }
       const seeded = await pool.query('SELECT * FROM banners ORDER BY id ASC');
-      return res.json({ success: true, data: seeded.rows });
+      const responsePayload = { status: 'success', data: seeded.rows };
+      setCache('banners_all', responsePayload, 300);
+      return res.json(responsePayload);
     }
-    return res.json({ success: true, data: result.rows });
+
+    const responsePayload = { status: 'success', data: result.rows };
+    setCache('banners_all', responsePayload, 300);
+    return res.json(responsePayload);
   } catch (err) {
     console.error('Error fetching banners:', err);
-    return res.status(500).json({ success: false, message: err.message });
+    return res.status(500).json({ status: 'error', message: err.message });
   }
 };
 
@@ -36,10 +48,11 @@ exports.createBanner = async (req, res) => {
       'INSERT INTO banners (title, src, active) VALUES ($1, $2, $3) RETURNING *',
       [title, src, active]
     );
-    return res.status(201).json({ success: true, data: result.rows[0] });
+    clearCache('banners_all');
+    return res.status(201).json({ status: 'success', data: result.rows[0] });
   } catch (err) {
     console.error('Error creating banner:', err);
-    return res.status(500).json({ success: false, message: err.message });
+    return res.status(500).json({ status: 'error', message: err.message });
   }
 };
 
@@ -53,12 +66,13 @@ exports.updateBanner = async (req, res) => {
       [title, src, active, id]
     );
     if (result.rows.length === 0) {
-      return res.status(404).json({ success: false, message: 'Banner not found' });
+      return res.status(404).json({ status: 'error', message: 'Banner not found' });
     }
-    return res.json({ success: true, data: result.rows[0] });
+    clearCache('banners_all');
+    return res.json({ status: 'success', data: result.rows[0] });
   } catch (err) {
     console.error('Error updating banner:', err);
-    return res.status(500).json({ success: false, message: err.message });
+    return res.status(500).json({ status: 'error', message: err.message });
   }
 };
 
@@ -67,9 +81,10 @@ exports.deleteBanner = async (req, res) => {
   try {
     const { id } = req.params;
     await pool.query('DELETE FROM banners WHERE id = $1', [id]);
-    return res.json({ success: true, message: 'Banner deleted successfully' });
+    clearCache('banners_all');
+    return res.json({ status: 'success', message: 'Banner deleted successfully' });
   } catch (err) {
     console.error('Error deleting banner:', err);
-    return res.status(500).json({ success: false, message: err.message });
+    return res.status(500).json({ status: 'error', message: err.message });
   }
 };

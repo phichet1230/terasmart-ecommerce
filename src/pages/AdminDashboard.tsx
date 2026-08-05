@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   BarChart2, Users, Package, ShoppingBag, DollarSign, 
@@ -194,6 +194,7 @@ export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'orders' | 'customers' | 'products' | 'banners' | 'employees'>('dashboard');
   const [selectedDeptFilter, setSelectedDeptFilter] = useState<string>('all');
   const [lastUpdated, setLastUpdated] = useState<string>('');
+  const isSyncingRef = useRef(false);
 
   // Department definitions
   const departments: DepartmentInfo[] = [
@@ -970,7 +971,8 @@ export default function AdminDashboard() {
   };
 
   const syncAdminData = async () => {
-    if (!isAuthorized || !admin) return;
+    if (!isAuthorized || !admin || isSyncingRef.current) return;
+    isSyncingRef.current = true;
     try {
       await Promise.allSettled([
         loadMetrics(),
@@ -981,6 +983,8 @@ export default function AdminDashboard() {
       ]);
     } catch (err) {
       console.warn('Sync admin error:', err);
+    } finally {
+      isSyncingRef.current = false;
     }
   };
 
@@ -993,21 +997,18 @@ export default function AdminDashboard() {
 
     syncAdminData();
 
-    // 1. Storage listener across browser tabs/windows
+    // 1. Storage listener for explicit external cross-tab updates only
     const handleStorageChange = (e: StorageEvent) => {
-      if (!e.key || e.key.includes('tera_') || e.key.includes('admin')) {
+      if (e.key === 'tera_force_sync') {
         syncAdminData();
       }
     };
 
     window.addEventListener('storage', handleStorageChange);
     window.addEventListener('tera_admin_updated', syncAdminData);
-    window.addEventListener('tera_products_updated', syncAdminData);
-    window.addEventListener('tera_banners_updated', syncAdminData);
     window.addEventListener('tera_orders_updated', syncAdminData);
 
-    // 2. Tab Focus & Visibility Change
-    window.addEventListener('focus', syncAdminData);
+    // 2. Tab Visibility Change (syncs when switching tabs back to admin)
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
         syncAdminData();
@@ -1015,20 +1016,21 @@ export default function AdminDashboard() {
     };
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
-    // 3. Periodic Background Sync (6-second heartbeat for multi-staff live updates)
-    const autoSyncInterval = setInterval(syncAdminData, 6000);
+    // 3. Smooth background heartbeat (30s) when tab is active
+    const autoSyncInterval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        syncAdminData();
+      }
+    }, 30000);
 
     return () => {
       window.removeEventListener('storage', handleStorageChange);
       window.removeEventListener('tera_admin_updated', syncAdminData);
-      window.removeEventListener('tera_products_updated', syncAdminData);
-      window.removeEventListener('tera_banners_updated', syncAdminData);
       window.removeEventListener('tera_orders_updated', syncAdminData);
-      window.removeEventListener('focus', syncAdminData);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       clearInterval(autoSyncInterval);
     };
-  }, [isAuthorized, admin]);
+  }, [isAuthorized]);
 
   const showToast = (msg: string) => {
     setToasts((prev) => [...prev, msg]);
@@ -1157,9 +1159,11 @@ export default function AdminDashboard() {
   const loadOrders = async () => {
     try {
       const res = await apiRequest('/api/v1/admin/orders');
-      setOrders(res.data);
+      if (res && res.data && Array.isArray(res.data)) {
+        setOrders(prev => JSON.stringify(prev) === JSON.stringify(res.data) ? prev : res.data);
+      }
     } catch {
-      setOrders([
+      setOrders(prev => prev.length > 0 ? prev : [
         {
           id: 'ORD-2026-9812',
           username: 'somchai_user',
@@ -1193,9 +1197,11 @@ export default function AdminDashboard() {
   const loadCustomers = async () => {
     try {
       const res = await apiRequest('/api/v1/admin/customers');
-      setCustomers(res.data);
+      if (res && res.data && Array.isArray(res.data)) {
+        setCustomers(prev => JSON.stringify(prev) === JSON.stringify(res.data) ? prev : res.data);
+      }
     } catch {
-      setCustomers([
+      setCustomers(prev => prev.length > 0 ? prev : [
         { id: 'c1', username: 'somchai_user', email: 'somchai@gmail.com', phone: '081-234-5678', role: 'customer', account_status: 'active', created_at: new Date().toISOString() },
         { id: 'c2', username: 'wichai_buyer', email: 'wichai@yahoo.com', phone: '089-876-5432', role: 'customer', account_status: 'active', created_at: new Date().toISOString() }
       ]);
@@ -1206,10 +1212,8 @@ export default function AdminDashboard() {
     try {
       const res = await apiRequest('/api/v1/admin/products');
       if (res && res.data && Array.isArray(res.data) && res.data.length > 0) {
-        setProducts(res.data);
+        setProducts(prev => JSON.stringify(prev) === JSON.stringify(res.data) ? prev : res.data);
         localStorage.setItem('tera_storefront_products', JSON.stringify(res.data));
-        localStorage.setItem('tera_sync_timestamp', Date.now().toString());
-        window.dispatchEvent(new Event('tera_products_updated'));
         return;
       }
     } catch (err) {
@@ -1221,7 +1225,7 @@ export default function AdminDashboard() {
       try {
         const parsed = JSON.parse(cached);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          setProducts(parsed);
+          setProducts(prev => JSON.stringify(prev) === JSON.stringify(parsed) ? prev : parsed);
           return;
         }
       } catch (e) {}
@@ -1232,10 +1236,8 @@ export default function AdminDashboard() {
     try {
       const res = await apiRequest('/api/v1/banners');
       if (res && res.data && Array.isArray(res.data)) {
-        setBanners(res.data);
+        setBanners(prev => JSON.stringify(prev) === JSON.stringify(res.data) ? prev : res.data);
         localStorage.setItem('tera_storefront_banners', JSON.stringify(res.data));
-        localStorage.setItem('tera_sync_timestamp', Date.now().toString());
-        window.dispatchEvent(new Event('tera_banners_updated'));
       }
     } catch (err) {
       console.warn('Admin load banners API notice:', err);

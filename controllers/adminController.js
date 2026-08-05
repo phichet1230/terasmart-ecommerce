@@ -1,4 +1,5 @@
 const pool = require('../config/db');
+const { clearCache } = require('../utils/cache');
 
 // helper for logging admin actions
 async function logAction(adminId, action, targetTable, targetId) {

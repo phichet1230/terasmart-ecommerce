@@ -130,7 +130,7 @@ LINE_CALLBACK_URL=https://api.teragroup.com/api/v1/auth/line/callback
 - [x] **Promo Discounts**: ตาราง `coupons`, API `/api/v1/coupons/validate` และช่องกรอกโค้ดลดราคาในหน้า Checkout
 - [x] **Email Notifications**: Nodemailer SMTP ยิงอีเมลยืนยันคำสั่งซื้อเรียลไทม์
 - [x] **AI Slip Processing**: EMVCo QR Code + Pattern Matching OCR สกัดข้อมูลเข้า JSON Array
-- [x] **Infrastructure & Deployment**: จัดทำคู่มือ, Dockerfile, docker-compose.yml และไฟล์สคริปต์การ Deploy แบบ 1-Click (`deploy.sh`) ครบถ้วน
+- [x] **Infrastructure & Deployment**: จัดทำคู่มือ, Dockerfile, docker-compose.yml และไฟล์สคริปต์การ Deploy แบบ 1-Click (`deploy/deploy.sh`) ครบถ้วน
 
 ---
 
@@ -144,7 +144,7 @@ git clone https://github.com/bdteragroup-max/ecommerce-project.git
 cd ecommerce-project
 
 # 2. รันสคริปต์คีย์เดียวสร้างทั้งระบบอัตโนมัติ (Database + Node.js API + Nginx)
-bash deploy.sh
+bash deploy/deploy.sh
 ```
 *ระบบจะทำการติดตั้ง Docker, สร้าง Database PostgreSQL, Import สคริปต์ตาราง, บิวด์หน้าเว็บ และรัน Nginx Reverse Proxy ให้เรียบร้อยทันที!*
 

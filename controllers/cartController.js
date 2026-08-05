@@ -5,6 +5,11 @@ exports.addToCart = async (req, res) => {
   const { variant_id, quantity } = req.body;
   const user_id = req.user.id;
 
+  const numQuantity = Number(quantity);
+  if (!Number.isInteger(numQuantity) || numQuantity <= 0) {
+    return res.status(400).json({ status: 'error', message: 'กรุณาระบุจำนวนสินค้าที่ถูกต้อง (ต้องมากกว่า 0)' });
+  }
+
   try {
     // 1. ตรวจสอบก่อนว่า variant_id นี้มีจริงและมีสต็อกเพียงพอ
     const variantResult = await pool.query('SELECT stock_quantity, variant_name FROM product_variants WHERE id = $1', [variant_id]);
@@ -88,6 +93,11 @@ exports.updateCartItem = async (req, res) => {
   const { id } = req.params; // cart_item_id
   const { quantity } = req.body;
   const user_id = req.user.id;
+
+  const numQuantity = Number(quantity);
+  if (!Number.isInteger(numQuantity) || numQuantity <= 0) {
+    return res.status(400).json({ status: 'error', message: 'กรุณาระบุจำนวนสินค้าที่ถูกต้อง (ต้องมากกว่า 0)' });
+  }
 
   try {
     // ตรวจสอบว่าสินค้าในตะกร้านี้เป็นของผู้ใช้คนนี้จริง

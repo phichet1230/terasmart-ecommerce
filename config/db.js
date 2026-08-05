@@ -14,9 +14,9 @@ const poolConfig = {
         password: process.env.DB_PASSWORD,
         port: process.env.DB_PORT,
       }),
-  max: parseInt(process.env.DB_POOL_MAX || '20', 10),
-  min: 0,                                             // min=0 เพื่อไม่ให้ค้าง Stale Socket ใน Cloud Pool
-  idleTimeoutMillis: 10000,                           // คืน Connection หลังจาก 10 วินาทีที่ไม่ใช้งาน
+  max: parseInt(process.env.DB_POOL_MAX || '10', 10),
+  min: 2,                                             // รักษาสายเชื่อมต่อสำรองอย่างน้อย 2 connections เพื่อลด Reconnect Latency
+  idleTimeoutMillis: 30000,                           // คืน Connection หลังจาก 30 วินาทีที่ไม่ใช้งาน
   keepAlive: true,
   keepAliveInitialDelayMillis: 10000
 };

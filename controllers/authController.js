@@ -120,8 +120,12 @@ exports.updateProfile = async (req, res) => {
   const { username, phone } = req.body;
 
   try {
+    if (username === undefined && phone === undefined) {
+      return res.status(400).json({ status: 'error', message: 'No data provided' });
+    }
+
     // ดักจับชื่อผู้ใช้งานห้ามมีตัวเลข
-    if (/\d/.test(username)) {
+    if (username !== undefined && /\d/.test(username)) {
       return res.status(400).json({ 
         status: 'error', 
         errors: { username: 'ชื่อผู้ใช้งานไม่อนุญาตให้ใส่ตัวเลข' } 
@@ -129,7 +133,7 @@ exports.updateProfile = async (req, res) => {
     }
 
     // ดักจับเบอร์โทรต้องเป็นตัวเลข 10 หลัก (ถ้ามีการระบุ)
-    if (phone && !/^0\d{9}$/.test(phone)) {
+    if (phone !== undefined && !/^0\d{9}$/.test(phone)) {
       return res.status(400).json({ 
         status: 'error', 
         errors: { phone: 'เบอร์โทรศัพท์ต้องเป็นตัวเลข 10 หลัก ขึ้นต้นด้วย 0 เท่านั้น' },
@@ -138,15 +142,24 @@ exports.updateProfile = async (req, res) => {
     }
 
     // ตรวจสอบชื่อซ้ำ (เฉพาะของคนอื่น)
-    const checkUser = await pool.query('SELECT id FROM users WHERE username = $1 AND id <> $2', [username, user_id]);
-    if (checkUser.rows.length > 0) {
-      return res.status(400).json({ status: 'error', message: 'ชื่อผู้ใช้งานนี้มีผู้ใช้อื่นใช้งานแล้ว' });
+    if (username !== undefined) {
+      const checkUser = await pool.query('SELECT id FROM users WHERE username = $1 AND id <> $2', [username, user_id]);
+      if (checkUser.rows.length > 0) {
+        return res.status(400).json({ status: 'error', message: 'ชื่อผู้ใช้งานนี้มีผู้ใช้อื่นใช้งานแล้ว' });
+      }
+    }
+
+    if (phone !== undefined) {
+      const checkPhone = await pool.query('SELECT id FROM users WHERE phone = $1 AND id <> $2', [phone, user_id]);
+      if (checkPhone.rows.length > 0) {
+        return res.status(400).json({ status: 'error', message: 'เบอร์โทรนี้มีผู้ใช้อื่นใช้งานแล้ว' });
+      }
     }
 
     // อัปเดตลงตาราง
     const result = await pool.query(
       `UPDATE users 
-       SET username = $1, phone = $2, updated_at = CURRENT_TIMESTAMP 
+       SET username = COALESCE($1, username), phone = COALESCE($2, phone), updated_at = CURRENT_TIMESTAMP 
        WHERE id = $3 
        RETURNING id, username, email, phone`,
       [username, phone, user_id]

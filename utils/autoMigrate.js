@@ -221,6 +221,17 @@ async function autoMigrateDatabase() {
       );
     `);
 
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS audit_logs (
+        id SERIAL PRIMARY KEY,
+        admin_id UUID REFERENCES users(id),
+        action VARCHAR(255),
+        target_table VARCHAR(100),
+        target_id VARCHAR(100),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
     console.log('✅ All Database Tables verified successfully!');
 
     // 3. Seed default Admin & Customer accounts

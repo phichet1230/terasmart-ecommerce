@@ -34,7 +34,7 @@ exports.protect = async (req, res, next) => {
     req.user = user; // เก็บข้อมูล user
     next();
   } catch (err) {
-    console.error('Auth middleware error:', err);
+    if (err.name !== 'JsonWebTokenError' && err.name !== 'TokenExpiredError') console.error('Auth middleware unexpected error:', err);
     return res.status(401).json({ status: 'error', message: 'Token ไม่ถูกต้องหรือหมดอายุ' });
   }
 };

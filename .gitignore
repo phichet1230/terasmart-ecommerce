@@ -1,2 +1,30 @@
-node_modules
+# Dependencies
+node_modules/
+
+# Environment Variables (Secrets)
 .env
+.env.local
+.env.production
+
+# Build Output
+dist/
+
+# Uploaded Files (Runtime data)
+uploads/
+
+# OCR Training Data (Large binary)
+data/ocr/
+
+# IDE & OS
+.vscode/
+.idea/
+*.swp
+Thumbs.db
+.DS_Store
+
+# Logs
+*.log
+tunnel_test.log
+
+# Dev scratch scripts
+scratch/

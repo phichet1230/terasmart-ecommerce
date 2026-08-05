@@ -18,6 +18,7 @@ app.use((req, res, next) => {
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
   res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, Cookie');
+  res.setHeader('Access-Control-Max-Age', '86400'); // Cache OPTIONS preflight request for 24 hours in browser
   
   // Enterprise Security Headers (OWASP Standards)
   res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -37,12 +38,19 @@ if (!fs.existsSync(path.join(__dirname, 'uploads'))) {
   fs.mkdirSync(path.join(__dirname, 'uploads'), { recursive: true });
 }
 
+// Static File Caching Options (Browser Storage Optimization)
+const staticOptions = {
+  maxAge: '7d',         // ให้เบราว์เซอร์ลูกค้าจำไฟล์รูปภาพ/JS/CSS ไว้ 7 วัน ไม่ต้องดาวน์โหลดซ้ำ
+  etag: true,
+  lastModified: true
+};
+
 // Middleware
 app.use(express.json({ limit: '50mb' })); // อ่าน JSON จาก Body ได้สูงสุด 50MB (รองรับรูปภาพ Banner/สินค้าขนาดใหญ่)
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use(cookieParser()); // อ่าน Cookie ได้
-app.use(express.static(path.join(__dirname, 'dist'))); // ให้บริการไฟล์ HTML/CSS/JS หน้าบ้านที่คอมไพล์แล้วจาก React/Vite
-app.use('/uploads', express.static(path.join(__dirname, 'uploads'))); // ให้บริการไฟล์สลิปชำระเงินที่อัปโหลดเข้ามา
+app.use(express.static(path.join(__dirname, 'dist'), staticOptions)); // ให้บริการไฟล์ HTML/CSS/JS หน้าบ้านที่คอมไพล์แล้ว
+app.use('/uploads', express.static(path.join(__dirname, 'uploads'), staticOptions)); // ให้บริการไฟล์รูปภาพและสลิปชำระเงิน
 
 const autoMigrate = require('./utils/autoMigrate');
 
