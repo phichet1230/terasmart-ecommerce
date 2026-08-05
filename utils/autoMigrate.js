@@ -186,8 +186,14 @@ async function autoMigrateDatabase() {
         order_id UUID UNIQUE REFERENCES orders(id),
         tracking_number VARCHAR(100),
         courier_name VARCHAR(100),
+        tracking_url VARCHAR(255),
         status VARCHAR(50) DEFAULT 'preparing'
       );
+    `);
+
+    // Ensure shipping table columns exist
+    await pool.query(`
+      ALTER TABLE shipping ADD COLUMN IF NOT EXISTS tracking_url VARCHAR(255);
     `);
 
     await pool.query(`
