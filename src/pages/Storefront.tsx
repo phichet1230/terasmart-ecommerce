@@ -2041,41 +2041,12 @@ export default function Storefront() {
           <section id="tab-catalog" className="tab-section active">
             <div className="storefront-catalog-body" style={{ maxWidth: '1400px', margin: '0 auto', padding: '32px 24px 40px' }}>
               
-              {/* BREADCRUMB NAVIGATION */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', fontFamily: "'IBM Plex Sans Thai', sans-serif", fontWeight: 500, color: '#0763B3', marginBottom: '20px' }}>
-                <span 
-                  style={{ cursor: 'pointer', transition: 'all 0.2s ease', textDecoration: 'none' }}
-                  onClick={() => { setActiveTab('home'); setSelectedProduct(null); setSelectedCategory('ทั้งหมด'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-                  onMouseEnter={(e) => (e.currentTarget.style.textDecoration = 'underline')}
-                  onMouseLeave={(e) => (e.currentTarget.style.textDecoration = 'none')}
-                >
-                  หน้าแรก
-                </span>
-                <span style={{ color: '#0763B3' }}>&gt;</span>
-                <span 
-                  style={{ cursor: selectedProduct ? 'pointer' : 'default', fontWeight: selectedProduct ? 500 : 700, color: '#0763B3' }}
-                  onClick={() => { setSelectedProduct(null); setActiveTab('catalog'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-                  onMouseEnter={(e) => selectedProduct && (e.currentTarget.style.textDecoration = 'underline')}
-                  onMouseLeave={(e) => (e.currentTarget.style.textDecoration = 'none')}
-                >
-                  สินค้า
-                </span>
-                {selectedProduct && (
-                  <>
-                    <span style={{ color: '#0763B3' }}>&gt;</span>
-                    <span style={{ fontWeight: 700, color: '#0F172A', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '500px' }}>
-                      {selectedProduct.name}
-                    </span>
-                  </>
-                )}
-              </div>
-
               {/* FIGMA INTERACTIVE CATALOG LAYOUT */}
-              <div className="catalog-layout" style={{ display: 'grid', gridTemplateColumns: selectedProduct ? '1fr' : '296px 1fr', gap: '32px', alignItems: 'start' }}>
+              <div className="catalog-layout" style={{ display: 'grid', gridTemplateColumns: selectedProduct ? '1fr' : '296px 1fr', gap: '32px', alignItems: 'stretch' }}>
                 
                 {/* SIDEBAR FILTERS (Only visible when no product is selected) */}
                 {!selectedProduct && (
-                  <aside style={{ background: '#FFFAFA', boxShadow: '0px 4px 4px rgba(0, 0, 0, 0.25)', borderRadius: '8px', overflow: 'hidden', border: '1px solid #CBD5E1' }}>
+                  <aside style={{ background: '#FFFAFA', boxShadow: '0px 4px 4px rgba(0, 0, 0, 0.25)', borderRadius: '8px', overflow: 'hidden', border: '1px solid #CBD5E1', height: '100%', display: 'flex', flexDirection: 'column' }}>
                     
                     {/* SECTION 1: หมวดหมู่หลัก ( Categories ) */}
                     <div style={{ background: '#FF3201', padding: '14px 20px', color: '#FFFFFF', fontSize: '20px', fontFamily: "'IBM Plex Sans Thai', sans-serif", fontWeight: 600 }}>
