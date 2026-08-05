@@ -2038,15 +2038,15 @@ export default function Storefront() {
 
         {/* PRODUCT CATALOG TAB (Matched 100% with สินค้า.svg) */}
         {activeTab === 'catalog' && (
-          <section id="tab-catalog" className="tab-section active">
-            <div className="storefront-catalog-body" style={{ maxWidth: '1400px', margin: '0 auto', padding: '32px 24px 40px' }}>
+          <section id="tab-catalog" className="tab-section active" style={{ padding: 0, margin: 0, width: '100%' }}>
+            <div className="storefront-catalog-body" style={{ width: '100%', maxWidth: '100%', margin: 0, padding: 0 }}>
               
               {/* FIGMA INTERACTIVE CATALOG LAYOUT */}
-              <div className="catalog-layout" style={{ display: 'grid', gridTemplateColumns: selectedProduct ? '1fr' : '296px 1fr', gap: '32px', alignItems: 'stretch' }}>
+              <div className="catalog-layout" style={{ display: 'grid', gridTemplateColumns: selectedProduct ? '1fr' : '310px 1fr', gap: '32px', alignItems: 'stretch', minHeight: 'calc(100vh - 140px)' }}>
                 
                 {/* SIDEBAR FILTERS (Only visible when no product is selected) */}
                 {!selectedProduct && (
-                  <aside style={{ background: '#FFFAFA', boxShadow: '0px 4px 4px rgba(0, 0, 0, 0.25)', borderRadius: '8px', overflow: 'hidden', border: '1px solid #CBD5E1', height: '100%', display: 'flex', flexDirection: 'column' }}>
+                  <aside style={{ background: '#FFFAFA', boxShadow: '4px 0px 12px rgba(0, 0, 0, 0.08)', borderRadius: 0, borderRight: '1px solid #CBD5E1', borderTop: 'none', borderLeft: 'none', borderBottom: 'none', height: '100%', display: 'flex', flexDirection: 'column', margin: 0 }}>
                     
                     {/* SECTION 1: หมวดหมู่หลัก ( Categories ) */}
                     <div style={{ background: '#FF3201', padding: '14px 20px', color: '#FFFFFF', fontSize: '20px', fontFamily: "'IBM Plex Sans Thai', sans-serif", fontWeight: 600 }}>
@@ -2244,7 +2244,7 @@ export default function Storefront() {
                 )}
 
                 {/* RIGHT MAIN CATALOG CONTENT AREA (Directly in black circled area) */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', paddingTop: '28px', paddingBottom: '40px', paddingRight: '28px' }}>
                   
                   {selectedProduct ? (
                     /* INLINE PRODUCT DETAILS & PURCHASING VIEW (หน้า สั่งซื้อ.svg Design) */
