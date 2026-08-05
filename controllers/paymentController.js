@@ -598,7 +598,7 @@ exports.paymentsWebhook = async (req, res) => {
 
   } catch (err) {
     console.error('Webhook error:', err);
-    res.status(500).json({ status: 'error', message: 'Internal Server Error' });
+    res.status(500).json({ status: 'error', message: err.message || 'Internal Server Error' });
   }
 };
 
@@ -617,7 +617,7 @@ exports.handleBankEmailWebhook = async (req, res) => {
     res.json(result);
   } catch (err) {
     console.error('handleBankEmailWebhook error:', err);
-    res.status(500).json({ status: 'error', message: 'Internal Server Error' });
+    res.status(500).json({ status: 'error', message: err.message || 'Internal Server Error' });
   }
 };
 
@@ -673,7 +673,7 @@ exports.simulateWebhook = async (req, res) => {
 
   } catch (err) {
     console.error(err);
-    res.status(500).json({ status: 'error', message: 'Internal Server Error' });
+    res.status(500).json({ status: 'error', message: err.message || 'Internal Server Error' });
   }
 };
 
@@ -692,7 +692,7 @@ exports.checkPaymentStatus = async (req, res) => {
     res.json({ status: 'success', paymentStatus: result.rows[0].status });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ status: 'error', message: 'Internal Server Error' });
+    res.status(500).json({ status: 'error', message: err.message || 'Internal Server Error' });
   }
 };
 
@@ -722,7 +722,7 @@ exports.simulatePromptPayWebhook = async (req, res) => {
     await pool.query(
       `UPDATE payments 
        SET payment_status = 'completed', 
-           payment_date = $1, 
+           paid_at = $1, 
            transaction_ref = $2,
            is_ai_verified = true,
            ai_verified_amount = $3,
@@ -749,6 +749,6 @@ exports.simulatePromptPayWebhook = async (req, res) => {
   } catch (err) {
     await pool.query('ROLLBACK');
     console.error(err);
-    res.status(500).json({ status: 'error', message: 'Internal Server Error' });
+    res.status(500).json({ status: 'error', message: err.message || 'Internal Server Error' });
   }
 };

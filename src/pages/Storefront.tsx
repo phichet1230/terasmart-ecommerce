@@ -518,12 +518,16 @@ export default function Storefront() {
 
   const showToast = (msg: string) => {
     if (!msg) return;
+    let cleanMsg = msg;
+    if (typeof cleanMsg === 'string' && cleanMsg.includes('Internal Server Error')) {
+      cleanMsg = 'ระบบขัดข้องชั่วคราวขณะประมวลผล กรุณาลองใหม่อีกครั้ง';
+    }
     setToasts((prev) => {
-      if (prev.includes(msg)) return prev;
-      return [...prev, msg];
+      if (prev.includes(cleanMsg)) return prev;
+      return [...prev, cleanMsg];
     });
     setTimeout(() => {
-      setToasts((prev) => prev.filter((m) => m !== msg));
+      setToasts((prev) => prev.filter((m) => m !== cleanMsg));
     }, 3000);
   };
 
@@ -1476,7 +1480,11 @@ export default function Storefront() {
       setIsPaymentLoading(false);
 
       if (res.status === 'error') {
-        showToast(res.message);
+        let msg = res.message || 'เกิดข้อผิดพลาดในการตรวจสอบไฟล์สลิป';
+        if (typeof msg === 'string' && msg.includes('Internal Server Error')) {
+          msg = 'ระบบขัดข้องชั่วคราวขณะประมวลผล กรุณาลองใหม่อีกครั้ง';
+        }
+        showToast(msg);
         return;
       }
 

@@ -184,6 +184,7 @@ async function autoMigrateDatabase() {
         masked_sender_acc VARCHAR(100),
         iso20022_payload TEXT,
         transaction_ref VARCHAR(100),
+        payment_date TIMESTAMP,
         paid_at TIMESTAMP
       );
     `);
@@ -197,6 +198,7 @@ async function autoMigrateDatabase() {
       ALTER TABLE payments ADD COLUMN IF NOT EXISTS masked_sender_name VARCHAR(100);
       ALTER TABLE payments ADD COLUMN IF NOT EXISTS masked_sender_acc VARCHAR(100);
       ALTER TABLE payments ADD COLUMN IF NOT EXISTS iso20022_payload TEXT;
+      ALTER TABLE payments ADD COLUMN IF NOT EXISTS payment_date TIMESTAMP;
     `);
 
     await pool.query(`
