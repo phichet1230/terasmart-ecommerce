@@ -176,9 +176,27 @@ async function autoMigrateDatabase() {
         ai_verified_amount DECIMAL(10, 2),
         ai_verified_datetime TIMESTAMP,
         is_ai_verified BOOLEAN DEFAULT FALSE,
+        ai_verified_status VARCHAR(50),
+        qr_ref VARCHAR(255),
+        ocr_raw_text TEXT,
+        sending_bank VARCHAR(100),
+        masked_sender_name VARCHAR(100),
+        masked_sender_acc VARCHAR(100),
+        iso20022_payload TEXT,
         transaction_ref VARCHAR(100),
         paid_at TIMESTAMP
       );
+    `);
+
+    // Ensure payments table columns exist
+    await pool.query(`
+      ALTER TABLE payments ADD COLUMN IF NOT EXISTS ai_verified_status VARCHAR(50);
+      ALTER TABLE payments ADD COLUMN IF NOT EXISTS qr_ref VARCHAR(255);
+      ALTER TABLE payments ADD COLUMN IF NOT EXISTS ocr_raw_text TEXT;
+      ALTER TABLE payments ADD COLUMN IF NOT EXISTS sending_bank VARCHAR(100);
+      ALTER TABLE payments ADD COLUMN IF NOT EXISTS masked_sender_name VARCHAR(100);
+      ALTER TABLE payments ADD COLUMN IF NOT EXISTS masked_sender_acc VARCHAR(100);
+      ALTER TABLE payments ADD COLUMN IF NOT EXISTS iso20022_payload TEXT;
     `);
 
     await pool.query(`
