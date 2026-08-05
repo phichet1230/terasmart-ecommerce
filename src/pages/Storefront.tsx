@@ -2240,6 +2240,8 @@ export default function Storefront() {
                       </button>
 
                     </div>
+                    {/* FLEX FILLER TO EXTEND SIDEBAR BACKGROUND ALL THE WAY TO FOOTER */}
+                    <div style={{ flex: 1, background: '#FFFAFA', minHeight: '40px' }} />
                   </aside>
                 )}
 
@@ -5805,12 +5807,12 @@ export default function Storefront() {
         )}
 
       {/* Footer view matching Figma screenshot 100% */}
-      <footer className={`main-footer ${activeTab === 'profile' && !user ? 'no-top-margin' : ''}`} style={{
+      <footer className={`main-footer ${activeTab === 'catalog' || (activeTab === 'profile' && !user) ? 'no-top-margin' : ''}`} style={{
         background: '#1E293B',
         color: '#94A3B8',
         padding: '48px 24px 32px',
         borderTop: '1px solid #334155',
-        marginTop: activeTab === 'profile' && !user ? 0 : undefined
+        marginTop: (activeTab === 'catalog' || (activeTab === 'profile' && !user)) ? 0 : undefined
       }}>
         <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1.8fr 1.1fr 1.4fr 1.4fr 1.3fr', gap: '36px', marginBottom: '40px', alignItems: 'flex-start' }}>
