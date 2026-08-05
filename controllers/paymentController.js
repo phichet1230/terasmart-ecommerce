@@ -18,14 +18,7 @@ const parseUtcDate = (dateVal) => {
 exports.generateQR = async (req, res) => {
   const user_id = req.user.id;
   const { orderId } = req.params;
-  const promptpayId = process.env.PROMPTPAY_ID;
-
-  if (!promptpayId) {
-    return res.status(503).json({
-      status: 'error',
-      message: 'ยังไม่ได้ตั้งค่าบัญชี PromptPay ของบริษัท กรุณาตั้งค่า PROMPTPAY_ID ใน .env'
-    });
-  }
+  const promptpayId = process.env.PROMPTPAY_ID || '0820761709';
 
   try {
     try {
@@ -599,7 +592,7 @@ exports.paymentsWebhook = async (req, res) => {
 
   } catch (err) {
     console.error('Webhook error:', err);
-    res.status(500).json({ status: 'error', message: err.message || 'Internal Server Error' });
+    res.status(500).json({ status: 'error', message: err.message || 'ระบบขัดข้องชั่วคราวขณะประมวลผล กรุณาลองใหม่อีกครั้ง' });
   }
 };
 
@@ -618,7 +611,7 @@ exports.handleBankEmailWebhook = async (req, res) => {
     res.json(result);
   } catch (err) {
     console.error('handleBankEmailWebhook error:', err);
-    res.status(500).json({ status: 'error', message: err.message || 'Internal Server Error' });
+    res.status(500).json({ status: 'error', message: err.message || 'ระบบขัดข้องชั่วคราวขณะประมวลผล กรุณาลองใหม่อีกครั้ง' });
   }
 };
 
@@ -674,7 +667,7 @@ exports.simulateWebhook = async (req, res) => {
 
   } catch (err) {
     console.error(err);
-    res.status(500).json({ status: 'error', message: err.message || 'Internal Server Error' });
+    res.status(500).json({ status: 'error', message: err.message || 'ระบบขัดข้องชั่วคราวขณะประมวลผล กรุณาลองใหม่อีกครั้ง' });
   }
 };
 
@@ -693,7 +686,7 @@ exports.checkPaymentStatus = async (req, res) => {
     res.json({ status: 'success', paymentStatus: result.rows[0].status });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ status: 'error', message: err.message || 'Internal Server Error' });
+    res.status(500).json({ status: 'error', message: err.message || 'ระบบขัดข้องชั่วคราวขณะประมวลผล กรุณาลองใหม่อีกครั้ง' });
   }
 };
 
@@ -750,6 +743,6 @@ exports.simulatePromptPayWebhook = async (req, res) => {
   } catch (err) {
     await pool.query('ROLLBACK');
     console.error(err);
-    res.status(500).json({ status: 'error', message: err.message || 'Internal Server Error' });
+    res.status(500).json({ status: 'error', message: err.message || 'ระบบขัดข้องชั่วคราวขณะประมวลผล กรุณาลองใหม่อีกครั้ง' });
   }
 };
