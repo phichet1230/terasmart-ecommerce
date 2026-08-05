@@ -172,15 +172,15 @@ const renderProductSvg = (productName: string) => {
 };
 
 const ProductImage = ({ name, imageUrl }: { name: string; imageUrl?: string }) => {
-  const [error, setError] = React.useState(false);
-
-  if (imageUrl && !error) {
+  if (imageUrl) {
     return (
       <img 
         src={imageUrl} 
         alt={name} 
         style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
-        onError={() => setError(true)} 
+        onError={(e) => {
+          (e.currentTarget as HTMLImageElement).src = '/checkout_images/image 205.svg';
+        }} 
       />
     );
   }
@@ -997,7 +997,7 @@ export default function AdminDashboard() {
 
     syncAdminData();
 
-    // 1. Storage listener for explicit external cross-tab updates only
+    // Storage listener for explicit external cross-tab updates only
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === 'tera_force_sync') {
         syncAdminData();
@@ -1008,27 +1008,10 @@ export default function AdminDashboard() {
     window.addEventListener('tera_admin_updated', syncAdminData);
     window.addEventListener('tera_orders_updated', syncAdminData);
 
-    // 2. Tab Visibility Change (syncs when switching tabs back to admin)
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        syncAdminData();
-      }
-    };
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    // 3. Smooth background heartbeat (30s) when tab is active
-    const autoSyncInterval = setInterval(() => {
-      if (document.visibilityState === 'visible') {
-        syncAdminData();
-      }
-    }, 30000);
-
     return () => {
       window.removeEventListener('storage', handleStorageChange);
       window.removeEventListener('tera_admin_updated', syncAdminData);
       window.removeEventListener('tera_orders_updated', syncAdminData);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      clearInterval(autoSyncInterval);
     };
   }, [isAuthorized]);
 
@@ -1130,17 +1113,21 @@ export default function AdminDashboard() {
     try {
       const res = await apiRequest('/api/v1/admin/dashboard');
       const data = res.data;
-      setMetrics({
+      const newMetrics = {
         totalSales: parseFloat(data.total_sales || 0),
         totalOrders: parseInt(data.total_orders || 0),
         activeCustomers: parseInt(data.active_customers || 0),
         pendingPayments: parseInt(data.pending_payments || 0),
         teamKpis: data.team_kpis || [],
         recentAuditLogs: data.recent_audit_logs || []
+      };
+      setMetrics(prev => {
+        if (JSON.stringify(prev) === JSON.stringify(newMetrics)) return prev;
+        setLastUpdated(new Date().toLocaleString('th-TH'));
+        return newMetrics;
       });
-      setLastUpdated(new Date().toLocaleString('th-TH'));
     } catch {
-      setMetrics({
+      const defaultMetrics = {
         totalSales: 184500.00,
         totalOrders: 14,
         activeCustomers: 8,
@@ -1151,8 +1138,12 @@ export default function AdminDashboard() {
           { team_id: 3, team_name: 'ทีม 3 - ฝ่ายจัดซื้อและคลังสินค้า (Warehouse & Purchase Team)', leader: 'พี่ฝน', position: 'ACT.PURCHASE&WAREHOUSE MGR.', target_amount: 200000, actual_sales: 165000, kpi_percentage: 82.5 }
         ],
         recentAuditLogs: []
+      };
+      setMetrics(prev => {
+        if (JSON.stringify(prev) === JSON.stringify(defaultMetrics)) return prev;
+        setLastUpdated(new Date().toLocaleString('th-TH'));
+        return defaultMetrics;
       });
-      setLastUpdated(new Date().toLocaleString('th-TH'));
     }
   };
 
