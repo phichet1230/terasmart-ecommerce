@@ -124,10 +124,10 @@ function validateUploadedFile(filePath, mimetype) {
     return { isValid: false, message: 'ขนาดไฟล์ภาพเล็กเกินไปหรือไม่สมบูรณ์' };
   }
 
-  // อ่าน 8 ไบต์แรกเพื่อตรวจสอบ Magic Number (File Signature)
+  // อ่าน 12 ไบต์แรกเพื่อตรวจสอบ Magic Number (File Signature)
   const fd = fs.openSync(filePath, 'r');
-  const buffer = Buffer.alloc(8);
-  fs.readSync(fd, buffer, 0, 8, 0);
+  const buffer = Buffer.alloc(12);
+  fs.readSync(fd, buffer, 0, 12, 0);
   fs.closeSync(fd);
 
   const hexHeader = buffer.toString('hex').toUpperCase();
@@ -151,6 +151,7 @@ function validateUploadedFile(filePath, mimetype) {
  * แปลงข้อมูลสลิปโอนเงินให้อยู่ในรูปแบบ ISO 20022 Financial Standard Structure
  */
 function buildISO20022Message({ orderId, amount, transRef, sendingBank, senderName, senderAcc, receiverAcc, transDatetime }) {
+  const safeAmount = amount ? parseFloat(amount) : 0;
   return {
     Document: {
       FIToFICstmrCdtTrf: {
@@ -162,7 +163,7 @@ function buildISO20022Message({ orderId, amount, transRef, sendingBank, senderNa
         },
         CdtTrfTxInf: {
           PmtId: { EndToEndId: orderId, TxId: transRef },
-          Amt: { InstdAmt: { "@Ccy": "THB", "#text": parseFloat(amount).toFixed(2) } },
+          Amt: { InstdAmt: { "@Ccy": "THB", "#text": safeAmount.toFixed(2) } },
           Dbtr: { Nm: pdpaMask.name(senderName) },
           DbtrAcct: { Id: { Othr: { Id: pdpaMask.accountNo(senderAcc) } } },
           DbtrAgt: { FinInstnId: { Othr: { Id: sendingBank || 'UNKNOWN_BANK' } } },

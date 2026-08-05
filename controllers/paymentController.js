@@ -394,7 +394,7 @@ exports.uploadSlip = async (req, res) => {
           hasExplicitTime = true;
         }
       }
-      extractedSlipDate = new Date(year, month, day, hours, minutes);
+      extractedSlipDate = new Date(Date.UTC(year, month, day, hours, minutes));
     }
 
     // ★ HARD GATE: สลิปที่มีเวลาโอนก่อนเวลาสร้างคำสั่งซื้อเกิน 5 นาที จะโดนปฏิเสธทันที
