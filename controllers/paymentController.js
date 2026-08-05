@@ -520,13 +520,13 @@ exports.uploadSlip = async (req, res) => {
       }
     });
 
-  } catch (err: any) {
+  } catch (err) {
     console.error('uploadSlip error:', err);
     if (req.file && fs.existsSync(req.file.path)) {
       fs.unlinkSync(req.file.path);
     }
     const errMsg = err && err.message ? err.message : String(err);
-    res.status(500).json({ status: 'error', message: `Upload Error: ${errMsg}` });
+    res.status(500).json({ status: 'error', message: err.message || 'เกิดข้อผิดพลาดในการอัปโหลดสลิป กรุณาลองใหม่อีกครั้ง' });
   }
 };
 
