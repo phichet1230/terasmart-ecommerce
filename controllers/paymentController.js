@@ -527,12 +527,13 @@ exports.uploadSlip = async (req, res) => {
       }
     });
 
-  } catch (err) {
+  } catch (err: any) {
     console.error('uploadSlip error:', err);
     if (req.file && fs.existsSync(req.file.path)) {
       fs.unlinkSync(req.file.path);
     }
-    res.status(500).json({ status: 'error', message: err.message || 'Internal Server Error' });
+    const errMsg = err && err.message ? err.message : String(err);
+    res.status(500).json({ status: 'error', message: `Upload Error: ${errMsg}` });
   }
 };
 
