@@ -43,7 +43,7 @@ exports.register = async (req, res) => {
       return res.status(400).json({ status: 'error', message: 'อีเมล เบอร์โทร หรือชื่อผู้ใช้นี้ถูกใช้งานแล้ว' });
     }
     console.error(err);
-    res.status(500).json({ status: 'error', message: 'Internal Server Error' });
+    res.status(500).json({ status: 'error', message: err.message || 'ระบบขัดข้องชั่วคราวขณะประมวลผล กรุณาลองใหม่อีกครั้ง' });
   }
 };
 
@@ -110,7 +110,7 @@ exports.login = async (req, res) => {
 
   } catch (err) {
     console.error(err);
-    res.status(500).json({ status: 'error', message: 'Internal Server Error' });
+    res.status(500).json({ status: 'error', message: err.message || 'ระบบขัดข้องชั่วคราวขณะประมวลผล กรุณาลองใหม่อีกครั้ง' });
   }
 };
 
@@ -173,7 +173,7 @@ exports.updateProfile = async (req, res) => {
 
   } catch (err) {
     console.error(err);
-    res.status(500).json({ status: 'error', message: 'Internal Server Error' });
+    res.status(500).json({ status: 'error', message: err.message || 'ระบบขัดข้องชั่วคราวขณะประมวลผล กรุณาลองใหม่อีกครั้ง' });
   }
 };
 
@@ -207,7 +207,7 @@ exports.changePassword = async (req, res) => {
 
   } catch (err) {
     console.error(err);
-    res.status(500).json({ status: 'error', message: 'Internal Server Error' });
+    res.status(500).json({ status: 'error', message: err.message || 'ระบบขัดข้องชั่วคราวขณะประมวลผล กรุณาลองใหม่อีกครั้ง' });
   }
 };
 
@@ -254,7 +254,7 @@ exports.forgotPassword = async (req, res) => {
 
   } catch (err) {
     console.error(err);
-    res.status(500).json({ status: 'error', message: 'Internal Server Error' });
+    res.status(500).json({ status: 'error', message: err.message || 'ระบบขัดข้องชั่วคราวขณะประมวลผล กรุณาลองใหม่อีกครั้ง' });
   }
 };
 
@@ -295,7 +295,7 @@ exports.resetPassword = async (req, res) => {
 
   } catch (err) {
     console.error(err);
-    res.status(500).json({ status: 'error', message: 'Internal Server Error' });
+    res.status(500).json({ status: 'error', message: err.message || 'ระบบขัดข้องชั่วคราวขณะประมวลผล กรุณาลองใหม่อีกครั้ง' });
   }
 };
 
@@ -324,7 +324,7 @@ exports.updateAvatar = async (req, res) => {
 
   } catch (err) {
     console.error(err);
-    res.status(500).json({ status: 'error', message: 'Internal Server Error' });
+    res.status(500).json({ status: 'error', message: err.message || 'ระบบขัดข้องชั่วคราวขณะประมวลผล กรุณาลองใหม่อีกครั้ง' });
   }
 };
 
@@ -347,7 +347,7 @@ exports.logout = async (req, res) => {
     });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ status: 'error', message: 'Internal Server Error' });
+    res.status(500).json({ status: 'error', message: err.message || 'ระบบขัดข้องชั่วคราวขณะประมวลผล กรุณาลองใหม่อีกครั้ง' });
   }
 };
 
@@ -430,7 +430,7 @@ exports.requestPhoneOtp = async (req, res) => {
     });
   } catch (err) {
     console.error('requestPhoneOtp Error:', err);
-    res.status(500).json({ status: 'error', message: 'Internal Server Error' });
+    res.status(500).json({ status: 'error', message: err.message || 'ระบบขัดข้องชั่วคราวขณะประมวลผล กรุณาลองใหม่อีกครั้ง' });
   }
 };
 
@@ -524,6 +524,6 @@ exports.verifyPhoneOtp = async (req, res) => {
       });
     }
     console.error('verifyPhoneOtp Error:', err);
-    res.status(500).json({ status: 'error', message: 'Internal Server Error' });
+    res.status(500).json({ status: 'error', message: err.message || 'ระบบขัดข้องชั่วคราวขณะประมวลผล กรุณาลองใหม่อีกครั้ง' });
   }
 };

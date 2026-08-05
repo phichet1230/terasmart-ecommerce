@@ -143,7 +143,7 @@ exports.getDashboardMetrics = async (req, res) => {
 
   } catch (err) {
     console.error(err);
-    res.status(500).json({ status: 'error', message: 'Internal Server Error' });
+    res.status(500).json({ status: 'error', message: err.message || 'ระบบขัดข้องชั่วคราวขณะประมวลผล กรุณาลองใหม่อีกครั้ง' });
   }
 };
 
@@ -160,7 +160,7 @@ exports.getAuditLogs = async (req, res) => {
     res.json({ status: 'success', data: logs.rows });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ status: 'error', message: 'Internal Server Error' });
+    res.status(500).json({ status: 'error', message: err.message || 'ระบบขัดข้องชั่วคราวขณะประมวลผล กรุณาลองใหม่อีกครั้ง' });
   }
 };
 
@@ -188,7 +188,7 @@ exports.getAllOrders = async (req, res) => {
     res.json({ status: 'success', data: result.rows });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ status: 'error', message: 'Internal Server Error' });
+    res.status(500).json({ status: 'error', message: err.message || 'ระบบขัดข้องชั่วคราวขณะประมวลผล กรุณาลองใหม่อีกครั้ง' });
   }
 };
 
@@ -267,7 +267,7 @@ exports.updateOrderStatus = async (req, res) => {
     res.json({ status: 'success', message: 'อัปเดตสถานะคำสั่งซื้อสำเร็จ' });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ status: 'error', message: 'Internal Server Error' });
+    res.status(500).json({ status: 'error', message: err.message || 'ระบบขัดข้องชั่วคราวขณะประมวลผล กรุณาลองใหม่อีกครั้ง' });
   }
 };
 
@@ -285,7 +285,7 @@ exports.getAllCustomers = async (req, res) => {
     res.json({ status: 'success', data: customers.rows });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ status: 'error', message: 'Internal Server Error' });
+    res.status(500).json({ status: 'error', message: err.message || 'ระบบขัดข้องชั่วคราวขณะประมวลผล กรุณาลองใหม่อีกครั้ง' });
   }
 };
 
@@ -315,7 +315,7 @@ exports.toggleCustomerStatus = async (req, res) => {
     res.json({ status: 'success', message: `เปลี่ยนสถานะสมาชิกเป็น ${status} สำเร็จ` });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ status: 'error', message: 'Internal Server Error' });
+    res.status(500).json({ status: 'error', message: err.message || 'ระบบขัดข้องชั่วคราวขณะประมวลผล กรุณาลองใหม่อีกครั้ง' });
   }
 };
 
@@ -334,7 +334,7 @@ exports.getCustomerOrders = async (req, res) => {
     res.json({ status: 'success', data: orders.rows });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ status: 'error', message: 'Internal Server Error' });
+    res.status(500).json({ status: 'error', message: err.message || 'ระบบขัดข้องชั่วคราวขณะประมวลผล กรุณาลองใหม่อีกครั้ง' });
   }
 };
 
@@ -438,7 +438,7 @@ exports.createProduct = async (req, res) => {
   } catch (err) {
     await client.query('ROLLBACK');
     console.error(err);
-    res.status(500).json({ status: 'error', message: 'Internal Server Error' });
+    res.status(500).json({ status: 'error', message: err.message || 'ระบบขัดข้องชั่วคราวขณะประมวลผล กรุณาลองใหม่อีกครั้ง' });
   } finally {
     client.release();
   }
@@ -590,7 +590,7 @@ exports.updateProduct = async (req, res) => {
     res.json({ status: 'success', message: 'แก้ไขข้อมูลสินค้าสำเร็จ' });
   } catch (err) {
     console.error('Update product error:', err);
-    res.status(500).json({ status: 'error', message: 'Internal Server Error: ' + err.message });
+    res.status(500).json({ status: 'error', message: err.message || 'ระบบขัดข้องชั่วคราวขณะประมวลผล กรุณาลองใหม่อีกครั้ง' });
   }
 };
 
@@ -620,7 +620,7 @@ exports.updateProductVariant = async (req, res) => {
     res.json({ status: 'success', message: 'แก้ไขตัวเลือกสินค้าสำเร็จ' });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ status: 'error', message: 'Internal Server Error' });
+    res.status(500).json({ status: 'error', message: err.message || 'ระบบขัดข้องชั่วคราวขณะประมวลผล กรุณาลองใหม่อีกครั้ง' });
   }
 };
 
@@ -642,7 +642,7 @@ exports.deleteProduct = async (req, res) => {
     res.json({ status: 'success', message: 'ลบสินค้าสำเร็จ (Soft Deleted)' });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ status: 'error', message: 'Internal Server Error' });
+    res.status(500).json({ status: 'error', message: err.message || 'ระบบขัดข้องชั่วคราวขณะประมวลผล กรุณาลองใหม่อีกครั้ง' });
   }
 };
 
@@ -668,6 +668,6 @@ exports.getAllProductsAdmin = async (req, res) => {
     res.json({ status: 'success', data: products });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ status: 'error', message: 'Internal Server Error' });
+    res.status(500).json({ status: 'error', message: err.message || 'ระบบขัดข้องชั่วคราวขณะประมวลผล กรุณาลองใหม่อีกครั้ง' });
   }
 };

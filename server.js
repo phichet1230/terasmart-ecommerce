@@ -106,3 +106,16 @@ app.use('/api', (req, res) => {
 app.get(/^\/(?!api|uploads).*/, (req, res) => {
   res.sendFile(path.join(__dirname, 'dist/index.html'));
 });
+
+// Express Global Error Handler (Guarantees no raw 500 html/string is sent to client)
+app.use((err, req, res, next) => {
+  console.error('🔥 Global Express Error Handler:', err);
+  const statusCode = err.status || err.statusCode || 500;
+  const message = (err.message && err.message !== 'Internal Server Error')
+    ? err.message
+    : 'ระบบขัดข้องชั่วคราวขณะประมวลผล กรุณาลองใหม่อีกครั้ง';
+  res.status(statusCode).json({
+    status: 'error',
+    message: message
+  });
+});

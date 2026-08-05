@@ -10,7 +10,7 @@ exports.getAddresses = async (req, res) => {
     res.json({ status: 'success', data: result.rows });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ status: 'error', message: 'Internal Server Error' });
+    res.status(500).json({ status: 'error', message: err.message || 'ระบบขัดข้องชั่วคราวขณะประมวลผล กรุณาลองใหม่อีกครั้ง' });
   }
 };
 
@@ -43,7 +43,7 @@ exports.addAddress = async (req, res) => {
     res.status(201).json({ status: 'success', data: result.rows[0] });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ status: 'error', message: 'Internal Server Error' });
+    res.status(500).json({ status: 'error', message: err.message || 'ระบบขัดข้องชั่วคราวขณะประมวลผล กรุณาลองใหม่อีกครั้ง' });
   }
 };
 
@@ -78,7 +78,7 @@ exports.updateAddress = async (req, res) => {
     res.json({ status: 'success', data: result.rows[0] });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ status: 'error', message: 'Internal Server Error' });
+    res.status(500).json({ status: 'error', message: err.message || 'ระบบขัดข้องชั่วคราวขณะประมวลผล กรุณาลองใหม่อีกครั้ง' });
   }
 };
 
@@ -104,7 +104,7 @@ exports.deleteAddress = async (req, res) => {
     res.json({ status: 'success', message: 'ลบที่อยู่สำเร็จ' });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ status: 'error', message: 'Internal Server Error' });
+    res.status(500).json({ status: 'error', message: err.message || 'ระบบขัดข้องชั่วคราวขณะประมวลผล กรุณาลองใหม่อีกครั้ง' });
   }
 };
 
@@ -123,6 +123,6 @@ exports.setDefaultAddress = async (req, res) => {
     res.json({ status: 'success', data: result.rows[0] });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ status: 'error', message: 'Internal Server Error' });
+    res.status(500).json({ status: 'error', message: err.message || 'ระบบขัดข้องชั่วคราวขณะประมวลผล กรุณาลองใหม่อีกครั้ง' });
   }
 };

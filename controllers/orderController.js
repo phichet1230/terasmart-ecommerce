@@ -270,7 +270,7 @@ exports.createOrder = async (req, res) => {
   } catch (err) {
     await client.query('ROLLBACK');
     console.error(err);
-    res.status(500).json({ status: 'error', message: 'Internal Server Error' });
+    res.status(500).json({ status: 'error', message: err.message || 'ระบบขัดข้องชั่วคราวขณะประมวลผล กรุณาลองใหม่อีกครั้ง' });
   } finally {
     client.release();
   }
@@ -376,7 +376,7 @@ exports.getOrderDetail = async (req, res) => {
     res.json({ status: 'success', data: order });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ status: 'error', message: 'Internal Server Error' });
+    res.status(500).json({ status: 'error', message: err.message || 'ระบบขัดข้องชั่วคราวขณะประมวลผล กรุณาลองใหม่อีกครั้ง' });
   }
 };
 
@@ -453,7 +453,7 @@ exports.cancelOrder = async (req, res) => {
   } catch (err) {
     await client.query('ROLLBACK');
     console.error('Cancel order error:', err);
-    res.status(500).json({ status: 'error', message: 'Internal Server Error' });
+    res.status(500).json({ status: 'error', message: err.message || 'ระบบขัดข้องชั่วคราวขณะประมวลผล กรุณาลองใหม่อีกครั้ง' });
   } finally {
     client.release();
   }

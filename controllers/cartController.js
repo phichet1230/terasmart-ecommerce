@@ -64,7 +64,7 @@ exports.addToCart = async (req, res) => {
 
   } catch (err) {
     console.error(err);
-    res.status(500).json({ status: 'error', message: 'Internal Server Error' });
+    res.status(500).json({ status: 'error', message: err.message || 'ระบบขัดข้องชั่วคราวขณะประมวลผล กรุณาลองใหม่อีกครั้ง' });
   }
 };
 
@@ -84,7 +84,7 @@ exports.getCart = async (req, res) => {
     res.json({ status: 'success', data: cart.rows });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ status: 'error', message: 'Internal Server Error' });
+    res.status(500).json({ status: 'error', message: err.message || 'ระบบขัดข้องชั่วคราวขณะประมวลผล กรุณาลองใหม่อีกครั้ง' });
   }
 };
 
@@ -124,7 +124,7 @@ exports.updateCartItem = async (req, res) => {
 
   } catch (err) {
     console.error(err);
-    res.status(500).json({ status: 'error', message: 'Internal Server Error' });
+    res.status(500).json({ status: 'error', message: err.message || 'ระบบขัดข้องชั่วคราวขณะประมวลผล กรุณาลองใหม่อีกครั้ง' });
   }
 };
 
@@ -149,7 +149,7 @@ exports.deleteCartItem = async (req, res) => {
 
   } catch (err) {
     console.error(err);
-    res.status(500).json({ status: 'error', message: 'Internal Server Error' });
+    res.status(500).json({ status: 'error', message: err.message || 'ระบบขัดข้องชั่วคราวขณะประมวลผล กรุณาลองใหม่อีกครั้ง' });
   }
 };
 
@@ -164,6 +164,6 @@ exports.clearCart = async (req, res) => {
     res.json({ status: 'success', message: 'ล้างตะกร้าสำเร็จ' });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ status: 'error', message: 'Internal Server Error' });
+    res.status(500).json({ status: 'error', message: err.message || 'ระบบขัดข้องชั่วคราวขณะประมวลผล กรุณาลองใหม่อีกครั้ง' });
   }
 };
