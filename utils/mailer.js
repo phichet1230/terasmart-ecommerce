@@ -6,38 +6,73 @@ const rawPass = process.env.SMTP_PASS ? process.env.SMTP_PASS.trim() : '';
 const smtpUser = rawUser !== '' ? rawUser : 'oppo0620255009@gmail.com';
 const smtpPass = rawPass !== '' ? rawPass.replace(/\s+/g, '') : 'eovlkoywyobdutap';
 
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
+const createTransporter = (port, secure) => nodemailer.createTransport({
+  host: process.env.SMTP_HOST || 'smtp.gmail.com',
+  port,
+  secure,
   auth: {
     user: smtpUser,
     pass: smtpPass
   },
-  connectionTimeout: 10000,
-  greetingTimeout: 10000,
-  socketTimeout: 10000,
+  connectionTimeout: 5000,
+  greetingTimeout: 5000,
+  socketTimeout: 5000,
   tls: { rejectUnauthorized: false }
 });
+
+const transporter465 = createTransporter(465, true);
+const transporter587 = createTransporter(587, false);
+const transporter25 = createTransporter(25, false);
 
 global.emailLogs = global.emailLogs || [];
 
 const sendEmailWithFallback = async (mailOptions) => {
   const logEntry = { timestamp: new Date().toISOString(), to: mailOptions.to, status: 'pending', smtpUser };
+  
+  // Try Port 465 SSL first
   try {
-    const info = await transporter.sendMail(mailOptions);
-    console.log(`✉️ Email sent to ${mailOptions.to} (ID: ${info.messageId})`);
+    const info = await transporter465.sendMail(mailOptions);
+    console.log(`✉️ Email sent via Port 465 to ${mailOptions.to} (ID: ${info.messageId})`);
     logEntry.status = 'success';
+    logEntry.port = 465;
     logEntry.messageId = info.messageId;
     global.emailLogs.unshift(logEntry);
     if (global.emailLogs.length > 50) global.emailLogs.pop();
     return info;
-  } catch (err) {
-    console.warn('⚠️ SMTP dispatch notice:', err.message);
-    logEntry.status = 'failed';
-    logEntry.error = err.message;
-    logEntry.stack = err.stack;
-    global.emailLogs.unshift(logEntry);
-    if (global.emailLogs.length > 50) global.emailLogs.pop();
-    throw err;
+  } catch (err465) {
+    console.warn('⚠️ Port 465 dispatch notice:', err465.message, '- Trying Port 587 STARTTLS fallback...');
+    // Try Port 587 STARTTLS fallback
+    try {
+      const info = await transporter587.sendMail(mailOptions);
+      console.log(`✉️ Email sent via Port 587 to ${mailOptions.to} (ID: ${info.messageId})`);
+      logEntry.status = 'success';
+      logEntry.port = 587;
+      logEntry.messageId = info.messageId;
+      global.emailLogs.unshift(logEntry);
+      if (global.emailLogs.length > 50) global.emailLogs.pop();
+      return info;
+    } catch (err587) {
+      console.warn('⚠️ Port 587 dispatch notice:', err587.message, '- Trying Port 25 TLS fallback...');
+      // Try Port 25 TLS fallback
+      try {
+        const info = await transporter25.sendMail(mailOptions);
+        console.log(`✉️ Email sent via Port 25 to ${mailOptions.to} (ID: ${info.messageId})`);
+        logEntry.status = 'success';
+        logEntry.port = 25;
+        logEntry.messageId = info.messageId;
+        global.emailLogs.unshift(logEntry);
+        if (global.emailLogs.length > 50) global.emailLogs.pop();
+        return info;
+      } catch (err25) {
+        console.error('❌ All SMTP ports failed to dispatch email:', err25.message);
+        logEntry.status = 'failed';
+        logEntry.error = err25.message;
+        logEntry.stack = err25.stack;
+        global.emailLogs.unshift(logEntry);
+        if (global.emailLogs.length > 50) global.emailLogs.pop();
+        throw err25;
+      }
+    }
   }
 };
 
