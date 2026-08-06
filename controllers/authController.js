@@ -239,7 +239,7 @@ exports.forgotPassword = async (req, res) => {
 
     console.log(`🔑 Security Token Reset for ${user.email}: [ ${token} ]`);
 
-    // ส่งอีเมลจริง
+    // ส่งอีเมลจริงไปยังกล่องจดหมาย
     try {
       await mailer.sendRecoveryEmail(user.email, token);
     } catch (mailErr) {
@@ -248,8 +248,7 @@ exports.forgotPassword = async (req, res) => {
 
     res.json({
       status: 'success',
-      message: 'รหัสลับสำหรับรีเซ็ตถูกส่งไปยังอีเมลของคุณแล้ว กรุณาตรวจสอบกล่องจดหมาย',
-      data: { token }
+      message: `รหัสลับกู้คืนถูกส่งไปยังอีเมล (${user.email}) ของคุณเรียบร้อยแล้ว กรุณาตรวจสอบกล่องจดหมาย (หรือโฟลเดอร์ Spam)`
     });
 
   } catch (err) {

@@ -801,9 +801,7 @@ export default function Storefront() {
     try {
       const res = await apiRequest('/api/v1/auth/forgot-password', 'POST', { email: forgotEmail.trim() });
       showToast(res.message || 'ส่งรหัสกู้คืนไปยังอีเมลของคุณเรียบร้อยแล้ว');
-      if (res.data && res.data.token) {
-        setForgotToken(res.data.token);
-      }
+      setForgotToken(''); // Explicitly keep field blank so user enters PIN from email
       setForgotStep('reset');
     } catch (err: any) {
       showToast(err.message || 'เกิดข้อผิดพลาดในการขอรหัสกู้คืน');
