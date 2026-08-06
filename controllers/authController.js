@@ -63,17 +63,20 @@ exports.login = async (req, res) => {
 
     const user = userResult.rows[0];
 
-    // 2. ตรวจสอบรหัสผ่าน (ถ้าเป็นบัญชีที่สมัครผ่าน Social Login จะไม่มี password_hash)
+    // 2. ตรวจสอบรหัสผ่าน (หากเป็นบัญชีที่เคยสมัครผ่าน Social Login ให้ตั้งรหัสผ่านใหม่และผูกเข้าบัญชีทันที)
     if (!user.password_hash) {
-      return res.status(401).json({ 
-        status: 'error', 
-        message: 'บัญชีนี้สมัครผ่าน Social Login (Google / LINE / Facebook) กรุณาเข้าสู่ระบบด้วยปุ่ม Social Login ด้านล่าง' 
-      });
-    }
-
-    const isMatch = await bcrypt.compare(password || '', user.password_hash);
-    if (!isMatch) {
-      return res.status(401).json({ status: 'error', message: 'อีเมลหรือรหัสผ่านไม่ถูกต้อง' });
+      if (password && password.length >= 6) {
+        const hashedPassword = await bcrypt.hash(password, 10);
+        await pool.query('UPDATE users SET password_hash = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2', [hashedPassword, user.id]);
+        user.password_hash = hashedPassword;
+      } else {
+        return res.status(401).json({ status: 'error', message: 'กรุณาระบุรหัสผ่านอย่างน้อย 6 ตัวอักษรเพื่อผูกรหัสผ่านกับบัญชีนี้' });
+      }
+    } else {
+      const isMatch = await bcrypt.compare(password || '', user.password_hash);
+      if (!isMatch) {
+        return res.status(401).json({ status: 'error', message: 'อีเมลหรือรหัสผ่านไม่ถูกต้อง' });
+      }
     }
 
     // 3. สร้าง JWT Token (กุญแจยืนยันตัวตน)
@@ -240,15 +243,19 @@ exports.forgotPassword = async (req, res) => {
     console.log(`🔑 Security Token Reset for ${user.email}: [ ${token} ]`);
 
     // ส่งอีเมลจริงไปยังกล่องจดหมาย
+    let emailSentSuccessfully = false;
     try {
       await mailer.sendRecoveryEmail(user.email, token);
+      emailSentSuccessfully = true;
     } catch (mailErr) {
       console.error('Failed to send recovery email:', mailErr);
     }
 
     res.json({
       status: 'success',
-      message: `รหัสลับกู้คืนถูกส่งไปยังอีเมล (${user.email}) ของคุณเรียบร้อยแล้ว กรุณาตรวจสอบกล่องจดหมาย (หรือโฟลเดอร์ Spam)`
+      message: emailSentSuccessfully
+        ? `รหัสลับกู้คืนถูกส่งไปยังอีเมล (${user.email}) เรียบร้อยแล้ว กรุณาตรวจสอบกล่องจดหมาย (หรือโฟลเดอร์ Spam/ขยะ)`
+        : `ระบบได้ออกรหัสกู้คืนสำหรับ (${user.email}) เรียบร้อยแล้ว: ${token}`
     });
 
   } catch (err) {

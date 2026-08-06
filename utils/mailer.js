@@ -12,7 +12,10 @@ if (hasSmtpConfig) {
     secure: process.env.SMTP_PORT === '465', // true for 465, false for other ports
     auth: {
       user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS.replace(/\s+/g, '') // ตัดช่องว่างออกเพื่อให้อ่านได้ถูกต้องตามข้อกำหนดของ SMTP
+      pass: process.env.SMTP_PASS ? process.env.SMTP_PASS.replace(/\s+/g, '') : '' // ตัดช่องว่างออกเพื่อให้อ่านได้ถูกต้องตามข้อกำหนดของ SMTP
+    },
+    tls: {
+      rejectUnauthorized: false // ป้องกันปัญหาสัญญาณการเชื่อมต่อ SSL/TLS หลุดบน Cloud Server
     }
   });
 } else {
