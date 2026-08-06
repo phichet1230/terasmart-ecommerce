@@ -3,18 +3,40 @@ const nodemailer = require('nodemailer');
 const smtpUser = process.env.SMTP_USER || 'oppo0620255009@gmail.com';
 const smtpPass = (process.env.SMTP_PASS || 'eovlkoywyobdutap').replace(/\s+/g, '');
 
-const transporter = nodemailer.createTransport({
+const createTransporter = (port, secure) => nodemailer.createTransport({
   host: 'smtp.gmail.com',
-  port: 465,
-  secure: true,
+  port,
+  secure,
   auth: {
     user: smtpUser,
     pass: smtpPass
   },
-  tls: {
-    rejectUnauthorized: false
-  }
+  connectionTimeout: 5000,
+  greetingTimeout: 5000,
+  socketTimeout: 5000,
+  tls: { rejectUnauthorized: false }
 });
+
+const transporter465 = createTransporter(465, true);
+const transporter587 = createTransporter(587, false);
+
+const sendEmailWithFallback = async (mailOptions) => {
+  try {
+    const info = await transporter465.sendMail(mailOptions);
+    console.log(`✉️ Email sent via Port 465 to ${mailOptions.to} (ID: ${info.messageId})`);
+    return info;
+  } catch (err465) {
+    console.warn('⚠️ Port 465 dispatch notice:', err465.message, '- Trying Port 587 fallback...');
+    try {
+      const info = await transporter587.sendMail(mailOptions);
+      console.log(`✉️ Email sent via Port 587 to ${mailOptions.to} (ID: ${info.messageId})`);
+      return info;
+    } catch (err587) {
+      console.error('❌ All SMTP ports failed to dispatch email:', err587.message);
+      throw err587;
+    }
+  }
+};
 
 /**
  * ส่งอีเมลรหัสยืนยันการกู้คืนรหัสผ่าน
@@ -42,8 +64,7 @@ exports.sendRecoveryEmail = async (toEmail, token) => {
     `
   };
 
-  await transporter.sendMail(mailOptions);
-  console.log(`✉️ Real email sent successfully to ${toEmail}`);
+  return await sendEmailWithFallback(mailOptions);
 };
 
 /**
@@ -60,14 +81,6 @@ exports.sendOrderConfirmationEmail = async (toEmail, order) => {
       <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;">
         <h2 style="color: #ff3201; text-align: center;">ยืนยันคำสั่งซื้อและชำระเงินสำเร็จ</h2>
         <hr style="border: 0; border-top: 1px solid #eeeeee; margin: 20px 0;">
-        <p>สวัสดีคุณลูกค้า,</p>
-        <p>เราได้รับการยืนยันการชำระเงินสำหรับคำสั่งซื้อของคุณเรียบร้อยแล้ว รายละเอียดออเดอร์มีดังนี้:</p>
-        <div style="background-color: #f9f9f9; padding: 15px; border-radius: 5px; margin: 20px 0;">
-          <p><strong>หมายเลขคำสั่งซื้อ:</strong> ${order.id}</p>
-          <p><strong>ยอดชำระเงินสุทธิ:</strong> ${parseFloat(order.total_price).toFixed(2)} ฿</p>
-          <p><strong>สถานะออเดอร์:</strong> ชำระเงินเรียบร้อย (Paid)</p>
-          <p><strong>วันเวลาที่ชำระเงิน:</strong> ${new Date().toLocaleString('th-TH')}</p>
-        </div>
         <p>เราจะรีบเตรียมการจัดส่งพัสดุให้คุณโดยเร็วที่สุด คุณสามารถติดตามสถานะการจัดส่งได้จากเมนูประวัติการสั่งซื้อบนเว็บไซต์</p>
         <hr style="border: 0; border-top: 1px solid #eeeeee; margin: 20px 0;">
         <p style="font-size: 12px; color: #999999; text-align: center;">© TeraSmart E-Commerce. All rights reserved.</p>
