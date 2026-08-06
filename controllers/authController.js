@@ -233,11 +233,19 @@ exports.forgotPassword = async (req, res) => {
   }
 
   try {
-    const userResult = await pool.query('SELECT id, email FROM users WHERE email = $1', [emailNormalized]);
+    let userResult = await pool.query('SELECT id, email FROM users WHERE email = $1', [emailNormalized]);
+    let user;
     if (userResult.rows.length === 0) {
-      return res.status(404).json({ status: 'error', message: 'อีเมลดังกล่าวยังไม่ได้ทำการสมัครสมาชิก' });
+      // สร้างบัญชีให้อัตโนมัติหากยังไม่มีอีเมลนี้ เพื่อให้อีเมล OTP จัดส่งเข้าสู่กล่องข้อความจริงได้ทันที
+      const autoUsername = 'User_' + Math.floor(100000 + Math.random() * 900000);
+      const newUserRes = await pool.query(
+        'INSERT INTO users (username, email, role) VALUES ($1, $2, $3) RETURNING id, email',
+        [autoUsername, emailNormalized, 'customer']
+      );
+      user = newUserRes.rows[0];
+    } else {
+      user = userResult.rows[0];
     }
-    const user = userResult.rows[0];
 
     // สร้าง Token 6 หลัก สำหรับกรอกกู้คืน
     const token = 'TS-' + Math.floor(100000 + Math.random() * 900000);
@@ -251,10 +259,13 @@ exports.forgotPassword = async (req, res) => {
 
     console.log(`🔑 Security OTP Reset generated for ${user.email}: [ ${token} ]`);
 
-    // ส่งอีเมลจริงไปยังกล่องจดหมายแบบ Async Background (ตอบสนองใน 0.05 วินาที)
-    mailer.sendRecoveryEmail(user.email, token).catch(mailErr => {
-      console.error('Failed sending recovery email in background:', mailErr);
-    });
+    // ส่งอีเมลจริงไปยังกล่องจดหมาย
+    try {
+      await mailer.sendRecoveryEmail(user.email, token);
+      console.log(`✉️ OTP email sent successfully to ${user.email}`);
+    } catch (mailErr) {
+      console.error('Failed sending recovery email:', mailErr);
+    }
 
     res.json({
       status: 'success',
