@@ -5081,102 +5081,80 @@ export default function Storefront() {
         </div>
       )}
 
-      {/* CUSTOM 3D CONFIRM DIALOG */}
+      {/* CUSTOM LIGHT THEME CONFIRM DIALOG */}
       {confirmDialog.isOpen && (
         <div style={{
           position: 'fixed',
           inset: 0,
           width: '100%',
           height: '100%',
-          backgroundColor: 'rgba(0,0,0,0.7)',
-          backdropFilter: 'blur(12px)',
+          backgroundColor: 'rgba(15, 23, 42, 0.45)',
+          backdropFilter: 'blur(8px)',
           display: 'flex',
           justifyContent: 'center',
           alignItems: 'center',
           zIndex: 9999,
-          animation: 'fadeIn 0.3s ease forwards'
+          animation: 'fadeIn 0.25s ease forwards'
         }}>
           <style>{`
             @keyframes scaleUpClean {
               0% {
                 opacity: 0;
-                transform: scale(0.95) translateY(15px);
+                transform: scale(0.95) translateY(12px);
               }
               100% {
                 opacity: 1;
                 transform: scale(1) translateY(0);
               }
             }
-            @keyframes pulseGlow {
+            @keyframes pulseGlowRed {
               0% {
-                box-shadow: 0 0 0 0 rgba(255, 59, 48, 0.4);
+                box-shadow: 0 0 0 0 rgba(255, 50, 1, 0.3);
               }
               70% {
-                box-shadow: 0 0 0 15px rgba(255, 59, 48, 0);
+                box-shadow: 0 0 0 12px rgba(255, 50, 1, 0);
               }
               100% {
-                box-shadow: 0 0 0 0 rgba(255, 59, 48, 0);
-              }
-            }
-            @keyframes pulseGlowGreen {
-              0% {
-                box-shadow: 0 0 0 0 rgba(0, 186, 124, 0.5);
-                opacity: 0.6;
-              }
-              70% {
-                box-shadow: 0 0 0 10px rgba(0, 186, 124, 0);
-                opacity: 1;
-              }
-              100% {
-                box-shadow: 0 0 0 0 rgba(0, 186, 124, 0);
-                opacity: 0.6;
+                box-shadow: 0 0 0 0 rgba(255, 50, 1, 0);
               }
             }
           `}</style>
           <div style={{
             width: '100%',
             maxWidth: '420px',
-            background: 'linear-gradient(135deg, rgba(25, 25, 35, 0.95), rgba(15, 15, 20, 0.98))',
-            border: '1px solid rgba(255, 59, 48, 0.3)',
-            borderRadius: '20px',
-            padding: '30px',
+            backgroundColor: '#FFFFFF',
+            border: '1px solid #E2E8F0',
+            borderRadius: '24px',
+            padding: '32px 28px 28px',
             textAlign: 'center',
-            boxShadow: '0 20px 50px rgba(0, 0, 0, 0.8), 0 0 30px rgba(255, 59, 48, 0.15)',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 1px rgba(0, 0, 0, 0.1)',
             transform: 'translateY(0) scale(1)',
-            transition: 'transform 0.3s cubic-bezier(0.25, 1, 0.5, 1), box-shadow 0.3s ease',
-            animation: 'scaleUpClean 0.4s cubic-bezier(0.25, 1, 0.5, 1) forwards'
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.transform = 'translateY(-4px) scale(1.01)';
-            e.currentTarget.style.boxShadow = '0 30px 60px rgba(0, 0, 0, 0.9), 0 0 45px rgba(255, 59, 48, 0.25)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.transform = 'translateY(0) scale(1)';
-            e.currentTarget.style.boxShadow = '0 20px 50px rgba(0, 0, 0, 0.8), 0 0 30px rgba(255, 59, 48, 0.15)';
+            transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+            animation: 'scaleUpClean 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards'
           }}
           >
-            {/* 3D Pulsing Icon */}
+            {/* 3D Light Red Icon Badge */}
             <div style={{
-              width: '64px',
-              height: '64px',
+              width: '68px',
+              height: '68px',
               borderRadius: '50%',
-              backgroundColor: 'rgba(255, 59, 48, 0.1)',
-              border: '1.5px solid var(--primary-color)',
+              backgroundColor: '#FEF2F2',
+              border: '2px solid #FCA5A5',
               display: 'flex',
               justifyContent: 'center',
               alignItems: 'center',
               margin: '0 auto 20px auto',
-              boxShadow: '0 0 20px rgba(255, 59, 48, 0.2), inset 0 0 15px rgba(255, 59, 48, 0.1)',
-              animation: 'pulseGlow 2s infinite'
+              boxShadow: '0 4px 12px rgba(239, 68, 68, 0.15)',
+              animation: 'pulseGlowRed 2s infinite'
             }}>
-              <Trash2 size={32} style={{ color: 'var(--primary-color)', filter: 'drop-shadow(0 2px 8px rgba(255,59,48,0.4))' }} />
+              <Trash2 size={32} style={{ color: '#EF4444' }} />
             </div>
 
-            <h3 style={{ margin: '0 0 10px 0', fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-main)' }}>
+            <h3 style={{ margin: '0 0 10px 0', fontSize: '1.25rem', fontWeight: 700, color: '#0F172A', fontFamily: "'IBM Plex Sans Thai', sans-serif" }}>
               {confirmDialog.title}
             </h3>
             
-            <p style={{ margin: '0 0 25px 0', fontSize: '0.88rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
+            <p style={{ margin: '0 0 26px 0', fontSize: '0.95rem', color: '#475569', lineHeight: 1.5, fontFamily: "'IBM Plex Sans Thai', sans-serif" }}>
               {confirmDialog.message}
             </p>
 
@@ -5184,23 +5162,24 @@ export default function Storefront() {
               <button 
                 onClick={confirmDialog.onCancel}
                 style={{
-                  padding: '12px',
-                  borderRadius: '10px',
-                  border: '1px solid var(--border-color)',
-                  backgroundColor: 'rgba(255,255,255,0.02)',
-                  color: 'var(--text-muted)',
-                  fontSize: '0.85rem',
+                  padding: '12px 16px',
+                  borderRadius: '12px',
+                  border: '1px solid #CBD5E1',
+                  backgroundColor: '#F8FAFC',
+                  color: '#475569',
+                  fontSize: '0.92rem',
+                  fontFamily: "'IBM Plex Sans Thai', sans-serif",
                   fontWeight: 600,
                   cursor: 'pointer',
                   transition: 'all 0.2s ease'
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.05)';
-                  e.currentTarget.style.color = 'var(--text-main)';
+                  e.currentTarget.style.backgroundColor = '#F1F5F9';
+                  e.currentTarget.style.color = '#0F172A';
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.02)';
-                  e.currentTarget.style.color = 'var(--text-muted)';
+                  e.currentTarget.style.backgroundColor = '#F8FAFC';
+                  e.currentTarget.style.color = '#475569';
                 }}
               >
                 ยกเลิก
@@ -5209,24 +5188,25 @@ export default function Storefront() {
               <button 
                 onClick={confirmDialog.onConfirm}
                 style={{
-                  padding: '12px',
-                  borderRadius: '10px',
+                  padding: '12px 16px',
+                  borderRadius: '12px',
                   border: 'none',
-                  backgroundColor: 'var(--primary-color)',
-                  color: '#fff',
-                  fontSize: '0.85rem',
-                  fontWeight: 600,
+                  backgroundColor: '#FF3201',
+                  color: '#FFFFFF',
+                  fontSize: '0.92rem',
+                  fontFamily: "'IBM Plex Sans Thai', sans-serif",
+                  fontWeight: 700,
                   cursor: 'pointer',
-                  boxShadow: '0 4px 15px rgba(255,59,48,0.4)',
+                  boxShadow: '0 4px 14px rgba(255, 50, 1, 0.35)',
                   transition: 'all 0.2s ease'
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = 'translateY(-2px)';
-                  e.currentTarget.style.boxShadow = '0 6px 20px rgba(255,59,48,0.6)';
+                  e.currentTarget.style.backgroundColor = '#E02B00';
+                  e.currentTarget.style.boxShadow = '0 6px 18px rgba(255, 50, 1, 0.45)';
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = '0 4px 15px rgba(255,59,48,0.4)';
+                  e.currentTarget.style.backgroundColor = '#FF3201';
+                  e.currentTarget.style.boxShadow = '0 4px 14px rgba(255, 50, 1, 0.35)';
                 }}
               >
                 ยืนยันลบ
