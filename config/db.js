@@ -2,7 +2,7 @@ const { Pool } = require('pg');
 require('dotenv').config();
 
 const defaultCloudDbUrl = 'postgresql://terasmart_user:vk3eDqqqYtIrDcSL4cKbv4YTUXm0UCbf@dpg-d9olodbm8hqs739buu9g-a.singapore-postgres.render.com/terasmart_db';
-const activeDbUrl = process.env.DATABASE_URL || (process.env.NODE_ENV === 'production' || process.env.VERCEL ? defaultCloudDbUrl : null);
+const activeDbUrl = (process.env.DATABASE_URL && process.env.DATABASE_URL.trim() !== '') ? process.env.DATABASE_URL.trim() : defaultCloudDbUrl;
 
 const poolConfig = {
   ...(activeDbUrl
