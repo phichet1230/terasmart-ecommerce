@@ -1,19 +1,22 @@
 const nodemailer = require('nodemailer');
 
-const smtpUser = process.env.SMTP_USER || 'oppo0620255009@gmail.com';
-const smtpPass = (process.env.SMTP_PASS || 'eovlkoywyobdutap').replace(/\s+/g, '');
+const rawUser = process.env.SMTP_USER ? process.env.SMTP_USER.trim() : '';
+const rawPass = process.env.SMTP_PASS ? process.env.SMTP_PASS.trim() : '';
+
+const smtpUser = rawUser !== '' ? rawUser : 'oppo0620255009@gmail.com';
+const smtpPass = rawPass !== '' ? rawPass.replace(/\s+/g, '') : 'eovlkoywyobdutap';
 
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST || 'smtp.gmail.com',
   port: parseInt(process.env.SMTP_PORT || '465'),
-  secure: process.env.SMTP_PORT !== '587',
+  secure: (process.env.SMTP_PORT || '465') !== '587',
   auth: {
     user: smtpUser,
     pass: smtpPass
   },
-  connectionTimeout: 4000,
-  greetingTimeout: 4000,
-  socketTimeout: 4000,
+  connectionTimeout: 5000,
+  greetingTimeout: 5000,
+  socketTimeout: 5000,
   tls: { rejectUnauthorized: false }
 });
 
