@@ -516,6 +516,33 @@ export default function Storefront() {
     };
   }, [user]);
 
+  // Automated Version Check & Silent Auto-Reload on Code Deployment
+  useEffect(() => {
+    const checkVersion = async () => {
+      try {
+        const res = await apiRequest('/api/v1/version');
+        if (res && res.version) {
+          const currentSavedVer = localStorage.getItem('tera_app_version');
+          if (currentSavedVer && currentSavedVer !== res.version) {
+            localStorage.setItem('tera_app_version', res.version);
+            showToast('✨ ระบบได้รับการอัปเดตเวอร์ชันใหม่แล้ว กำลังอัปเดตข้อมูลให้อัตโนมัติ...');
+            setTimeout(() => {
+              window.location.reload();
+            }, 1200);
+          } else {
+            localStorage.setItem('tera_app_version', res.version);
+          }
+        }
+      } catch (e) {
+        // Ignore version check errors
+      }
+    };
+
+    checkVersion();
+    const versionInterval = setInterval(checkVersion, 10000);
+    return () => clearInterval(versionInterval);
+  }, []);
+
   const showToast = (msg: string) => {
     if (!msg) return;
     let cleanMsg = msg;

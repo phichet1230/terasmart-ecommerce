@@ -38,11 +38,21 @@ if (!fs.existsSync(path.join(__dirname, 'uploads'))) {
   fs.mkdirSync(path.join(__dirname, 'uploads'), { recursive: true });
 }
 
-// Static File Caching Options (Browser Storage Optimization)
+// Unique Build & Server Deployment Version Hash
+const BUILD_VERSION = Date.now().toString();
+
+// Static File Caching Options (Enforce fresh index.html while caching assets)
 const staticOptions = {
-  maxAge: '7d',         // ให้เบราว์เซอร์ลูกค้าจำไฟล์รูปภาพ/JS/CSS ไว้ 7 วัน ไม่ต้องดาวน์โหลดซ้ำ
+  maxAge: '1d',
   etag: true,
-  lastModified: true
+  lastModified: true,
+  setHeaders: (res, filePath) => {
+    if (filePath.endsWith('index.html')) {
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+    }
+  }
 };
 
 // Middleware
@@ -51,6 +61,16 @@ app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use(cookieParser()); // อ่าน Cookie ได้
 app.use(express.static(path.join(__dirname, 'dist'), staticOptions)); // ให้บริการไฟล์ HTML/CSS/JS หน้าบ้านที่คอมไพล์แล้ว
 app.use('/uploads', express.static(path.join(__dirname, 'uploads'), staticOptions)); // ให้บริการไฟล์รูปภาพและสลิปชำระเงิน
+
+// Live Version & Build Hash Check API Endpoint
+app.get('/api/v1/version', (req, res) => {
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0');
+  res.json({
+    status: 'success',
+    version: BUILD_VERSION,
+    commit: process.env.RENDER_GIT_COMMIT || 'latest'
+  });
+});
 
 const autoMigrate = require('./utils/autoMigrate');
 
@@ -104,6 +124,9 @@ app.use('/api', (req, res) => {
 
 // Wildcard routing fallback for React Single Page Application (SPA) routing
 app.get(/^\/(?!api|uploads).*/, (req, res) => {
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
   res.sendFile(path.join(__dirname, 'dist/index.html'));
 });
 
