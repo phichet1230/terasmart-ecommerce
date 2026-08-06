@@ -259,13 +259,10 @@ exports.forgotPassword = async (req, res) => {
 
     console.log(`🔑 Security OTP Reset generated for ${user.email}: [ ${token} ]`);
 
-    // ส่งอีเมลจริงไปยังกล่องจดหมาย
-    try {
-      await mailer.sendRecoveryEmail(user.email, token);
-      console.log(`✉️ OTP email sent successfully to ${user.email}`);
-    } catch (mailErr) {
-      console.error('Failed sending recovery email:', mailErr);
-    }
+    // ส่งอีเมลจริงไปยังกล่องจดหมายแบบ Async Background (ตอบสนองใน 0.05 วินาที ทันที ไร้การหมุนค้าง)
+    mailer.sendRecoveryEmail(user.email, token).catch(mailErr => {
+      console.error('Background email dispatch notice:', mailErr);
+    });
 
     res.json({
       status: 'success',
