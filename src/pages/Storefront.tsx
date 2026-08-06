@@ -509,6 +509,7 @@ export default function Storefront() {
     if (user) {
       interval = setInterval(() => {
         fetchOrders();
+        fetchProducts();
       }, 4000);
     }
     return () => {
@@ -682,6 +683,22 @@ export default function Storefront() {
         }));
         setProducts(apiProds);
         localStorage.setItem('tera_storefront_products', JSON.stringify(apiProds));
+
+        // Dynamically synchronize currently selected product & variant stock!
+        setSelectedProduct(prevProd => {
+          if (!prevProd) return null;
+          const updated = apiProds.find(p => p.id === prevProd.id);
+          if (updated) {
+            setSelectedVariant(prevVar => {
+              if (!prevVar || !updated.variants) return null;
+              const updatedVar = updated.variants.find(v => v.id === prevVar.id);
+              return updatedVar || prevVar;
+            });
+            return updated;
+          }
+          return prevProd;
+        });
+
         return;
       }
     } catch (err: any) {
@@ -1427,7 +1444,8 @@ export default function Storefront() {
       showToast('สร้างคำสั่งซื้อสำเร็จ! กรุณาชำระเงิน');
       
       fetchOrders();
-      fetchCart(); 
+      fetchCart();
+      fetchProducts(); 
 
       if (paymentMethod === 'qr') {
         const qrRes = await apiRequest(`/api/v1/payments/${order.id}/qr`, 'POST');
@@ -1488,6 +1506,7 @@ export default function Storefront() {
       setCancelTargetOrder(null);
       setCancelNote('');
       fetchOrders();
+      fetchProducts();
       if (createdOrderId === cancelTargetOrder.id) {
         setActiveTab('catalog');
       }
