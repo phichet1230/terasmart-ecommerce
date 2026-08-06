@@ -23,7 +23,7 @@ const transporter = nodemailer.createTransport({
  */
 exports.sendRecoveryEmail = async (toEmail, token) => {
   const mailOptions = {
-    from: `"TeraSmart E-Commerce" <${process.env.SMTP_USER || 'no-reply@terasmart.com'}>`,
+    from: `"TeraSmart E-Commerce" <${smtpUser}>`,
     to: toEmail,
     subject: 'รหัสลับกู้คืนรหัสผ่านของคุณ (TeraSmart E-Commerce)',
     html: `
@@ -53,7 +53,7 @@ exports.sendRecoveryEmail = async (toEmail, token) => {
  */
 exports.sendOrderConfirmationEmail = async (toEmail, order) => {
   const mailOptions = {
-    from: `"TeraSmart E-Commerce" <${process.env.SMTP_USER || 'no-reply@terasmart.com'}>`,
+    from: `"TeraSmart E-Commerce" <${smtpUser}>`,
     to: toEmail,
     subject: `ยืนยันการชำระเงินและคำสั่งซื้อสำเร็จ #${order.id.substring(0, 8)}`,
     html: `
