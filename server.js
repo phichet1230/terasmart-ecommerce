@@ -43,7 +43,7 @@ if (!fs.existsSync(path.join(__dirname, 'uploads'))) {
 }
 
 // Unique Build & Server Deployment Version Hash
-const BUILD_VERSION = Date.now().toString();
+const BUILD_VERSION = process.env.VERCEL_GIT_COMMIT_SHA || process.env.RENDER_GIT_COMMIT || 'v1.0.4';
 
 // Static File Caching Options (Enforce fresh index.html while caching assets)
 const staticOptions = {
