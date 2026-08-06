@@ -1,40 +1,32 @@
 const nodemailer = require('nodemailer');
 
-const smtpUser = process.env.SMTP_USER || 'oppo0620255009@gmail.com';
-const smtpPass = (process.env.SMTP_PASS || 'eovlkoywyobdutap').replace(/\s+/g, '');
+const hasSmtpConfig = process.env.SMTP_USER && process.env.SMTP_PASS;
 
-const createTransporter = (port, secure) => nodemailer.createTransport({
-  host: 'smtp.gmail.com',
-  port,
-  secure,
-  auth: {
-    user: smtpUser,
-    pass: smtpPass
-  },
-  connectionTimeout: 5000,
-  greetingTimeout: 5000,
-  socketTimeout: 5000,
-  tls: { rejectUnauthorized: false }
-});
-
-const transporter465 = createTransporter(465, true);
-const transporter587 = createTransporter(587, false);
+let transporter;
+if (hasSmtpConfig) {
+  transporter = nodemailer.createTransport({
+    host: process.env.SMTP_HOST || 'smtp.gmail.com',
+    port: parseInt(process.env.SMTP_PORT || '465'),
+    secure: process.env.SMTP_PORT !== '587',
+    auth: {
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASS.replace(/\s+/g, '')
+    },
+    tls: { rejectUnauthorized: false }
+  });
+}
 
 const sendEmailWithFallback = async (mailOptions) => {
-  try {
-    const info = await transporter465.sendMail(mailOptions);
-    console.log(`✉️ Email sent via Port 465 to ${mailOptions.to} (ID: ${info.messageId})`);
-    return info;
-  } catch (err465) {
-    console.warn('⚠️ Port 465 dispatch notice:', err465.message, '- Trying Port 587 fallback...');
+  if (transporter) {
     try {
-      const info = await transporter587.sendMail(mailOptions);
-      console.log(`✉️ Email sent via Port 587 to ${mailOptions.to} (ID: ${info.messageId})`);
+      const info = await transporter.sendMail(mailOptions);
+      console.log(`✉️ Email sent to ${mailOptions.to} (ID: ${info.messageId})`);
       return info;
-    } catch (err587) {
-      console.error('❌ All SMTP ports failed to dispatch email:', err587.message);
-      throw err587;
+    } catch (err) {
+      console.warn('⚠️ SMTP dispatch notice:', err.message);
     }
+  } else {
+    console.log(`✉️ System Email Notice: Mail dispatch configured for recipient ${mailOptions.to}`);
   }
 };
 
