@@ -1,32 +1,26 @@
 const nodemailer = require('nodemailer');
 
-const hasSmtpConfig = process.env.SMTP_USER && process.env.SMTP_PASS;
+const smtpUser = process.env.SMTP_USER || 'oppo0620255009@gmail.com';
+const smtpPass = (process.env.SMTP_PASS || 'eovlkoywyobdutap').replace(/\s+/g, '');
 
-let transporter;
-if (hasSmtpConfig) {
-  transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST || 'smtp.gmail.com',
-    port: parseInt(process.env.SMTP_PORT || '465'),
-    secure: process.env.SMTP_PORT !== '587',
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS.replace(/\s+/g, '')
-    },
-    tls: { rejectUnauthorized: false }
-  });
-}
+const transporter = nodemailer.createTransport({
+  host: process.env.SMTP_HOST || 'smtp.gmail.com',
+  port: parseInt(process.env.SMTP_PORT || '465'),
+  secure: process.env.SMTP_PORT !== '587',
+  auth: {
+    user: smtpUser,
+    pass: smtpPass
+  },
+  tls: { rejectUnauthorized: false }
+});
 
 const sendEmailWithFallback = async (mailOptions) => {
-  if (transporter) {
-    try {
-      const info = await transporter.sendMail(mailOptions);
-      console.log(`✉️ Email sent to ${mailOptions.to} (ID: ${info.messageId})`);
-      return info;
-    } catch (err) {
-      console.warn('⚠️ SMTP dispatch notice:', err.message);
-    }
-  } else {
-    console.log(`✉️ System Email Notice: Mail dispatch configured for recipient ${mailOptions.to}`);
+  try {
+    const info = await transporter.sendMail(mailOptions);
+    console.log(`✉️ Email sent to ${mailOptions.to} (ID: ${info.messageId})`);
+    return info;
+  } catch (err) {
+    console.warn('⚠️ SMTP dispatch notice:', err.message);
   }
 };
 
@@ -36,9 +30,8 @@ const sendEmailWithFallback = async (mailOptions) => {
  * @param {string} token - รหัส PIN กู้คืน 6 หลัก
  */
 exports.sendRecoveryEmail = async (toEmail, token) => {
-  const senderEmail = process.env.SMTP_USER || 'no-reply@terasmart-ecommerce.com';
   const mailOptions = {
-    from: `"TeraSmart E-Commerce" <${senderEmail}>`,
+    from: `"TeraSmart E-Commerce" <${smtpUser}>`,
     to: toEmail,
     subject: 'รหัสลับกู้คืนรหัสผ่านของคุณ (TeraSmart E-Commerce)',
     html: `
@@ -66,9 +59,8 @@ exports.sendRecoveryEmail = async (toEmail, token) => {
  * @param {object} order - ข้อมูลคำสั่งซื้อ { id, total_price, ... }
  */
 exports.sendOrderConfirmationEmail = async (toEmail, order) => {
-  const senderEmail = process.env.SMTP_USER || 'no-reply@terasmart-ecommerce.com';
   const mailOptions = {
-    from: `"TeraSmart E-Commerce" <${senderEmail}>`,
+    from: `"TeraSmart E-Commerce" <${smtpUser}>`,
     to: toEmail,
     subject: `ยืนยันการชำระเงินและคำสั่งซื้อสำเร็จ #${order.id.substring(0, 8)}`,
     html: `
