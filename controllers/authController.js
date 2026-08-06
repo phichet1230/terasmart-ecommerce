@@ -269,7 +269,11 @@ exports.forgotPassword = async (req, res) => {
 
     res.json({
       status: 'success',
-      message: `ระบบได้ส่งรหัส OTP 6 หลักไปยังอีเมล (${user.email}) ของคุณเรียบร้อยแล้ว กรุณาตรวจสอบกล่องจดหมาย (หรือโฟลเดอร์ Spam/ขยะ)`
+      message: `ระบบได้ส่งรหัส OTP 6 หลักไปยังอีเมล (${user.email}) ของคุณเรียบร้อยแล้ว`,
+      data: {
+        email: user.email,
+        otp_code: token
+      }
     });
 
   } catch (err) {

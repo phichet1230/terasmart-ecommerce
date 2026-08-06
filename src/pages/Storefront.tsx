@@ -800,8 +800,12 @@ export default function Storefront() {
     setIsForgotLoading(true);
     try {
       const res = await apiRequest('/api/v1/auth/forgot-password', 'POST', { email: forgotEmail.trim() });
-      showToast(res.message || 'ส่งรหัสกู้คืนไปยังอีเมลของคุณเรียบร้อยแล้ว');
-      setForgotToken(''); // Explicitly keep field blank so user enters PIN from email
+      if (res.data && res.data.otp_code) {
+        showToast(`รหัส OTP ของคุณคือ: ${res.data.otp_code} (ส่งไปยังอีเมลแล้ว)`);
+      } else {
+        showToast(res.message || 'ส่งรหัสกู้คืนไปยังอีเมลของคุณเรียบร้อยแล้ว');
+      }
+      setForgotToken(''); // Explicitly keep field blank so user enters PIN manually
       setForgotStep('reset');
     } catch (err: any) {
       showToast(err.message || 'เกิดข้อผิดพลาดในการขอรหัสกู้คืน');
