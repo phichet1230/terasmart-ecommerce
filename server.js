@@ -76,21 +76,6 @@ app.get('/api/v1/version', (req, res) => {
   });
 });
 
-const autoMigrate = require('./utils/autoMigrate');
-
-const PORT = process.env.PORT || 5000;
-
-(async () => {
-  try {
-    await autoMigrate();
-  } catch (e) {
-    console.warn('Startup migration notice:', e.message);
-  }
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`🚀 Server started on http://0.0.0.0:${PORT}`);
-  });
-})();
-
 const authRoutes = require('./routes/authRoutes');
 app.use('/api/v1/auth', authRoutes);
 
@@ -133,6 +118,20 @@ app.get(/^\/(?!api|uploads).*/, (req, res) => {
   res.setHeader('Expires', '0');
   res.sendFile(path.join(__dirname, 'dist/index.html'));
 });
+
+const autoMigrate = require('./utils/autoMigrate');
+const PORT = process.env.PORT || 5000;
+
+(async () => {
+  try {
+    await autoMigrate();
+  } catch (e) {
+    console.warn('Startup migration notice:', e.message);
+  }
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`🚀 Server started on http://0.0.0.0:${PORT}`);
+  });
+})();
 
 // Express Global Error Handler (Guarantees no raw 500 html/string is sent to client)
 app.use((err, req, res, next) => {
