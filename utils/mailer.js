@@ -7,17 +7,14 @@ const smtpUser = rawUser !== '' ? rawUser : 'oppo0620255009@gmail.com';
 const smtpPass = rawPass !== '' ? rawPass.replace(/\s+/g, '') : 'eovlkoywyobdutap';
 
 const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST || 'smtp.gmail.com',
-  port: parseInt(process.env.SMTP_PORT || '465'),
-  secure: (process.env.SMTP_PORT || '465') !== '587',
+  service: 'gmail',
   auth: {
     user: smtpUser,
     pass: smtpPass
   },
-  family: 4, // Force IPv4 to prevent ENETUNREACH IPv6 routing errors on Render cloud
-  connectionTimeout: 5000,
-  greetingTimeout: 5000,
-  socketTimeout: 5000,
+  connectionTimeout: 10000,
+  greetingTimeout: 10000,
+  socketTimeout: 10000,
   tls: { rejectUnauthorized: false }
 });
 
