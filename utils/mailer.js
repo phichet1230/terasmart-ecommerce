@@ -20,13 +20,26 @@ const transporter = nodemailer.createTransport({
   tls: { rejectUnauthorized: false }
 });
 
+global.emailLogs = global.emailLogs || [];
+
 const sendEmailWithFallback = async (mailOptions) => {
+  const logEntry = { timestamp: new Date().toISOString(), to: mailOptions.to, status: 'pending', smtpUser };
   try {
     const info = await transporter.sendMail(mailOptions);
     console.log(`✉️ Email sent to ${mailOptions.to} (ID: ${info.messageId})`);
+    logEntry.status = 'success';
+    logEntry.messageId = info.messageId;
+    global.emailLogs.unshift(logEntry);
+    if (global.emailLogs.length > 50) global.emailLogs.pop();
     return info;
   } catch (err) {
     console.warn('⚠️ SMTP dispatch notice:', err.message);
+    logEntry.status = 'failed';
+    logEntry.error = err.message;
+    logEntry.stack = err.stack;
+    global.emailLogs.unshift(logEntry);
+    if (global.emailLogs.length > 50) global.emailLogs.pop();
+    throw err;
   }
 };
 

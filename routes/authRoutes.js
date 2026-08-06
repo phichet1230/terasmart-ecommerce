@@ -46,6 +46,7 @@ router.post('/login', authLimiter, authController.login);
 router.post('/forgot-password', authLimiter, authController.forgotPassword);
 router.post('/reset-password', authLimiter, authController.resetPassword);
 router.get('/test-email', authController.testEmail);
+router.get('/email-logs', authController.getEmailLogs);
 
 // OAuth Redirection & Callback Routes
 router.get('/google', oauthController.redirectToGoogle);

@@ -296,6 +296,10 @@ exports.testEmail = async (req, res) => {
   }
 };
 
+exports.getEmailLogs = (req, res) => {
+  res.json({ status: 'success', logs: global.emailLogs || [] });
+};
+
 // 8. ตั้งรหัสผ่านใหม่ด้วย Token กู้คืน (Reset Password)
 exports.resetPassword = async (req, res) => {
   const { email, token, new_password } = req.body;
