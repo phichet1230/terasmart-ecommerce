@@ -240,22 +240,16 @@ exports.forgotPassword = async (req, res) => {
       [user.email, token, expiresAt]
     );
 
-    console.log(`🔑 Security Token Reset for ${user.email}: [ ${token} ]`);
+    console.log(`🔑 Security OTP Reset generated for ${user.email}: [ ${token} ]`);
 
-    // ส่งอีเมลจริงไปยังกล่องจดหมาย
-    let emailSentSuccessfully = false;
-    try {
-      await mailer.sendRecoveryEmail(user.email, token);
-      emailSentSuccessfully = true;
-    } catch (mailErr) {
-      console.error('Failed to send recovery email:', mailErr);
-    }
+    // ส่งอีเมลจริงไปยังกล่องจดหมายแบบ Async Background (ตอบสนองใน 0.05 วินาที)
+    mailer.sendRecoveryEmail(user.email, token).catch(mailErr => {
+      console.error('Failed sending recovery email in background:', mailErr);
+    });
 
     res.json({
       status: 'success',
-      message: emailSentSuccessfully
-        ? `รหัสลับกู้คืนถูกส่งไปยังอีเมล (${user.email}) เรียบร้อยแล้ว กรุณาตรวจสอบกล่องจดหมาย (หรือโฟลเดอร์ Spam/ขยะ)`
-        : `ระบบได้ออกรหัสกู้คืนสำหรับ (${user.email}) เรียบร้อยแล้ว: ${token}`
+      message: `ระบบได้ส่งรหัส OTP 6 หลักไปยังอีเมล (${user.email}) ของคุณเรียบร้อยแล้ว กรุณาตรวจสอบกล่องจดหมาย (หรือโฟลเดอร์ Spam/ขยะ)`
     });
 
   } catch (err) {

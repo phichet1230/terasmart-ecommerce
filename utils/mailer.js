@@ -4,7 +4,9 @@ const smtpUser = process.env.SMTP_USER || 'oppo0620255009@gmail.com';
 const smtpPass = (process.env.SMTP_PASS || 'eovlkoywyobdutap').replace(/\s+/g, '');
 
 const transporter = nodemailer.createTransport({
-  service: 'gmail',
+  host: 'smtp.gmail.com',
+  port: 465,
+  secure: true,
   auth: {
     user: smtpUser,
     pass: smtpPass
