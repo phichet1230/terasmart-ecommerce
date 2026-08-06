@@ -1005,6 +1005,52 @@ export default function Storefront() {
     }
   };
 
+  const handleAddCompatibleToCart = async (item: any) => {
+    if (!user) {
+      showToast('กรุณาเข้าสู่ระบบก่อนสั่งซื้อ');
+      setActiveTab('profile');
+      setSelectedProduct(null);
+      return;
+    }
+    
+    // Find matching product in catalog by keyword or name
+    const matchedProd = products.find(p => {
+      if (item.keyword && p.name.includes(item.keyword)) return true;
+      if (p.name.includes(item.name) || item.name.includes(p.name)) return true;
+      return false;
+    });
+
+    let targetVariantId: number | null = null;
+
+    if (matchedProd && matchedProd.variants && matchedProd.variants.length > 0) {
+      const inStockVar = matchedProd.variants.find(v => v.stock_quantity > 0);
+      targetVariantId = inStockVar ? inStockVar.id : matchedProd.variants[0].id;
+    } else {
+      // Fallback to query available in-stock variant from catalog
+      const availableProd = products.find(p => p.variants && p.variants.some(v => v.stock_quantity > 0));
+      if (availableProd && availableProd.variants) {
+        const v = availableProd.variants.find(v => v.stock_quantity > 0);
+        targetVariantId = v ? v.id : availableProd.variants[0].id;
+      }
+    }
+
+    if (!targetVariantId) {
+      showToast('ไม่พบข้อมูลสินค้าชิ้นนี้ในสต็อก');
+      return;
+    }
+
+    try {
+      await apiRequest('/api/v1/cart', 'POST', {
+        variant_id: targetVariantId,
+        quantity: 1
+      });
+      showToast(`เพิ่ม ${item.name} ลงตะกร้าเรียบร้อยแล้ว!`);
+      fetchCart();
+    } catch (err: any) {
+      showToast(err.message || 'เกิดข้อผิดพลาดในการเพิ่มสินค้าลงตะกร้า');
+    }
+  };
+
   const deleteCartItem = async (cartItemId: number) => {
     const confirmed = await showConfirm('ยืนยันการลบสินค้า', 'คุณต้องการลบสินค้าชิ้นนี้ออกจากตะกร้าใช่หรือไม่?');
     if (!confirmed) {
@@ -2682,7 +2728,7 @@ export default function Storefront() {
                                   </span>
                                   <button 
                                     type="button"
-                                    onClick={() => showToast(`เพิ่ม ${item.name} ลงตะกร้าเรียบร้อย`)}
+                                    onClick={() => handleAddCompatibleToCart(item)}
                                     style={{ background: '#FF3201', color: '#FFFFFF', border: 'none', borderRadius: '6px', padding: '6px 14px', fontSize: '0.85rem', fontWeight: 700, cursor: 'pointer', boxShadow: '0 2px 4px rgba(255,50,1,0.3)' }}
                                   >
                                     สั่งซื้อ
