@@ -6,7 +6,7 @@ let rawDbUrl = (process.env.DATABASE_URL && process.env.DATABASE_URL.trim() !== 
 
 // Fail-safe auto-correct internal Render database host (dpg-xxx) to external Singapore domain for Vercel
 if (rawDbUrl.includes('dpg-') && !rawDbUrl.includes('.render.com')) {
-  rawDbUrl = rawDbUrl.replace(/@dpg-([a-zA-Z0-9-]+)(\/|\?|$)/, '@dpg-$1.singapore-postgres.render.com$2');
+  rawDbUrl = rawDbUrl.replace(/@dpg-([^/]+)/, '@dpg-$1.singapore-postgres.render.com');
 }
 
 const activeDbUrl = rawDbUrl;
