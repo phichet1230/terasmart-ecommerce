@@ -1,5 +1,6 @@
 const pool = require('../config/db');
 const lockService = require('../services/lockService');
+const { clearCache } = require('../utils/cache');
 
 // Ensure cancel_reason and cancelled_at columns exist
 pool.query(`
@@ -53,6 +54,7 @@ const releaseExpiredOrders = async () => {
           [order.id]
         );
         
+        clearCache('products');
         await client.query('COMMIT');
         console.log(`Auto-cancelled expired order ${order.id} and returned stock.`);
       } catch (err) {
@@ -265,6 +267,7 @@ exports.createOrder = async (req, res) => {
     );
 
     await client.query('COMMIT');
+    clearCache('products');
     res.status(201).json({ status: 'success', message: 'สั่งซื้อสินค้าสำเร็จ', data: orderInsert.rows[0] });
 
   } catch (err) {
@@ -441,6 +444,7 @@ exports.cancelOrder = async (req, res) => {
     );
 
     await client.query('COMMIT');
+    clearCache('products');
 
     const refundMsg = order.status === 'paid' 
       ? 'ยกเลิกคำสั่งซื้อสำเร็จ! ทางพนักงานและระบบบัญชีจะทำการตรวจสอบเหตุผลและดำเนินการคืนเงินเข้าบัญชีของผู้ใช้โดยเร็วที่สุด'

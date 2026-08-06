@@ -9,8 +9,9 @@ exports.getAllProducts = async (req, res) => {
     const cacheKey = `products_${category || ''}_${min_price || ''}_${max_price || ''}_${search || ''}_${limit}_${offset}`;
     const cachedResponse = getCache(cacheKey);
 
-    // ตั้งค่า Browser Cache-Control
-    res.setHeader('Cache-Control', 'public, max-age=30, stale-while-revalidate=120');
+    // Ensure browser fetches fresh inventory status without stale 30s browser cache
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0');
+    res.setHeader('Pragma', 'no-cache');
 
     if (cachedResponse) {
       return res.json(cachedResponse);

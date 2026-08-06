@@ -510,7 +510,7 @@ export default function Storefront() {
       interval = setInterval(() => {
         fetchOrders();
         fetchProducts();
-      }, 4000);
+      }, 2000);
     }
     return () => {
       if (interval) clearInterval(interval);
@@ -1433,9 +1433,38 @@ export default function Storefront() {
           .map(item => item.cart_item_id);
       }
 
-      if (activeCoupon) {
-        payload.coupon_id = activeCoupon.id;
+      // OPTIMISTIC INSTANT STOCK UPDATE (0.00s Latency UI Response)
+      const itemsToDeduct: { variant_id: number; qty: number }[] = [];
+      if (checkoutDirectItem) {
+        itemsToDeduct.push({ variant_id: checkoutDirectItem.variant.id, qty: checkoutDirectItem.qty });
+      } else {
+        cartItems.filter(i => i.selected).forEach(i => {
+          itemsToDeduct.push({ variant_id: i.variant_id, qty: i.quantity });
+        });
       }
+
+      setProducts(prevProds => {
+        return prevProds.map(p => {
+          if (!p.variants) return p;
+          const updatedVars = p.variants.map(v => {
+            const deductItem = itemsToDeduct.find(d => d.variant_id === v.id);
+            if (deductItem) {
+              return { ...v, stock_quantity: Math.max(v.stock_quantity - deductItem.qty, 0) };
+            }
+            return v;
+          });
+          return { ...p, variants: updatedVars };
+        });
+      });
+
+      setSelectedVariant(prevVar => {
+        if (!prevVar) return null;
+        const deductItem = itemsToDeduct.find(d => d.variant_id === prevVar.id);
+        if (deductItem) {
+          return { ...prevVar, stock_quantity: Math.max(prevVar.stock_quantity - deductItem.qty, 0) };
+        }
+        return prevVar;
+      });
 
       const res = await apiRequest('/api/v1/orders', 'POST', payload);
       const order = res.data;
