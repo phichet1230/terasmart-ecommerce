@@ -14,6 +14,19 @@ const parseUtcDate = (dateVal) => {
   return new Date(str);
 };
 
+const sendCustomerOrderEmail = async (orderId, orderDetails) => {
+  try {
+    const userRes = await pool.query('SELECT u.email FROM orders o JOIN users u ON o.user_id = u.id WHERE o.id = $1', [orderId]);
+    if (userRes.rows.length > 0 && userRes.rows[0].email) {
+      const mailer = require('../utils/mailer');
+      await mailer.sendOrderConfirmationEmail(userRes.rows[0].email, orderDetails);
+      console.log(`✉️ Order confirmation email sent to ${userRes.rows[0].email} for order #${orderId}`);
+    }
+  } catch (err) {
+    console.error('Failed sending order confirmation email:', err.message);
+  }
+};
+
 // 1. สร้าง Dynamic QR Code (PromptPay) และตั้งค่าหมดอายุ 5 นาที
 exports.generateQR = async (req, res) => {
   const user_id = req.user.id;
@@ -489,13 +502,8 @@ exports.uploadSlip = async (req, res) => {
       [orderId]
     );
 
-    // ส่งอีเมลยืนยันการสั่งซื้อสำเร็จ
-    try {
-      const mailer = require('../utils/mailer');
-      await mailer.sendOrderConfirmationEmail(order.email, order);
-    } catch (mailErr) {
-      console.error('Failed to send order confirmation email:', mailErr);
-    }
+    // ส่งอีเมลยืนยันการสั่งซื้อสำเร็จไปยังอีเมลของลูกค้า
+    sendCustomerOrderEmail(orderId, order);
 
     res.json({
       status: 'success',
@@ -575,13 +583,8 @@ exports.paymentsWebhook = async (req, res) => {
       [order_id]
     );
 
-    // ส่งอีเมลยืนยันการสั่งซื้อ
-    try {
-      const mailer = require('../utils/mailer');
-      await mailer.sendOrderConfirmationEmail(orderResult.rows[0].email, { id: order_id, total_price: order.total_price });
-    } catch (mailErr) {
-      console.error('Failed to send order confirmation email:', mailErr);
-    }
+    // ส่งอีเมลยืนยันการสั่งซื้อสำเร็จไปยังอีเมลของลูกค้า
+    sendCustomerOrderEmail(order_id, { id: order_id, total_price: order.total_price });
 
     console.log(`💰 Automated Webhook: Order ${order_id} successfully confirmed with payment amount: ${amount} ฿`);
 
@@ -652,13 +655,8 @@ exports.simulateWebhook = async (req, res) => {
       [orderId]
     );
 
-    // ส่งอีเมลยืนยันการสั่งซื้อ
-    try {
-      const mailer = require('../utils/mailer');
-      await mailer.sendOrderConfirmationEmail(orderResult.rows[0].email, { id: orderId, total_price: order.total_price });
-    } catch (mailErr) {
-      console.error('Failed to send order confirmation email:', mailErr);
-    }
+    // ส่งอีเมลยืนยันการสั่งซื้อสำเร็จไปยังอีเมลของลูกค้า
+    sendCustomerOrderEmail(orderId, { id: orderId, total_price: order.total_price });
 
     res.json({
       status: 'success',
@@ -730,13 +728,8 @@ exports.simulatePromptPayWebhook = async (req, res) => {
       [orderId]
     );
 
-    // ส่งอีเมลยืนยันการสั่งซื้อสำเร็จ
-    try {
-      const mailer = require('../utils/mailer');
-      await mailer.sendOrderConfirmationEmail(order.email, { id: orderId, total_price: order.total_price });
-    } catch (mailErr) {
-      console.error('Failed to send confirmation email:', mailErr);
-    }
+    // ส่งอีเมลยืนยันการสั่งซื้อสำเร็จไปยังอีเมลของลูกค้า
+    sendCustomerOrderEmail(orderId, { id: orderId, total_price: order.total_price });
 
     await pool.query('COMMIT');
     res.json({ status: 'success', message: 'จำลองการสแกนจ่ายผ่านพร้อมเพย์สำเร็จ!' });
