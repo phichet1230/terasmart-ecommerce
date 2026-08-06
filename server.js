@@ -38,7 +38,6 @@ app.use((req, res, next) => {
   next();
 });
 
-const fs = require('fs');
 if (!fs.existsSync(path.join(__dirname, 'uploads'))) {
   fs.mkdirSync(path.join(__dirname, 'uploads'), { recursive: true });
 }
