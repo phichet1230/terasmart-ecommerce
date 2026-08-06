@@ -1,4 +1,5 @@
 const nodemailer = require('nodemailer');
+const dns = require('dns');
 
 const rawUser = process.env.SMTP_USER ? process.env.SMTP_USER.trim() : '';
 const rawPass = process.env.SMTP_PASS ? process.env.SMTP_PASS.trim() : '';
@@ -13,6 +14,9 @@ const createTransporter = (port, secure) => nodemailer.createTransport({
   auth: {
     user: smtpUser,
     pass: smtpPass
+  },
+  lookup: (hostname, options, callback) => {
+    dns.lookup(hostname, { family: 4 }, callback);
   },
   connectionTimeout: 5000,
   greetingTimeout: 5000,
