@@ -226,7 +226,7 @@ exports.forgotPassword = async (req, res) => {
   try {
     const userResult = await pool.query('SELECT id, email FROM users WHERE email = $1', [emailNormalized]);
     if (userResult.rows.length === 0) {
-      return res.status(404).json({ status: 'error', message: 'ไม่พบอีเมลนี้ในระบบ' });
+      return res.status(404).json({ status: 'error', message: 'อีเมลดังกล่าวยังไม่ได้ทำการสมัครสมาชิก' });
     }
     const user = userResult.rows[0];
 

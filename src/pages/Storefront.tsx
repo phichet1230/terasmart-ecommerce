@@ -783,7 +783,7 @@ export default function Storefront() {
   };
 
   const handleOpenForgotPassword = () => {
-    setForgotEmail(loginEmail || '');
+    setForgotEmail(''); // Keep email input blank so user enters their email manually
     setForgotToken('');
     setForgotNewPassword('');
     setForgotConfirmPassword('');
