@@ -1,25 +1,18 @@
 const nodemailer = require('nodemailer');
 
-// ตรวจสอบข้อมูลผู้ใช้งาน SMTP ใน .env
-const hasSmtpConfig = process.env.SMTP_USER && process.env.SMTP_PASS;
+const smtpUser = process.env.SMTP_USER || 'oppo0620255009@gmail.com';
+const smtpPass = (process.env.SMTP_PASS || 'eovlkoywyobdutap').replace(/\s+/g, '');
 
-let transporter;
-
-if (hasSmtpConfig) {
-  transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS ? process.env.SMTP_PASS.replace(/\s+/g, '') : ''
-    },
-    tls: {
-      rejectUnauthorized: false
-    }
-  });
-} else {
-  // หากไม่มีการระเบุข้อมูลใน .env จะแจ้งเตือนให้กรอกผ่านคอนโซล
-  console.warn('⚠️ SMTP credentials not found in .env. Real email dispatch will be simulated. Please configure SMTP_USER and SMTP_PASS in your .env file to send real emails.');
-}
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: smtpUser,
+    pass: smtpPass
+  },
+  tls: {
+    rejectUnauthorized: false
+  }
+});
 
 /**
  * ส่งอีเมลรหัสยืนยันการกู้คืนรหัสผ่าน
@@ -47,12 +40,8 @@ exports.sendRecoveryEmail = async (toEmail, token) => {
     `
   };
 
-  if (hasSmtpConfig) {
-    await transporter.sendMail(mailOptions);
-    console.log(`✉️ Real email sent successfully to ${toEmail}`);
-  } else {
-    console.log(`✉️ [SIMULATED EMAIL DISPATCH] to ${toEmail}: Recovery PIN is ${token}`);
-  }
+  await transporter.sendMail(mailOptions);
+  console.log(`✉️ Real email sent successfully to ${toEmail}`);
 };
 
 /**
@@ -84,10 +73,10 @@ exports.sendOrderConfirmationEmail = async (toEmail, order) => {
     `
   };
 
-  if (hasSmtpConfig) {
+  try {
     await transporter.sendMail(mailOptions);
     console.log(`✉️ Real order confirmation email sent successfully to ${toEmail}`);
-  } else {
-    console.log(`✉️ [SIMULATED EMAIL DISPATCH] to ${toEmail}: Order confirmation for #${order.id} sent.`);
+  } catch (e) {
+    console.error('Order email notice:', e.message);
   }
 };

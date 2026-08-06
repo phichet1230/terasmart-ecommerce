@@ -271,28 +271,39 @@ exports.resetPassword = async (req, res) => {
   const tokenNormalized = token ? token.trim() : '';
 
   try {
-    // ค้นหาและตรวจสอบโทเคน
-    const resetResult = await pool.query(
-      `SELECT * FROM password_resets 
-       WHERE email = $1 AND token = $2 AND expires_at > CURRENT_TIMESTAMP AND is_used = false 
-       ORDER BY id DESC LIMIT 1`,
-      [emailNormalized, tokenNormalized]
-    );
+    // ค้นหาและตรวจสอบโทเคน OTP (มีอายุ 15 นาที และใช้ได้ครั้งเดียวเท่านั้น)
+    let resetResult;
+    if (emailNormalized) {
+      resetResult = await pool.query(
+        `SELECT * FROM password_resets 
+         WHERE email = $1 AND token = $2 AND expires_at > CURRENT_TIMESTAMP AND is_used = false 
+         ORDER BY id DESC LIMIT 1`,
+        [emailNormalized, tokenNormalized]
+      );
+    } else {
+      resetResult = await pool.query(
+        `SELECT * FROM password_resets 
+         WHERE token = $1 AND expires_at > CURRENT_TIMESTAMP AND is_used = false 
+         ORDER BY id DESC LIMIT 1`,
+        [tokenNormalized]
+      );
+    }
 
     if (resetResult.rows.length === 0) {
-      return res.status(400).json({ status: 'error', message: 'รหัสอ้างอิงกู้คืนไม่ถูกต้องหรือหมดอายุการใช้งานแล้ว' });
+      return res.status(400).json({ status: 'error', message: 'รหัส OTP กู้คืนไม่ถูกต้อง หมดอายุการใช้งาน (เกิน 15 นาที) หรือถูกใช้งานไปแล้ว' });
     }
 
     const resetRow = resetResult.rows[0];
+    const targetEmail = resetRow.email;
 
     // เข้ารหัสรหัสผ่านใหม่
     const hashedPassword = await bcrypt.hash(new_password, 10);
 
     // อัปเดตรหัสผ่านใหม่ให้กับผู้ใช้งาน
-    await pool.query('UPDATE users SET password_hash = $1, updated_at = CURRENT_TIMESTAMP WHERE email = $2', [hashedPassword, emailNormalized]);
+    await pool.query('UPDATE users SET password_hash = $1, updated_at = CURRENT_TIMESTAMP WHERE email = $2', [hashedPassword, targetEmail]);
 
-    // มาร์กโทเคนว่าใช้งานแล้ว
-    await pool.query('UPDATE password_resets SET is_used = true WHERE id = $1', [resetRow.id]);
+    // มาร์กโทเคนว่าใช้งานแล้วทันทีเพื่อป้องกันการนำมาใช้ซ้ำ (One-Time Use Only)
+    await pool.query('UPDATE password_resets SET is_used = true WHERE email = $1 OR token = $2', [targetEmail, tokenNormalized]);
 
     res.json({
       status: 'success',
