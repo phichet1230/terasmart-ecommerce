@@ -36,8 +36,9 @@ const sendEmailWithFallback = async (mailOptions) => {
  * @param {string} token - รหัส PIN กู้คืน 6 หลัก
  */
 exports.sendRecoveryEmail = async (toEmail, token) => {
+  const senderEmail = process.env.SMTP_USER || 'no-reply@terasmart-ecommerce.com';
   const mailOptions = {
-    from: `"TeraSmart E-Commerce" <${smtpUser}>`,
+    from: `"TeraSmart E-Commerce" <${senderEmail}>`,
     to: toEmail,
     subject: 'รหัสลับกู้คืนรหัสผ่านของคุณ (TeraSmart E-Commerce)',
     html: `
@@ -65,8 +66,9 @@ exports.sendRecoveryEmail = async (toEmail, token) => {
  * @param {object} order - ข้อมูลคำสั่งซื้อ { id, total_price, ... }
  */
 exports.sendOrderConfirmationEmail = async (toEmail, order) => {
+  const senderEmail = process.env.SMTP_USER || 'no-reply@terasmart-ecommerce.com';
   const mailOptions = {
-    from: `"TeraSmart E-Commerce" <${smtpUser}>`,
+    from: `"TeraSmart E-Commerce" <${senderEmail}>`,
     to: toEmail,
     subject: `ยืนยันการชำระเงินและคำสั่งซื้อสำเร็จ #${order.id.substring(0, 8)}`,
     html: `
@@ -81,8 +83,7 @@ exports.sendOrderConfirmationEmail = async (toEmail, order) => {
   };
 
   try {
-    await transporter.sendMail(mailOptions);
-    console.log(`✉️ Real order confirmation email sent successfully to ${toEmail}`);
+    return await sendEmailWithFallback(mailOptions);
   } catch (e) {
     console.error('Order email notice:', e.message);
   }
