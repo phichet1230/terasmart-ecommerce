@@ -120,10 +120,10 @@ exports.login = async (req, res) => {
 // 5. อัปเดตข้อมูลส่วนตัว (แก้ไขชื่อและเบอร์โทร)
 exports.updateProfile = async (req, res) => {
   const user_id = req.user.id;
-  const { username, phone } = req.body;
+  const { username, phone, email } = req.body;
 
   try {
-    if (username === undefined && phone === undefined) {
+    if (username === undefined && phone === undefined && email === undefined) {
       return res.status(400).json({ status: 'error', message: 'No data provided' });
     }
 
@@ -159,13 +159,22 @@ exports.updateProfile = async (req, res) => {
       }
     }
 
+    let emailNormalized = undefined;
+    if (email !== undefined && email.trim()) {
+      emailNormalized = email.trim().toLowerCase();
+      const checkEmail = await pool.query('SELECT id FROM users WHERE email = $1 AND id <> $2', [emailNormalized, user_id]);
+      if (checkEmail.rows.length > 0) {
+        return res.status(400).json({ status: 'error', message: 'อีเมลนี้มีผู้ใช้อื่นใช้งานแล้ว' });
+      }
+    }
+
     // อัปเดตลงตาราง
     const result = await pool.query(
       `UPDATE users 
-       SET username = COALESCE($1, username), phone = COALESCE($2, phone), updated_at = CURRENT_TIMESTAMP 
-       WHERE id = $3 
+       SET username = COALESCE($1, username), phone = COALESCE($2, phone), email = COALESCE($3, email), updated_at = CURRENT_TIMESTAMP 
+       WHERE id = $4 
        RETURNING id, username, email, phone`,
-      [username, phone, user_id]
+      [username, phone, emailNormalized, user_id]
     );
 
     res.json({
