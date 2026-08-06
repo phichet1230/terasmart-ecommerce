@@ -7,10 +7,17 @@ const { protect } = require('../middlewares/authMiddleware');
 
 const router = express.Router();
 
-// Configure avatar uploads folder
-const uploadDir = path.join(__dirname, '../uploads');
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
+const os = require('os');
+
+// Configure avatar uploads folder (สลับไปใช้ os.tmpdir() เมื่ออยู่บนระบบคลาวด์ Vercel)
+const isServerless = Boolean(process.env.VERCEL || process.env.NODE_ENV === 'production');
+const uploadDir = isServerless ? os.tmpdir() : path.join(__dirname, '../uploads');
+try {
+  if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+  }
+} catch (e) {
+  // Ignored in read-only environments
 }
 
 const storage = multer.diskStorage({

@@ -460,7 +460,18 @@ exports.uploadSlip = async (req, res) => {
       standards: 'ISO 20022, EMVCo CRC16, OWASP Top 10, PDPA, ISO/IEC 27001'
     });
 
-    const slipUrl = `/uploads/${req.file.filename}`;
+    let slipUrl;
+    if (req.file && fs.existsSync(req.file.path)) {
+      try {
+        const fileBuffer = fs.readFileSync(req.file.path);
+        const mimeType = req.file.mimetype || 'image/jpeg';
+        slipUrl = `data:${mimeType};base64,${fileBuffer.toString('base64')}`;
+      } catch (e) {
+        slipUrl = `/uploads/${req.file.filename}`;
+      }
+    } else {
+      slipUrl = `/uploads/${req.file.filename}`;
+    }
 
     // บันทึกสถานะชำระเงินสำเร็จลง payments (PDPA Masking)
     await pool.query(

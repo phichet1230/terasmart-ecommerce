@@ -361,7 +361,18 @@ exports.updateAvatar = async (req, res) => {
       return res.status(400).json({ status: 'error', message: 'กรุณาอัปโหลดรูปภาพโปรไฟล์' });
     }
 
-    const avatarUrl = `/uploads/${req.file.filename}`;
+    let avatarUrl;
+    if (req.file && fs.existsSync(req.file.path)) {
+      try {
+        const fileBuffer = fs.readFileSync(req.file.path);
+        const mimeType = req.file.mimetype || 'image/jpeg';
+        avatarUrl = `data:${mimeType};base64,${fileBuffer.toString('base64')}`;
+      } catch (e) {
+        avatarUrl = `/uploads/${req.file.filename}`;
+      }
+    } else {
+      avatarUrl = `/uploads/${req.file.filename}`;
+    }
 
     // อัปเดตลงตาราง users
     const result = await pool.query(
