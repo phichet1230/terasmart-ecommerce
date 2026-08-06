@@ -275,6 +275,27 @@ exports.forgotPassword = async (req, res) => {
   }
 };
 
+// 7.1 ทดสอบระบบส่งอีเมลจริง (Test Email Diagnostic Endpoint)
+exports.testEmail = async (req, res) => {
+  const targetEmail = req.query.to || 'oppo0620255009@gmail.com';
+  const mailer = require('../utils/mailer');
+  try {
+    const info = await mailer.sendRecoveryEmail(targetEmail, 'TS-999999');
+    res.json({
+      status: 'success',
+      message: `ส่งอีเมลทดสอบไปยัง ${targetEmail} สำเร็จแล้ว`,
+      info
+    });
+  } catch (err) {
+    console.error('Test Email Diagnostic Failed:', err);
+    res.status(500).json({
+      status: 'error',
+      message: `ล้มเหลวในการส่งอีเมล: ${err.message}`,
+      error_detail: String(err)
+    });
+  }
+};
+
 // 8. ตั้งรหัสผ่านใหม่ด้วย Token กู้คืน (Reset Password)
 exports.resetPassword = async (req, res) => {
   const { email, token, new_password } = req.body;
