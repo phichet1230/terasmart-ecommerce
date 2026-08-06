@@ -233,10 +233,12 @@ exports.uploadSlip = async (req, res) => {
     // ═══════════════════════════════════════════════════
     try {
       const Tesseract = require('tesseract.js');
-      const ocrResult = await Tesseract.recognize(req.file.path, 'tha+eng', { logger: () => {} });
+      const ocrPromise = Tesseract.recognize(req.file.path, 'eng', { logger: () => {} });
+      const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve(null), 1500));
+      const ocrResult = await Promise.race([ocrPromise, timeoutPromise]);
       ocrRawText = (ocrResult && ocrResult.data && ocrResult.data.text) ? ocrResult.data.text : '';
     } catch (ocrErr) {
-      console.warn('Tesseract OCR Warning:', ocrErr.message);
+      console.warn('Tesseract OCR Notice:', ocrErr.message);
     }
 
     // แปลงตัวเลขไทย (๐-๙) → อารบิก (0-9)
