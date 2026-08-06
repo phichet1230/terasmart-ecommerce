@@ -3078,19 +3078,7 @@ export default function Storefront() {
             <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '32px 24px 40px', fontFamily: "'IBM Plex Sans Thai', sans-serif" }}>
               <div style={{ maxWidth: '1273px', margin: '0 auto' }}>
                 
-                {/* Breadcrumb Navigation - Matched 100% with Products page */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', fontFamily: "'IBM Plex Sans Thai', sans-serif", fontWeight: 500, color: '#0763B3', marginBottom: '20px' }}>
-                  <span 
-                    style={{ cursor: 'pointer', transition: 'all 0.2s ease' }} 
-                    onClick={() => setActiveTab('home')}
-                    onMouseEnter={(e) => (e.currentTarget.style.textDecoration = 'underline')}
-                    onMouseLeave={(e) => (e.currentTarget.style.textDecoration = 'none')}
-                  >
-                    หน้าแรก
-                  </span>
-                  <span style={{ color: '#0763B3' }}>&gt;</span>
-                  <span style={{ fontWeight: 700, color: '#0763B3' }}>ตะกร้าสินค้า</span>
-                </div>
+
 
               {/* Title Section with Orange Vertical Bar */}
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '24px' }}>
@@ -3364,28 +3352,7 @@ export default function Storefront() {
             <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '32px 24px 40px', fontFamily: "'IBM Plex Sans Thai', sans-serif" }}>
               <div style={{ maxWidth: '1273px', margin: '0 auto' }}>
                 
-                {/* Breadcrumb Navigation - Standardized */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', fontFamily: "'IBM Plex Sans Thai', sans-serif", fontWeight: 500, color: '#0763B3', marginBottom: '20px' }}>
-                  <span 
-                    style={{ cursor: 'pointer', transition: 'all 0.2s ease' }} 
-                    onClick={() => setActiveTab('home')}
-                    onMouseEnter={(e) => (e.currentTarget.style.textDecoration = 'underline')}
-                    onMouseLeave={(e) => (e.currentTarget.style.textDecoration = 'none')}
-                  >
-                    หน้าแรก
-                  </span>
-                  <span style={{ color: '#0763B3' }}>&gt;</span>
-                  <span 
-                    style={{ cursor: 'pointer', transition: 'all 0.2s ease' }} 
-                    onClick={() => setActiveTab('cart')}
-                    onMouseEnter={(e) => (e.currentTarget.style.textDecoration = 'underline')}
-                    onMouseLeave={(e) => (e.currentTarget.style.textDecoration = 'none')}
-                  >
-                    ตะกร้าสินค้า
-                  </span>
-                  <span style={{ color: '#0763B3' }}>&gt;</span>
-                  <span style={{ fontWeight: 700, color: '#0763B3' }}>กรอกที่อยู่และชำระเงิน</span>
-                </div>
+
 
                 {/* Title Section with Orange Vertical Bar */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '24px' }}>
