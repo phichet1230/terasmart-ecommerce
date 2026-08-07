@@ -339,9 +339,33 @@ exports.uploadSlip = async (req, res) => {
       }
     }
 
-    // ตรวจสอบชื่อธนาคารปลายทาง (กรุงไทย / KTB)
-    const bankKeywords = ['กรุงไทย', 'KRUNGTHAI', 'KTB'];
-    const isTargetBankMatched = bankKeywords.some(kw => normalizedText.toUpperCase().includes(kw.toUpperCase())) || (detectedBankBrand ? detectedBankBrand.includes('กรุงไทย') : false);
+    // ═══════════════════════════════════════════════════
+    // GATE 6: Receiver & Account Verification (ตรวจสอบผู้รับโอนและเบอร์พร้อมเพย์)
+    // ═══════════════════════════════════════════════════
+    const companyKeywords = ['เทอรา', 'TERA', 'บจก. เทอรา สมาร์ท อีคอมเมิร์ซ', 'TERA SMART E-COMMERCE', 'พิเชษฐ์'];
+    const promptpayConfigId = process.env.PROMPTPAY_ID || '0820761709';
+    const bankAccountConfigNo = process.env.BANK_ACCOUNT_NO || '6608200153';
+    const targetBankName = process.env.MERCHANT_RECEIVER_BANK || 'ธนาคารกรุงไทย';
+
+    isReceiverMatched = companyKeywords.some(kw => normalizedText.toUpperCase().includes(kw.toUpperCase()));
+    
+    // ตรวจสอบเบอร์พร้อมเพย์ (0820761709 หรือ 4 ตัวท้าย 1709)
+    if (!isReceiverMatched && promptpayConfigId) {
+      const cleanPP = promptpayConfigId.replace(/[^0-9]/g, '');
+      const last4PP = cleanPP.slice(-4);
+      if (normalizedText.includes(cleanPP) || (last4PP && normalizedText.includes(last4PP))) {
+        isReceiverMatched = true;
+      }
+    }
+
+    // ตรวจสอบเลขที่บัญชี (6608200153 หรือ 4 ตัวท้าย 0153)
+    if (!isReceiverMatched && bankAccountConfigNo) {
+      const cleanAcc = bankAccountConfigNo.replace(/[^0-9]/g, '');
+      const last4Acc = cleanAcc.slice(-4);
+      if (normalizedText.includes(cleanAcc) || (last4Acc && normalizedText.includes(last4Acc))) {
+        isReceiverMatched = true;
+      }
+    }
 
     // EMVCo QR หรือมีไฟล์สลิปรูปภาพอัปโหลดเข้ามา = ถือว่าผู้รับตรง 100%
     if (isEmvcoQrValid || req.file) {
@@ -356,14 +380,13 @@ exports.uploadSlip = async (req, res) => {
     }
 
     // ═══════════════════════════════════════════════════
-    // GATE 7: Stale Slip Verification (ห้ามใช้สลิปที่โอนก่อนสร้างออเดอร์)
+    // GATE 7: Stale & External Slip Lock (ล็อกช่วงเวลาโอนเงินเฉพาะออเดอร์นี้เท่านั้น)
     // ═══════════════════════════════════════════════════
     const monthThaiMap = {
       'ม.ค.': 0, 'ก.พ.': 1, 'มี.ค.': 2, 'เม.ย.': 3, 'พ.ค.': 4, 'มิ.ย.': 5,
       'ก.ค.': 6, 'ส.ค.': 7, 'ก.ย.': 8, 'ต.ค.': 9, 'พ.ย.': 10, 'ธ.ค.': 11
     };
     const dateMatch = normalizedText.match(/(\d{1,2})[\s\/\.-]+(ม\.ค\.|ก\.พ\.|มี\.ค\.|เม\.ย\.|พ\.ค\.|มิ\.ย\.|ก\.ค\.|ส\.ค\.|ก\.ย\.|ต\.ค\.|พ\.ย\.|ธ\.ค\.|\d{1,2})[\s\/\.-]+(\d{2,4})/i);
-    // เจาะจงค้นหาเวลาที่มีคำว่า เวลา, TIME, น. กำกับ หรือรูปแบบ HH:MM
     const timeMatch = normalizedText.match(/(?:เวลา|TIME|น\.|เมื่อ|AT)[:\s]*([01]?\d|2[0-3])[:\.](\d{2})(?:[:\.](\d{2}))?/i)
       || normalizedText.match(/([01]?\d|2[0-3])[:\.](\d{2})\s*(?:น\.|AM|PM)/i);
     
@@ -394,27 +417,31 @@ exports.uploadSlip = async (req, res) => {
       extractedSlipDate = new Date(Date.UTC(year, month, day, hours, minutes));
     }
 
-    // ★ HARD GATE: สลิปที่มีเวลาโอนก่อนเวลาสร้างคำสั่งซื้อเกิน 5 นาที จะโดนปฏิเสธทันที
-    const allowedWindowStart = orderCreatedAt.getTime() - 300000; // อนุญาตให้ต่างกันได้ไม่เกิน 5 นาที (Clock Drift)
-    if (extractedSlipDate && hasExplicitTime && extractedSlipDate.getTime() < allowedWindowStart) {
+    // ★ HARD GATE 7: สลิปที่มีเวลาโอนย้อนหลังก่อนเวลาสร้างออเดอร์ (หรือเกินหน้าต่างออเดอร์) จะถูกปฏิเสธทันที
+    const windowAllowanceBefore = 60000; // อนุญาตให้ย้อนหลังได้ไม่เกิน 1 นาที (Clock Drift)
+    if (extractedSlipDate && (extractedSlipDate.getTime() < (orderCreatedAt.getTime() - windowAllowanceBefore))) {
+      const slipTimeStr = extractedSlipDate.toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' });
+      const orderTimeStr = orderCreatedAt.toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' });
       return rejectSlip(400,
-        `ชำระเงินไม่สำเร็จ: ตรวจพบสลิปเก่าที่มีเวลาโอน (${extractedSlipDate.toLocaleString('th-TH')}) ก่อนเวลาสร้างคำสั่งซื้อ (${orderCreatedAt.toLocaleString('th-TH')}) ไม่สามารถใช้สลิปที่โอนล่วงหน้าก่อนสั่งซื้อได้`
+        `ชำระเงินไม่สำเร็จ: ตรวจพบสลิปเก่าที่มีเวลาโอน (${slipTimeStr}) ก่อนเวลาสร้างคำสั่งซื้อนี้ (${orderTimeStr}) ห้ามนำสลิปที่โอนล่วงหน้าหรือสลิปเก่ามาแนบชำระเงิน`
       );
     }
 
     // ═══════════════════════════════════════════════════
-    // GATE 8: Anti-Replay — Duplicate Transaction Ref
+    // GATE 8: Anti-Replay — Unique Slip Check (ป้องกันการใช้สลิปซ้ำ)
     // ═══════════════════════════════════════════════════
-    const duplicateTxCheck = await pool.query(
-      `SELECT order_id FROM payments
-       WHERE (transaction_ref = $1 OR qr_ref = $1)
-       AND payment_status = 'completed'`,
-      [slipTxRef]
-    );
-    if (duplicateTxCheck.rows.length > 0) {
-      return rejectSlip(400,
-        `ชำระเงินไม่สำเร็จ: สลิปนี้เคยใช้ชำระเงินไปแล้วในออเดอร์ #${duplicateTxCheck.rows[0].order_id}`
+    if (slipTxRef && slipTxRef !== 'MANUAL_REF_UNAVAILABLE') {
+      const duplicateTxCheck = await pool.query(
+        `SELECT order_id FROM payments
+         WHERE (transaction_ref = $1 OR qr_ref = $1)
+         AND payment_status = 'completed'`,
+        [slipTxRef]
       );
+      if (duplicateTxCheck.rows.length > 0) {
+        return rejectSlip(400,
+          `ชำระเงินไม่สำเร็จ: สลิปนี้เคยนำมาแนบชำระเงินไปแล้วในคำสั่งซื้อ #${duplicateTxCheck.rows[0].order_id.slice(0, 8)}`
+        );
+      }
     }
 
     // ═══════════════════════════════════════════════════
