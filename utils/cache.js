@@ -4,6 +4,10 @@ const cache = new Map();
  * Get cached item if present and not expired
  */
 exports.getCache = (key) => {
+  // On Vercel Serverless or Production, bypass in-memory Map cache to guarantee 100% data consistency across all serverless instances
+  if (process.env.VERCEL || process.env.NODE_ENV === 'production') {
+    return null;
+  }
   const item = cache.get(key);
   if (!item) return null;
   if (Date.now() > item.expiry) {
