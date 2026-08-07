@@ -4467,17 +4467,120 @@ export default function Storefront() {
                           Sign In
                         </h1>
 
-                        <p 
-                          style={{
-                            textAlign: 'center',
-                            color: '#000000',
-                            fontSize: '0.95rem',
-                            fontFamily: "'IBM Plex Sans Thai', sans-serif",
-                            margin: '0 0 12px 0'
-                          }}
-                        >
-                          Sing in to your Account
-                        </p>
+                        {/* Quick Test Accounts Bar (ปุ่มกดกรอกข้อมูลทดสอบตามแผนก) */}
+                        <div style={{
+                          background: '#F8FAFC',
+                          border: '1px solid #E2E8F0',
+                          borderRadius: '16px',
+                          padding: '10px 12px',
+                          margin: '4px 0 8px 0',
+                          textAlign: 'center'
+                        }}>
+                          <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#475569', marginBottom: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                            ⚡ เลือกเติมบัญชีทดสอบด่วน (Quick Test Accounts):
+                          </div>
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '6px' }}>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setLoginEmail('admin@terasmart.com');
+                                setLoginPassword('123456');
+                                showToast('เติมข้อมูล: แอดมินใหญ่ (Admin)');
+                              }}
+                              style={{
+                                padding: '6px 8px',
+                                fontSize: '0.74rem',
+                                fontWeight: 600,
+                                borderRadius: '8px',
+                                border: '1px solid #CBD5E1',
+                                background: '#FFFFFF',
+                                color: '#0F172A',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '4px'
+                              }}
+                            >
+                              👑 แอดมิน (Admin)
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setLoginEmail('customer@terasmart.com');
+                                setLoginPassword('123456');
+                                showToast('เติมข้อมูล: ลูกค้าทดสอบ (Customer)');
+                              }}
+                              style={{
+                                padding: '6px 8px',
+                                fontSize: '0.74rem',
+                                fontWeight: 600,
+                                borderRadius: '8px',
+                                border: '1px solid #CBD5E1',
+                                background: '#FFFFFF',
+                                color: '#FF3201',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '4px'
+                              }}
+                            >
+                              🛒 ลูกค้า (Customer)
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setLoginEmail('sales@terasmart.com');
+                                setLoginPassword('123456');
+                                showToast('เติมข้อมูล: ทีม 1 ฝ่ายขาย (พี่พี่ยง)');
+                              }}
+                              style={{
+                                padding: '6px 8px',
+                                fontSize: '0.74rem',
+                                fontWeight: 600,
+                                borderRadius: '8px',
+                                border: '1px solid #CBD5E1',
+                                background: '#FFFFFF',
+                                color: '#2563EB',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '4px'
+                              }}
+                            >
+                              👔 ทีม 1 ฝ่ายขาย (พี่พี่ยง)
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setLoginEmail('marketing@terasmart.com');
+                                setLoginPassword('123456');
+                                showToast('เติมข้อมูล: ทีม 2 การตลาด (พี่กิ๊ฟ)');
+                              }}
+                              style={{
+                                padding: '6px 8px',
+                                fontSize: '0.74rem',
+                                fontWeight: 600,
+                                borderRadius: '8px',
+                                border: '1px solid #CBD5E1',
+                                background: '#FFFFFF',
+                                color: '#9333EA',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '4px'
+                              }}
+                            >
+                              📢 ทีม 2 การตลาด (พี่กิ๊ฟ)
+                            </button>
+                          </div>
+                        </div>
 
                         {/* Input 1: Phone number / Username / Email */}
                         <div style={{ position: 'relative', width: '100%' }}>
