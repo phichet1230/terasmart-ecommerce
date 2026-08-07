@@ -20,10 +20,22 @@ exports.protect = async (req, res, next) => {
     const jwtSecret = process.env.JWT_SECRET || 'tera_group_secret_key_2024';
     const decoded = jwt.verify(token, jwtSecret);
     
-    // 3. ตรวจสอบว่าผู้ใช้ยังมีตัวตนอยู่ในระบบหรือไม่
-    const userResult = await pool.query('SELECT id, username, email, phone, role, account_status, profile_image FROM users WHERE id = $1', [decoded.id]);
+    // 3. ตรวจสอบว่าผู้ใช้ยังมีตัวตนอยู่ในระบบหรือไม่ (ค้นหาด้วย ID -> Email -> Auto Provision)
+    let userResult = await pool.query('SELECT id, username, email, phone, role, account_status, profile_image FROM users WHERE id = $1', [decoded.id]);
+    if (userResult.rows.length === 0 && decoded.email) {
+      userResult = await pool.query('SELECT id, username, email, phone, role, account_status, profile_image FROM users WHERE email = $1', [decoded.email]);
+    }
     if (userResult.rows.length === 0) {
-      return res.status(401).json({ status: 'error', message: 'ไม่พบผู้ใช้ในระบบ กรุณาเข้าสู่ระบบใหม่' });
+      const fallbackUsername = (decoded.username || 'Member').replace(/[^a-zA-Z0-9_]/g, '') || ('User_' + Math.floor(1000 + Math.random() * 9000));
+      const fallbackEmail = decoded.email || `${fallbackUsername.toLowerCase()}@terasmart.com`;
+      const newUser = await pool.query(
+        `INSERT INTO users (username, email, role, account_status)
+         VALUES ($1, $2, $3, 'active')
+         ON CONFLICT (email) DO UPDATE SET updated_at = CURRENT_TIMESTAMP
+         RETURNING id, username, email, phone, role, account_status, profile_image`,
+        [fallbackUsername, fallbackEmail, decoded.role || 'customer']
+      );
+      userResult = newUser;
     }
 
     const user = userResult.rows[0];

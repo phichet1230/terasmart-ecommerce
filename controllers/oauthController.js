@@ -408,9 +408,9 @@ async function handleSocialLogin(req, res, idColumn, socialId, email, name, pict
     // 4. Generate JWT
     const jwtSecret = process.env.JWT_SECRET || 'tera_group_secret_key_2024';
     const token = jwt.sign(
-      { id: user.id, role: user.role },
+      { id: user.id, email: user.email, username: user.username, role: user.role },
       jwtSecret,
-      { expiresIn: '1d' }
+      { expiresIn: '7d' }
     );
 
     // Set HTTP cookie if available
