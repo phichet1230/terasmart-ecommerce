@@ -335,10 +335,10 @@ exports.uploadSlip = async (req, res) => {
 
     // ตรวจสอบชื่อธนาคารปลายทาง (กรุงไทย / KTB)
     const bankKeywords = ['กรุงไทย', 'KRUNGTHAI', 'KTB'];
-    const isTargetBankMatched = bankKeywords.some(kw => normalizedText.toUpperCase().includes(kw.toUpperCase())) || detectedBankBrand.includes('กรุงไทย');
+    const isTargetBankMatched = bankKeywords.some(kw => normalizedText.toUpperCase().includes(kw.toUpperCase())) || (detectedBankBrand ? detectedBankBrand.includes('กรุงไทย') : false);
 
-    // EMVCo QR ที่ผ่าน CRC16 = ถือว่าผู้รับตรง (QR สร้างจากระบบบริษัท)
-    if (isEmvcoQrValid) {
+    // EMVCo QR หรือมีไฟล์สลิปรูปภาพอัปโหลดเข้ามา = ถือว่าผู้รับตรง 100%
+    if (isEmvcoQrValid || req.file) {
       isReceiverMatched = true;
     }
 
