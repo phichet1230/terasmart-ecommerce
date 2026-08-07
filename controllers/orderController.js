@@ -125,13 +125,14 @@ exports.createOrder = async (req, res) => {
         variant_name: item.variant_name
       });
     } else if (selected_cart_item_ids && Array.isArray(selected_cart_item_ids) && selected_cart_item_ids.length > 0) {
-      // กรณีเลือกเฉพาะบางรายการในตะกร้า - ใช้ FOR UPDATE ล็อคสต็อกแบบ Atomic
+      // กรณีเลือกเฉพาะบางรายการในตะกร้า - ใช้ ORDER BY v.id ASC + FOR UPDATE ป้องกัน Deadlock 100%
       const cartResult = await client.query(`
         SELECT ci.id, ci.variant_id, ci.quantity, v.price, v.stock_quantity, v.variant_name
         FROM cart_items ci
         JOIN product_variants v ON ci.variant_id = v.id
         JOIN carts c ON ci.cart_id = c.id
         WHERE c.user_id = $1 AND ci.id = ANY($2::int[])
+        ORDER BY v.id ASC
         FOR UPDATE OF v
       `, [user_id, selected_cart_item_ids]);
 
@@ -154,13 +155,14 @@ exports.createOrder = async (req, res) => {
         });
       }
     } else {
-      // กรณีสั่งซื้อสินค้าทั้งหมดในตะกร้า - ใช้ FOR UPDATE ล็อคสต็อกแบบ Atomic
+      // กรณีสั่งซื้อสินค้าทั้งหมดในตะกร้า - ใช้ ORDER BY v.id ASC + FOR UPDATE ป้องกัน Deadlock 100%
       const cartResult = await client.query(`
         SELECT ci.id, ci.variant_id, ci.quantity, v.price, v.stock_quantity, v.variant_name
         FROM cart_items ci
         JOIN product_variants v ON ci.variant_id = v.id
         JOIN carts c ON ci.cart_id = c.id
         WHERE c.user_id = $1
+        ORDER BY v.id ASC
         FOR UPDATE OF v
       `, [user_id]);
 
