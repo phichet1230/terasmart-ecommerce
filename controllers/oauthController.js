@@ -43,12 +43,12 @@ function getFrontendRedirectUrl(req, queryString) {
 
 // Redirect endpoints
 exports.redirectToGoogle = (req, res) => {
-  if (process.env.USE_REAL_OAUTH === 'true') {
+  if (process.env.USE_REAL_OAUTH !== 'false') {
     const callbackUrl = getCallbackUrl(req, 'GOOGLE_CALLBACK_URL', '/api/v1/auth/google/callback');
     const rootUrl = 'https://accounts.google.com/o/oauth2/v2/auth';
     const options = {
       redirect_uri: callbackUrl,
-      client_id: process.env.GOOGLE_CLIENT_ID,
+      client_id: process.env.GOOGLE_CLIENT_ID || '1042419537925-36v7bh0am5uvsrc2bdv3rsba2lmg84cp.apps.googleusercontent.com',
       access_type: 'offline',
       response_type: 'code',
       prompt: 'consent',
@@ -63,12 +63,12 @@ exports.redirectToGoogle = (req, res) => {
 };
 
 exports.redirectToLine = (req, res) => {
-  if (process.env.USE_REAL_OAUTH === 'true') {
+  if (process.env.USE_REAL_OAUTH !== 'false') {
     const callbackUrl = getCallbackUrl(req, 'LINE_CALLBACK_URL', '/api/v1/auth/line/callback');
     const rootUrl = 'https://access.line.me/oauth2/v2.1/authorize';
     const options = {
       response_type: 'code',
-      client_id: process.env.LINE_CLIENT_ID,
+      client_id: process.env.LINE_CLIENT_ID || '2010580014',
       redirect_uri: callbackUrl,
       state: 'line',
       scope: 'openid email profile',
