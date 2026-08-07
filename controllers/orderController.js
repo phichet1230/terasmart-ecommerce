@@ -218,6 +218,23 @@ exports.createOrder = async (req, res) => {
     const tax_amount = parseFloat((subtotal * 0.07).toFixed(2)); // ภาษีมูลค่าเพิ่ม VAT 7% ปัดเศษ 2 ตำแหน่ง
     const total_price = parseFloat((subtotal + tax_amount - discount_amount).toFixed(2)); // ยอดรวมสุทธิ
 
+    // Deduplication Guard: Check if an identical order was created by this user in the last 5 seconds
+    const duplicateCheck = await client.query(
+      `SELECT id, status, total_price, subtotal, discount_amount, tax_amount, created_at FROM orders
+       WHERE user_id = $1 AND address_id = $2 AND total_price = $3 AND created_at > (NOW() - INTERVAL '5 seconds')
+       ORDER BY created_at DESC LIMIT 1`,
+      [user_id, address_id, total_price]
+    );
+    if (duplicateCheck.rows.length > 0) {
+      await client.query('COMMIT');
+      clearCache('products');
+      return res.status(200).json({
+        status: 'success',
+        message: 'สร้างคำสั่งซื้อสำเร็จ! กรุณาชำระเงิน',
+        data: duplicateCheck.rows[0]
+      });
+    }
+
     // 5. บันทึกลงตาราง orders
     const orderInsert = await client.query(
       `INSERT INTO orders (user_id, coupon_id, subtotal, discount_amount, total_price, tax_amount, status, address_id)

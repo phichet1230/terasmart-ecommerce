@@ -5,7 +5,7 @@ import {
   ShoppingBag, User, LogOut, CheckCircle, Clock, Trash2, 
   MapPin, CreditCard, X, Sparkles, ShieldCheck, Users, Headphones,
   Eye, EyeOff, Upload, Truck, Phone, Unlock, BarChart2, Key, RefreshCw, ShoppingCart, Search, ExternalLink,
-  ChevronLeft, ChevronRight, Zap, Lock, Mail, XCircle
+  ChevronLeft, ChevronRight, Zap, Lock, Mail, XCircle, AlertCircle
 } from 'lucide-react';
 
 interface Variant {
@@ -445,6 +445,7 @@ export default function Storefront() {
   const [cancelReason, setCancelReason] = useState('ต้องการเปลี่ยนรายการสินค้า');
   const [cancelNote, setCancelNote] = useState('');
   const [isCancelling, setIsCancelling] = useState(false);
+  const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
 
   // Global Toasts
   const [toasts, setToasts] = useState<string[]>([]);
@@ -1349,6 +1350,9 @@ export default function Storefront() {
   };
 
   const submitOrder = async () => {
+    if (isSubmittingOrder) return;
+    setIsSubmittingOrder(true);
+
     let addressIdToUse = selectedAddressId;
 
     // Auto-create address if selectedAddressId is null but form inputs are filled!
@@ -1385,11 +1389,13 @@ export default function Storefront() {
 
     if (!addressIdToUse) {
       showToast('กรุณากรอกและเลือกที่อยู่สำหรับจัดส่งให้ครบถ้วน');
+      setIsSubmittingOrder(false);
       return;
     }
 
     if (checkoutDirectItem && checkoutDirectItem.variant.stock_quantity <= 0) {
       showToast(`ไม่สามารถชำระเงินได้เนื่องจากสินค้า '${checkoutDirectItem.variant.variant_name}' หมดชั่วคราว (สต็อกปัจจุบัน: 0)`);
+      setIsSubmittingOrder(false);
       return;
     }
     if (!checkoutDirectItem) {
@@ -1397,6 +1403,7 @@ export default function Storefront() {
       const outOfStockItem = selectedCartItems.find(i => i.stock_quantity <= 0);
       if (outOfStockItem) {
         showToast(`ไม่สามารถชำระเงินได้เนื่องจากสินค้า '${outOfStockItem.name}' หมดชั่วคราว (สต็อกปัจจุบัน: 0)`);
+        setIsSubmittingOrder(false);
         return;
       }
     }
@@ -1469,6 +1476,8 @@ export default function Storefront() {
       setActiveTab('payment');
     } catch (err: any) {
       showToast(err.message);
+    } finally {
+      setIsSubmittingOrder(false);
     }
   };
 
@@ -6271,6 +6280,204 @@ export default function Storefront() {
                 </form>
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* 🔴 CANCEL ORDER REASON FORM MODAL */}
+      {isCancelModalOpen && cancelTargetOrder && (
+        <div 
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(15, 23, 42, 0.75)',
+            backdropFilter: 'blur(8px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999,
+            padding: '20px'
+          }}
+          onClick={() => setIsCancelModalOpen(false)}
+        >
+          <div 
+            style={{
+              width: '100%',
+              maxWidth: '520px',
+              backgroundColor: '#FFFFFF',
+              borderRadius: '24px',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+              overflow: 'hidden',
+              border: '1px solid #E2E8F0',
+              animation: 'modalSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div style={{
+              padding: '20px 24px',
+              background: 'linear-gradient(135deg, #FFF5F5 0%, #FEF2F2 100%)',
+              borderBottom: '1px solid #FEE2E2',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{
+                  width: '38px',
+                  height: '38px',
+                  borderRadius: '12px',
+                  backgroundColor: '#FEE2E2',
+                  color: '#DC2626',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <AlertCircle size={22} />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: '#991B1B' }}>
+                    แบบฟอร์มยกเลิกคำสั่งซื้อ
+                  </h3>
+                  <p style={{ margin: '2px 0 0 0', fontSize: '0.8rem', color: '#B91C1C' }}>
+                    เลขที่ใบสั่งซื้อ: #{cancelTargetOrder.id.slice(0, 8)}... (ยอดรวม {parseFloat(cancelTargetOrder.total_price).toLocaleString()} ฿)
+                  </p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setIsCancelModalOpen(false)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#991B1B',
+                  cursor: 'pointer',
+                  padding: '6px',
+                  borderRadius: '8px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <form onSubmit={handleCancelOrderSubmit} style={{ padding: '24px' }}>
+              <p style={{ margin: '0 0 14px 0', fontSize: '0.9rem', fontWeight: 600, color: '#1E293B' }}>
+                โปรดเลือกเหตุผลที่ต้องการยกเลิกคำสั่งซื้อ:
+              </p>
+
+              {/* Selectable Reason Options */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>
+                {[
+                  'ต้องการเปลี่ยนรายการสินค้า',
+                  'สั่งซื้อซ้ำ / สั่งซื้อผิดพลาด',
+                  'ต้องการเปลี่ยนที่อยู่จัดส่ง',
+                  'ต้องการเปลี่ยนวิธีการชำระเงิน',
+                  'เปลี่ยนใจ / ไม่ต้องการสินค้าแล้ว',
+                  'อื่นๆ (โปรดระบุเพิ่มเติม)'
+                ].map((rOption) => (
+                  <label
+                    key={rOption}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '12px',
+                      padding: '12px 16px',
+                      borderRadius: '14px',
+                      border: cancelReason === rOption ? '2px solid #DC2626' : '1.5px solid #E2E8F0',
+                      backgroundColor: cancelReason === rOption ? '#FEF2F2' : '#F8FAFC',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease'
+                    }}
+                  >
+                    <input 
+                      type="radio" 
+                      name="cancel_reason_option"
+                      value={rOption}
+                      checked={cancelReason === rOption}
+                      onChange={(e) => setCancelReason(e.target.value)}
+                      style={{ accentColor: '#DC2626', width: '18px', height: '18px', cursor: 'pointer' }}
+                    />
+                    <span style={{ fontSize: '0.88rem', fontWeight: cancelReason === rOption ? 600 : 500, color: cancelReason === rOption ? '#991B1B' : '#334155' }}>
+                      {rOption}
+                    </span>
+                  </label>
+                ))}
+              </div>
+
+              {/* Optional Text Note Input */}
+              <div style={{ marginBottom: '24px' }}>
+                <label style={{ display: 'block', fontSize: '0.84rem', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>
+                  รายละเอียดเพิ่มเติม (ถ้ามี):
+                </label>
+                <textarea 
+                  rows={3}
+                  placeholder="กรอกรายละเอียดเพิ่มเติมที่ต้องการแจ้งทีมงาน..."
+                  value={cancelNote}
+                  onChange={(e) => setCancelNote(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '12px 14px',
+                    borderRadius: '14px',
+                    border: '1.5px solid #CBD5E1',
+                    fontSize: '0.88rem',
+                    outline: 'none',
+                    resize: 'none',
+                    boxSizing: 'border-box',
+                    fontFamily: 'inherit'
+                  }}
+                />
+              </div>
+
+              {/* Action Buttons */}
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <button
+                  type="button"
+                  onClick={() => setIsCancelModalOpen(false)}
+                  style={{
+                    flex: 1,
+                    height: '46px',
+                    background: '#F1F5F9',
+                    color: '#475569',
+                    borderRadius: '14px',
+                    border: 'none',
+                    fontSize: '0.9rem',
+                    fontWeight: 600,
+                    cursor: 'pointer'
+                  }}
+                >
+                  ย้อนกลับ
+                </button>
+                <button
+                  type="submit"
+                  disabled={isCancelling}
+                  style={{
+                    flex: 2,
+                    height: '46px',
+                    background: '#DC2626',
+                    color: '#FFFFFF',
+                    borderRadius: '14px',
+                    border: 'none',
+                    fontSize: '0.9rem',
+                    fontWeight: 700,
+                    cursor: isCancelling ? 'not-allowed' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    boxShadow: '0 4px 12px rgba(220, 38, 38, 0.3)'
+                  }}
+                >
+                  {isCancelling ? <RefreshCw size={18} className="spin" /> : <XCircle size={18} />}
+                  {isCancelling ? 'กำลังยกเลิกคำสั่งซื้อ...' : 'ยืนยันยกเลิกคำสั่งซื้อ'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
