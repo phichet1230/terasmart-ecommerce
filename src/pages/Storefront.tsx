@@ -4579,6 +4579,32 @@ export default function Storefront() {
                             >
                               📢 ทีม 2 การตลาด (พี่กิ๊ฟ)
                             </button>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setLoginEmail('finance@terasmart.com');
+                                setLoginPassword('123456');
+                                showToast('เติมข้อมูล: ทีม 3 ฝ่ายการเงินและคลังสินค้า (พี่ฝน)');
+                              }}
+                              style={{
+                                gridColumn: 'span 2',
+                                padding: '6px 8px',
+                                fontSize: '0.74rem',
+                                fontWeight: 600,
+                                borderRadius: '8px',
+                                border: '1px solid #CBD5E1',
+                                background: '#FFFFFF',
+                                color: '#16A34A',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '4px'
+                              }}
+                            >
+                              💰 ทีม 3 ฝ่ายการเงิน & คลังสินค้า (พี่ฝน)
+                            </button>
                           </div>
                         </div>
 
