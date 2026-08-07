@@ -189,8 +189,10 @@ async function autoMigrateDatabase() {
       );
     `);
 
-    // Ensure payments table columns exist
+    // Ensure payments table columns exist & expand slip_url / profile_image to TEXT
     await pool.query(`
+      ALTER TABLE payments ALTER COLUMN slip_url TYPE TEXT;
+      ALTER TABLE users ALTER COLUMN profile_image TYPE TEXT;
       ALTER TABLE payments ADD COLUMN IF NOT EXISTS ai_verified_status VARCHAR(50);
       ALTER TABLE payments ADD COLUMN IF NOT EXISTS qr_ref VARCHAR(255);
       ALTER TABLE payments ADD COLUMN IF NOT EXISTS ocr_raw_text TEXT;

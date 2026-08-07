@@ -4,6 +4,12 @@ const fs = require('fs');
 const { releaseExpiredOrders } = require('./orderController');
 const { pdpaMask, parseEMVCoQR, validateUploadedFile, buildISO20022Message } = require('../utils/bankSlipStandards');
 
+// Ensure slip_url column is TEXT type to store Base64 Data URLs without character limit
+pool.query(`
+  ALTER TABLE payments ALTER COLUMN slip_url TYPE TEXT;
+  ALTER TABLE users ALTER COLUMN profile_image TYPE TEXT;
+`).catch(e => console.warn('Migration slip_url TYPE TEXT notice:', e.message));
+
 const parseUtcDate = (dateVal) => {
   if (!dateVal) return new Date();
   if (dateVal instanceof Date) return dateVal;
