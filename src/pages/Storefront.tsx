@@ -562,7 +562,7 @@ export default function Storefront() {
   const apiRequest = async (url: string, method = 'GET', body?: any) => {
     const token = localStorage.getItem('tera_token');
     const options: any = { method, headers: {} };
-    if (token) {
+    if (token && token !== 'undefined' && token !== 'null') {
       options.headers['Authorization'] = `Bearer ${token}`;
     }
     if (body) {
@@ -577,18 +577,10 @@ export default function Storefront() {
       throw new Error('ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้ กรุณาตรวจสอบการเชื่อมต่อ');
     }
 
-    const isAuthRequest = url.includes('/api/v1/auth/login') || url.includes('/api/v1/auth/register');
-
     const contentType = response.headers.get('content-type');
     if (contentType && contentType.includes('application/json')) {
       const data = await response.json();
       if (!response.ok || data.status === 'error') {
-        if (response.status === 401 && !isAuthRequest) {
-          localStorage.removeItem('tera_token');
-          localStorage.removeItem('tera_user');
-          setUser(null);
-          throw new Error('เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่อีกครั้ง');
-        }
         let errMsg = data.message || `ไม่สามารถทำรายการได้ (รหัส: ${response.status})`;
         if (typeof errMsg === 'string' && errMsg.includes('Internal Server Error')) {
           errMsg = 'ระบบขัดข้องชั่วคราวขณะประมวลผล กรุณาลองใหม่อีกครั้ง';
@@ -603,12 +595,6 @@ export default function Storefront() {
       }
       return data;
     } else {
-      if (response.status === 401 && !isAuthRequest) {
-        localStorage.removeItem('tera_token');
-        localStorage.removeItem('tera_user');
-        setUser(null);
-        throw new Error('เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่อีกครั้ง');
-      }
       if (response.status === 404) {
         throw new Error('ไม่พบข้อมูลที่ต้องการในระบบ');
       }

@@ -11,7 +11,7 @@ exports.protect = async (req, res, next) => {
     token = req.cookies.token;
   }
 
-  if (!token) {
+  if (!token || token === 'undefined' || token === 'null') {
     return res.status(401).json({ status: 'error', message: 'คุณไม่มีสิทธิ์เข้าถึง กรุณาเข้าสู่ระบบ' });
   }
 
