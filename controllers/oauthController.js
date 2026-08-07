@@ -29,11 +29,7 @@ function generateSafeUsername(baseName) {
 
 // Helper to dynamically get the exact callback URL based on incoming request host
 function getCallbackUrl(req, envVarName, defaultPath) {
-  const envUrl = process.env[envVarName];
-  if (envUrl && !envUrl.includes('ngrok-free.dev') && !envUrl.includes('serveousercontent.com') && !envUrl.includes('your_')) {
-    return envUrl;
-  }
-  const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'http';
+  const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'https';
   const host = req.headers['x-forwarded-host'] || req.headers.host;
   return `${protocol}://${host}${defaultPath}`;
 }
