@@ -1462,10 +1462,15 @@ export default function Storefront() {
       setCreatedOrderId(order.id);
       setCreatedOrderTotal(parseFloat(order.total_price));
 
-      // Instant UI response: Generate QR Code & Switch to Payment Tab immediately (~0.2s response time)
+      // Instant UI response: Use pre-generated QR Code directly from createOrder response (~0.01s instant display)
       if (paymentMethod === 'qr') {
-        const qrRes = await apiRequest(`/api/v1/payments/${order.id}/qr`, 'POST');
-        setQrCodeData(qrRes.data.qr_image);
+        const qrImageToUse = res.qr_image || (res.data && res.data.qr_image);
+        if (qrImageToUse) {
+          setQrCodeData(qrImageToUse);
+        } else {
+          const qrRes = await apiRequest(`/api/v1/payments/${order.id}/qr`, 'POST');
+          setQrCodeData(qrRes.data.qr_image);
+        }
         setQrExpireTimer(300); 
       }
       

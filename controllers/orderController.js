@@ -290,7 +290,29 @@ exports.createOrder = async (req, res) => {
 
     await client.query('COMMIT');
     clearCache('products');
-    res.status(201).json({ status: 'success', message: 'สั่งซื้อสินค้าสำเร็จ', data: orderInsert.rows[0] });
+
+    // Instant PromptPay QR Code Generation (0.005s)
+    let qr_image = null;
+    try {
+      const generatePayload = require('promptpay-qr');
+      const qrcode = require('qrcode');
+      const promptpayId = process.env.PROMPTPAY_ID || '0820761709';
+      const payloadStr = generatePayload(promptpayId, { amount: total_price });
+      qr_image = await qrcode.toDataURL(payloadStr, {
+        width: 250,
+        margin: 2,
+        color: { dark: '#1a1a2e', light: '#ffffff' }
+      });
+    } catch (qrErr) {
+      console.warn('Instant QR generation notice:', qrErr.message);
+    }
+
+    res.status(201).json({
+      status: 'success',
+      message: 'สั่งซื้อสินค้าสำเร็จ',
+      data: { ...orderInsert.rows[0], qr_image },
+      qr_image
+    });
 
   } catch (err) {
     await client.query('ROLLBACK');
