@@ -35,9 +35,9 @@ const releaseExpiredOrders = async () => {
           [order.id]
         );
         
-        // ดึงรายการสินค้าเพื่อคืนสต็อก
+        // ดึงรายการสินค้าเพื่อคืนสต็อก (เรียงตาม variant_id ASC ป้องกัน Deadlock 100%)
         const itemsResult = await client.query(
-          "SELECT variant_id, quantity FROM order_items WHERE order_id = $1",
+          "SELECT variant_id, quantity FROM order_items WHERE order_id = $1 ORDER BY variant_id ASC",
           [order.id]
         );
         
@@ -246,6 +246,9 @@ exports.createOrder = async (req, res) => {
     const order_id = orderInsert.rows[0].id;
 
     // 6. บันทึกข้อมูลสินค้าสั่งซื้อลง order_items (สแนปชอต unit_price) และตัดสต็อกสินค้าในทรานแซกชันเดียวกัน
+    // เรียงลำดับ variant_id จากน้อยไปมากเสมอ ป้องกัน Database Deadlock 100%
+    itemsToProcess.sort((a, b) => Number(a.variant_id) - Number(b.variant_id));
+
     for (const item of itemsToProcess) {
       await client.query(
         `INSERT INTO order_items (order_id, variant_id, quantity, unit_price)
@@ -456,9 +459,9 @@ exports.cancelOrder = async (req, res) => {
       [fullReason, order_id]
     );
 
-    // คืนสต็อกสินค้ากลับเข้าตาราง product_variants
+    // คืนสต็อกสินค้ากลับเข้าตาราง product_variants (เรียงตาม variant_id ASC ป้องกัน Deadlock 100%)
     const itemsResult = await client.query(
-      "SELECT variant_id, quantity FROM order_items WHERE order_id = $1",
+      "SELECT variant_id, quantity FROM order_items WHERE order_id = $1 ORDER BY variant_id ASC",
       [order_id]
     );
 
