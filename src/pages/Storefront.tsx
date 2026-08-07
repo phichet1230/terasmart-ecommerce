@@ -1461,19 +1461,19 @@ export default function Storefront() {
       const order = res.data;
       setCreatedOrderId(order.id);
       setCreatedOrderTotal(parseFloat(order.total_price));
-      showToast('สร้างคำสั่งซื้อสำเร็จ! กรุณาชำระเงิน');
-      
-      fetchOrders();
-      fetchCart();
-      fetchProducts(); 
 
+      // Instant UI response: Generate QR Code & Switch to Payment Tab immediately (~0.2s response time)
       if (paymentMethod === 'qr') {
         const qrRes = await apiRequest(`/api/v1/payments/${order.id}/qr`, 'POST');
         setQrCodeData(qrRes.data.qr_image);
         setQrExpireTimer(300); 
       }
-
+      
       setActiveTab('payment');
+      showToast('สร้างคำสั่งซื้อสำเร็จ! กรุณาชำระเงิน');
+      
+      // Parallel background refresh (non-blocking)
+      Promise.all([fetchOrders(), fetchCart(), fetchProducts()]).catch(err => console.warn('Background sync notice:', err));
     } catch (err: any) {
       showToast(err.message);
     } finally {
