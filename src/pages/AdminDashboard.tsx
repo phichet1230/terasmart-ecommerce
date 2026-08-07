@@ -1538,6 +1538,34 @@ export default function AdminDashboard() {
     return admin.role;
   };
 
+  const isTabAllowed = (tab: string) => {
+    if (!admin) return false;
+    const email = admin.email || '';
+    const role = admin.role || '';
+
+    // Master Admin (admin@terasmart.com or Super Admin role)
+    if (email === 'admin@terasmart.com' || (role === 'admin' && email !== 'sales@terasmart.com' && email !== 'marketing@terasmart.com' && email !== 'finance@terasmart.com')) {
+      return true;
+    }
+
+    // Sales Department (sales@terasmart.com / sales role)
+    if (email === 'sales@terasmart.com' || role === 'sales') {
+      return ['orders', 'customers'].includes(tab);
+    }
+
+    // Marketing Department (marketing@terasmart.com / marketing role)
+    if (email === 'marketing@terasmart.com' || role === 'marketing') {
+      return ['banners', 'products'].includes(tab);
+    }
+
+    // Finance & Warehouse Department (finance@terasmart.com / accounting / stock role)
+    if (email === 'finance@terasmart.com' || role === 'accounting' || role === 'stock') {
+      return ['orders', 'products'].includes(tab);
+    }
+
+    return true;
+  };
+
   if (!isAuthorized) {
     return <div style={{ color: '#fff', padding: '20px', textAlign: 'center' }}>กำลังตรวจสอบสิทธิ์ Admin...</div>;
   }
@@ -1562,29 +1590,41 @@ export default function AdminDashboard() {
         </div>
 
         <nav className="admin-nav">
-          <button className={activeTab === 'dashboard' ? 'active' : ''} onClick={() => setActiveTab('dashboard')}>
-            <BarChart2 size={16} /> สรุปภาพรวมแดชบอร์ด
-          </button>
+          {isTabAllowed('dashboard') && (
+            <button className={activeTab === 'dashboard' ? 'active' : ''} onClick={() => setActiveTab('dashboard')}>
+              <BarChart2 size={16} /> สรุปภาพรวมแดชบอร์ด
+            </button>
+          )}
           
-          <button className={activeTab === 'employees' ? 'active' : ''} onClick={() => setActiveTab('employees')}>
-            <Briefcase size={16} /> พนักงาน & แผนกหลังบ้าน
-          </button>
+          {isTabAllowed('employees') && (
+            <button className={activeTab === 'employees' ? 'active' : ''} onClick={() => setActiveTab('employees')}>
+              <Briefcase size={16} /> พนักงาน & แผนกหลังบ้าน
+            </button>
+          )}
 
-          <button className={activeTab === 'orders' ? 'active' : ''} onClick={() => setActiveTab('orders')}>
-            <ShoppingBag size={16} /> การสั่งซื้อ & จัดส่งพัสดุ
-          </button>
+          {isTabAllowed('orders') && (
+            <button className={activeTab === 'orders' ? 'active' : ''} onClick={() => setActiveTab('orders')}>
+              <ShoppingBag size={16} /> การสั่งซื้อ & จัดส่งพัสดุ
+            </button>
+          )}
 
-          <button className={activeTab === 'products' ? 'active' : ''} onClick={() => setActiveTab('products')}>
-            <Package size={16} /> คลังสินค้า & สต็อก
-          </button>
+          {isTabAllowed('products') && (
+            <button className={activeTab === 'products' ? 'active' : ''} onClick={() => setActiveTab('products')}>
+              <Package size={16} /> คลังสินค้า & สต็อก
+            </button>
+          )}
 
-          <button className={activeTab === 'customers' ? 'active' : ''} onClick={() => setActiveTab('customers')}>
-            <Users size={16} /> สมาชิก & บริการลูกค้า
-          </button>
+          {isTabAllowed('customers') && (
+            <button className={activeTab === 'customers' ? 'active' : ''} onClick={() => setActiveTab('customers')}>
+              <Users size={16} /> สมาชิก & บริการลูกค้า
+            </button>
+          )}
 
-          <button className={activeTab === 'banners' ? 'active' : ''} onClick={() => setActiveTab('banners')}>
-            <Sparkles size={16} /> สื่อแบรนเนอร์ & การตลาด
-          </button>
+          {isTabAllowed('banners') && (
+            <button className={activeTab === 'banners' ? 'active' : ''} onClick={() => setActiveTab('banners')}>
+              <Sparkles size={16} /> สื่อแบรนเนอร์ & การตลาด
+            </button>
+          )}
         </nav>
 
         <div className="admin-sidebar-footer">
