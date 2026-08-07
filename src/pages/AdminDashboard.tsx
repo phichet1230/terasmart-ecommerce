@@ -1089,10 +1089,14 @@ export default function AdminDashboard() {
       }
       setAdmin(localUser);
       setIsAuthorized(true);
-      if (localUser.role === 'stock') {
-        setActiveTab('products');
-      } else if (localUser.role === 'accounting') {
+      if (localUser.email === 'sales@terasmart.com' || localUser.role === 'sales') {
         setActiveTab('orders');
+      } else if (localUser.email === 'marketing@terasmart.com' || localUser.role === 'marketing') {
+        setActiveTab('banners');
+      } else if (localUser.email === 'finance@terasmart.com' || localUser.role === 'accounting') {
+        setActiveTab('orders');
+      } else if (localUser.role === 'stock') {
+        setActiveTab('products');
       } else {
         setActiveTab('dashboard');
       }
@@ -1641,6 +1645,73 @@ export default function AdminDashboard() {
         </header>
 
         <div className="admin-content">
+          {/* DEDICATED DEPARTMENT WORKSPACE BANNER */}
+          <div style={{
+            background: admin?.email === 'sales@terasmart.com' ? 'linear-gradient(135deg, #1E3A8A 0%, #2563EB 100%)' :
+                        admin?.email === 'marketing@terasmart.com' ? 'linear-gradient(135deg, #831843 0%, #DB2777 100%)' :
+                        admin?.email === 'finance@terasmart.com' ? 'linear-gradient(135deg, #064E3B 0%, #16A34A 100%)' :
+                        'linear-gradient(135deg, #0F172A 0%, #FF3201 100%)',
+            color: '#FFFFFF',
+            borderRadius: '16px',
+            padding: '20px 24px',
+            marginBottom: '20px',
+            boxShadow: '0 8px 20px rgba(0,0,0,0.12)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: '16px'
+          }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                <span style={{ background: 'rgba(255,255,255,0.2)', padding: '4px 12px', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 800, letterSpacing: '0.5px' }}>
+                  {admin?.email === 'sales@terasmart.com' ? '👔 DEDICATED SALES WORKSPACE' :
+                   admin?.email === 'marketing@terasmart.com' ? '📢 DEDICATED MARKETING WORKSPACE' :
+                   admin?.email === 'finance@terasmart.com' ? '💰 DEDICATED FINANCE & WAREHOUSE WORKSPACE' :
+                   '👑 MASTER EXECUTIVE WORKSPACE'}
+                </span>
+                <span style={{ fontSize: '0.8rem', opacity: 0.85 }}>• ประจำการโดย {admin?.username} ({admin?.email})</span>
+              </div>
+
+              <h2 style={{ margin: '4px 0', fontSize: '1.4rem', fontWeight: 800, letterSpacing: '0.3px', color: '#FFFFFF' }}>
+                {admin?.email === 'sales@terasmart.com' ? 'ระบบงานฝ่ายขายประจำทีม 1 (คุณพี่พี่ยง)' :
+                 admin?.email === 'marketing@terasmart.com' ? 'ระบบงานฝ่ายการตลาดประจำทีม 2 (คุณพี่กิ๊ฟ)' :
+                 admin?.email === 'finance@terasmart.com' ? 'ระบบงานฝ่ายการเงินและคลังสินค้าประจำทีม 3 (คุณพี่ฝน)' :
+                 'ระบบบริหารจัดการผู้ดูแลระบบใหญ่ (Master Admin Portal)'}
+              </h2>
+
+              <p style={{ margin: 0, fontSize: '0.88rem', opacity: 0.9, color: 'rgba(255,255,255,0.9)' }}>
+                {admin?.email === 'sales@terasmart.com' ? 'จัดการรายการสั่งซื้อลูกค้า ตรวจสอบข้อมูลติดต่อ และติดตามเป้าหมายการขายประจำทีม 1 (Target: 500,000 บาท)' :
+                 admin?.email === 'marketing@terasmart.com' ? 'จัดการสื่อการตลาด สไลเดอร์แบนเนอร์หน้าร้าน คูปองส่วนลด และเป้าหมายการตลาดประจำทีม 2 (Target: 300,000 บาท)' :
+                 admin?.email === 'finance@terasmart.com' ? 'ตรวจสอบสลิปชำระเงิน ตรวจสอบยอดเงินโอน และจัดการสต็อกคลังสินค้าประจำทีม 3 (Target: 200,000 บาท)' :
+                 'ควบคุมและดูแลการทำงานของทุกฝ่าย วิเคราะห์ภาพรวมยอดขาย และตรวจสอบ Audit Logs'}
+              </p>
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px' }}>
+              {admin?.email === 'sales@terasmart.com' && (
+                <button className="btn-primary" onClick={() => setActiveTab('orders')} style={{ borderRadius: '10px', background: '#FFFFFF', color: '#1E3A8A', fontWeight: 700, border: 'none', padding: '10px 16px', cursor: 'pointer' }}>
+                  🛒 ดูออเดอร์ลูกค้า
+                </button>
+              )}
+              {admin?.email === 'marketing@terasmart.com' && (
+                <button className="btn-primary" onClick={() => setActiveTab('banners')} style={{ borderRadius: '10px', background: '#FFFFFF', color: '#831843', fontWeight: 700, border: 'none', padding: '10px 16px', cursor: 'pointer' }}>
+                  ✨ จัดการแบนเนอร์ & คูปอง
+                </button>
+              )}
+              {admin?.email === 'finance@terasmart.com' && (
+                <button className="btn-primary" onClick={() => setActiveTab('orders')} style={{ borderRadius: '10px', background: '#FFFFFF', color: '#064E3B', fontWeight: 700, border: 'none', padding: '10px 16px', cursor: 'pointer' }}>
+                  💳 ตรวจสอบสลิป & คลังสินค้า
+                </button>
+              )}
+              {admin?.email === 'admin@terasmart.com' && (
+                <button className="btn-primary" onClick={() => setActiveTab('dashboard')} style={{ borderRadius: '10px', background: '#FFFFFF', color: '#FF3201', fontWeight: 700, border: 'none', padding: '10px 16px', cursor: 'pointer' }}>
+                  📊 แดชบอร์ดภาพรวม
+                </button>
+              )}
+            </div>
+          </div>
+
           {/* TAB 1: SUMMARY DASHBOARD */}
           {activeTab === 'dashboard' && (
             <div className="dashboard-view">
