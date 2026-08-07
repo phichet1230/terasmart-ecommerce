@@ -1133,7 +1133,7 @@ export default function AdminDashboard() {
         activeCustomers: 8,
         pendingPayments: 2,
         teamKpis: [
-          { team_id: 1, team_name: 'ทีม 1 - ฝ่ายขาย (Sales Team)', leader: 'พี่โอ๊ต', position: 'SALE DIRECTOR', target_amount: 500000, actual_sales: 320000, kpi_percentage: 64.0 },
+          { team_id: 1, team_name: 'ทีม 1 - ฝ่ายขาย (Sales Team)', leader: 'พี่พี่ยง', position: 'SALE DIRECTOR', target_amount: 500000, actual_sales: 320000, kpi_percentage: 64.0 },
           { team_id: 2, team_name: 'ทีม 2 - ฝ่ายการตลาด (Marketing Team)', leader: 'พี่กิ๊ฟ', position: 'ACT. MARKETING MANAGER', target_amount: 300000, actual_sales: 210000, kpi_percentage: 70.0 },
           { team_id: 3, team_name: 'ทีม 3 - ฝ่ายจัดซื้อและคลังสินค้า (Warehouse & Purchase Team)', leader: 'พี่ฝน', position: 'ACT.PURCHASE&WAREHOUSE MGR.', target_amount: 200000, actual_sales: 165000, kpi_percentage: 82.5 }
         ],
@@ -1730,7 +1730,7 @@ export default function AdminDashboard() {
                     </thead>
                     <tbody>
                       {(metrics.teamKpis && metrics.teamKpis.length > 0 ? metrics.teamKpis : [
-                        { team_id: 1, team_name: 'ทีม 1 - ฝ่ายขาย (Sales Team)', leader: 'พี่โอ๊ต', position: 'SALE DIRECTOR', target_amount: 500000, actual_sales: 39241.58, kpi_percentage: 64.0 },
+                        { team_id: 1, team_name: 'ทีม 1 - ฝ่ายขาย (Sales Team)', leader: 'พี่พี่ยง', position: 'SALE DIRECTOR', target_amount: 500000, actual_sales: 39241.58, kpi_percentage: 64.0 },
                         { team_id: 2, team_name: 'ทีม 2 - ฝ่ายการตลาด (Marketing Team)', leader: 'พี่กิ๊ฟ', position: 'ACT. MARKETING MANAGER', target_amount: 300000, actual_sales: 23544.95, kpi_percentage: 70.0 },
                         { team_id: 3, team_name: 'ทีม 3 - ฝ่ายจัดซื้อและคลังสินค้า (Warehouse & Purchase Team)', leader: 'พี่ฝน', position: 'ACT.PURCHASE&WAREHOUSE MGR.', target_amount: 200000, actual_sales: 15696.63, kpi_percentage: 82.5 }
                       ]).map((kpi: any) => (

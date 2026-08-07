@@ -94,8 +94,8 @@ exports.getDashboardMetrics = async (req, res) => {
       {
         team_id: 1,
         team_name: 'ทีม 1 - ฝ่ายขาย (Sales Team)',
-        leader: 'พี่โอ๊ต',
-        leader_name: 'พี่โอ๊ต',
+        leader: 'พี่พี่ยง',
+        leader_name: 'พี่พี่ยง',
         position: 'SALE DIRECTOR',
         target_amount: team1Target,
         actual_sales: parseFloat(team1Sales.toFixed(2)),
